@@ -1,8 +1,0 @@
-blank_issues_enabled: false
-contact_links:
-  - name: Security vulnerability
-    url: https://github.com/krovacloud/krova-webhook-js/security/policy
-    about: Please report security issues privately per our Security Policy — do not open a public issue.
-  - name: Krova Cloud support
-    url: https://krova.cloud
-    about: Questions about Krova Cloud itself (not this library)? Head to Krova Cloud.

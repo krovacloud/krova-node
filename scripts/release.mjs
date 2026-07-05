@@ -81,11 +81,30 @@ const highestTag = (name) => {
   return tags.length ? tags[tags.length - 1] : null;
 };
 
+// Paths inside a package that never affect the PUBLISHED artifact — changing
+// only these must NOT trigger a version bump/republish (no churn for repo
+// hygiene: tests, tooling config, inert per-package .github, editor files).
+const NON_PUBLISHED_GLOBS = [
+  ".github/**",
+  "test/**",
+  "tests/**",
+  "**/*.test.ts",
+  "**/*.spec.ts",
+  "tsconfig*.json",
+  "tsup.config.*",
+  "vitest.config.*",
+  "eslint.config.*",
+  ".eslintrc*",
+  ".prettierrc*",
+  ".editorconfig",
+];
+
 const changedSince = (dir, name, tagVersion) => {
   if (!tagVersion) return true; // never released
   const tag = `${name}@${tagVersion}`;
-  // exit code 1 => there ARE differences in the package dir
-  return !ok(`git diff --quiet ${tag} HEAD -- ${dir}`);
+  const excludes = NON_PUBLISHED_GLOBS.map((g) => `':(exclude)${dir}/${g}'`).join(" ");
+  // exit code 1 => there ARE differences in the package's PUBLISHED surface
+  return !ok(`git diff --quiet ${tag} HEAD -- ${dir} ${excludes}`);
 };
 
 const npmLatest = (name) => {

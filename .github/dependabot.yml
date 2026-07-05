@@ -1,0 +1,37 @@
+version: 2
+updates:
+  # ── npm dependencies across the whole monorepo ──────────────────────────────
+  # A single pnpm workspace: Dependabot reads the root lockfile and opens PRs for
+  # every package under packages/*. Grouped to keep PR volume sane.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    groups:
+      # Non-breaking (patch + minor) updates land in one PR per week.
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+      # Major bumps come as individual PRs so they can be reviewed carefully.
+      major:
+        update-types:
+          - "major"
+    commit-message:
+      prefix: "chore(deps)"
+
+  # ── GitHub Actions used by the CI/release workflow ──────────────────────────
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "chore(ci)"
