@@ -19,6 +19,8 @@ export {
   type Image,
   type PricingTier,
   type Pagination,
+  type Space,
+  type CubeSshInfo,
 } from "./client.js";
 export { KrovaError, krovaErrorFrom, type KrovaErrorBody } from "./error.js";
 

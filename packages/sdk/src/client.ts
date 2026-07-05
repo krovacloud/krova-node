@@ -17,6 +17,12 @@ export type PricingTier = components["schemas"]["PricingTier"];
 /** Pagination envelope returned alongside a Cube list. */
 export type Pagination = components["schemas"]["Pagination"];
 
+/** A Space — the tenancy an API key is scoped to. */
+export type Space = components["schemas"]["Space"];
+
+/** A Cube's SSH connection info (host, port, user, and pinned host keys). */
+export type CubeSshInfo = components["schemas"]["CubeSshInfo"];
+
 /** Default API base URL — the single `servers[0].url` from the OpenAPI spec. */
 export const DEFAULT_BASE_URL = "https://krova.cloud/api/v1";
 
@@ -305,7 +311,40 @@ export class KrovaClient {
       if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
       return data;
     },
+
+    /**
+     * Get a Cube's SSH connection info — host, port, login user, and (when
+     * available) the pinned host public keys for strict host-key verification.
+     */
+    ssh: async (spaceId: string, cubeId: string): Promise<CubeSshInfo> => {
+      const { data, error, response } = await this.raw.GET(
+        "/spaces/{spaceId}/cubes/{cubeId}/ssh",
+        { params: { path: { spaceId, cubeId } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      if (data === undefined)
+        throw krovaErrorFrom(response, { error: "Cube SSH-info response was empty." });
+      return data;
+    },
   };
+
+  /**
+   * Resolve the {@link Space} this API key is scoped to — so you don't have to
+   * hardcode a `spaceId`. Handy right after constructing the client:
+   *
+   * @example
+   * ```ts
+   * const space = await krova.getSpace();
+   * const cubes = await krova.cubes.list(space.id);
+   * ```
+   */
+  async getSpace(): Promise<Space> {
+    const { data, error, response } = await this.raw.GET("/space");
+    if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+    if (data === undefined)
+      throw krovaErrorFrom(response, { error: "Space response was empty." });
+    return data;
+  }
 
   // ---------------------------------------------------------------------------
   // Public catalog (no auth required by the API, but the key is harmless)

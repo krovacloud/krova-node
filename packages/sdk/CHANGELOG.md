@@ -4,6 +4,32 @@ All notable changes to `@krovacloud/sdk` are documented here. This project adher
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and the
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
 
+## 0.2.0
+
+### Added
+
+- `client.getSpace()` — resolve the `Space` your API key is scoped to, so you no
+  longer have to hardcode a `spaceId`.
+- `client.cubes.ssh(spaceId, cubeId)` — fetch a Cube's SSH connection info
+  (`host`, `port`, `user`, and pinned `hostKeys`).
+- Exported `Space` and `CubeSshInfo` types.
+
+### Changed
+
+- Refreshed the bundled OpenAPI spec to the current API (26 paths / 35
+  operations). `client.raw` can now reach `GET /space`, the cube SSH-info
+  endpoint, and the CLI device-auth endpoints, which the stale bundle omitted.
+
+## 0.1.6
+
+### Fixed
+
+- Auto-retry no longer throws `TypeError: unusable` on requests with a body
+  (POST/PUT/DELETE) — a pristine copy of the request is captured before its body
+  is consumed, so retries of the mutating, rate-limited endpoints work.
+- A hostile or misconfigured `Retry-After` is now capped at the maximum backoff
+  (10s), so the client can't be parked for minutes/hours.
+
 ## 0.1.5
 
 ### Changed
