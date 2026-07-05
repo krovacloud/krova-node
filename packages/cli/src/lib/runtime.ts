@@ -100,13 +100,16 @@ export async function resolveSpace(rt: Runtime): Promise<string> {
     timeoutMs: rt.timeoutMs,
   });
   if (status === 200 && data?.id) {
-    // best-effort cache into the current named context
+    // Best-effort cache of the resolved space into the current named context.
+    // Deliberately does NOT write baseUrl: rt.res.baseUrl already folds in a
+    // one-off --base-url / KROVA_BASE_URL override, and persisting that here
+    // would permanently rewrite the context's real base URL from a transient
+    // flag. Only the space id/name are cached.
     if (rt.res.contextName) {
       upsert(rt.cfg, {
         name: rt.res.contextName,
         spaceId: data.id,
         spaceName: data.name,
-        baseUrl: rt.res.baseUrl,
       });
       try {
         save(rt.cfg);

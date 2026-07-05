@@ -29,7 +29,7 @@ Every operation authenticates with a **Krova Cloud API** credential.
 2. In n8n, add a new **Krova Cloud API** credential.
 3. Paste the key into **API Key** — it is sent to the API in the `X-API-KEY` header and stored encrypted by n8n.
 4. Leave **Base URL** at its default `https://krova.cloud/api/v1` (override only for self-hosted or test endpoints).
-5. Click **Test**. n8n calls `GET /regions` to confirm the key and endpoint are reachable.
+5. Click **Test**. n8n calls `GET /space` (an authenticated endpoint) to confirm the key is valid and the endpoint is reachable — an invalid or revoked key fails here.
 
 | Field | Required | Default | Notes |
 | --- | --- | --- | --- |

@@ -140,7 +140,7 @@ test('the node never echoes the API key in any static config surface', () => {
 	assert.doesNotMatch(serialized, /X-API-KEY/i, 'node must not hardcode the auth header');
 });
 
-test('credential injects X-API-KEY and tests against /regions', () => {
+test('credential injects X-API-KEY and tests against an authenticated endpoint', () => {
 	const cred = new KrovaApi();
 	assert.equal(cred.name, 'krovaApi');
 
@@ -155,7 +155,9 @@ test('credential injects X-API-KEY and tests against /regions', () => {
 	const header = cred.authenticate.properties.headers['X-API-KEY'];
 	assert.equal(header, '={{ $credentials.apiKey }}');
 
-	// credential test hits GET /regions
-	assert.equal(cred.test.request.url, '/regions');
+	// The credential test MUST hit an authenticated endpoint so an invalid key
+	// fails. /space requires X-API-KEY; the catalog endpoints are public and
+	// would pass for any key.
+	assert.equal(cred.test.request.url, '/space');
 	assert.equal(cred.test.request.method, 'GET');
 });

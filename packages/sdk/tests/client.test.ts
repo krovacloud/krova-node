@@ -190,6 +190,74 @@ test("retries once on 429 honoring Retry-After, then succeeds", async () => {
   assert.deepEqual(result, { data: [] });
 });
 
+test("retries a POST (with a body) and re-sends the body on the retry", async () => {
+  // Regression: a retried request that has a body used to throw
+  // `TypeError: unusable` — the fetched request's body stream was already
+  // consumed, so cloning it in the retry path failed. The mutating POST/DELETE
+  // endpoints are exactly the ones the API rate-limits + we auto-retry.
+  const bodies: string[] = [];
+  let calls = 0;
+  handler = (_req, res, body) => {
+    calls += 1;
+    bodies.push(body);
+    if (calls === 1) {
+      res.writeHead(503, { "content-type": "application/json", "retry-after": "0" });
+      res.end(JSON.stringify({ error: "temporarily unavailable" }));
+      return;
+    }
+    json(res, 201, {
+      cube: {
+        id: "cube_1",
+        name: "web-server",
+        state: "pending",
+        publicIpv4: null,
+        resources: { vcpu: 2, ramGb: 4, diskGb: 40 },
+        image: "ubuntu-24.04",
+        costPerHour: 0.08,
+        createdAt: "2026-07-01T00:00:00Z",
+        updatedAt: "2026-07-01T00:00:00Z",
+      },
+    });
+  };
+
+  const client = new KrovaClient({ apiKey: "kro_x", baseUrl, maxRetries: 2 });
+  const cube = await client.cubes.create("space_abc", {
+    name: "web-server",
+    image: "ubuntu-24.04",
+    resources: { vcpu: 2, ramGb: 4, diskGb: 40 },
+    sshPublicKey: "ssh-ed25519 AAAA... you@host",
+  });
+
+  assert.equal(calls, 2, "one retry after the 503");
+  assert.equal(cube.id, "cube_1");
+  // The body must be present AND identical on both the first attempt and the retry.
+  assert.ok(bodies[0]?.includes("web-server"), "first attempt sent the body");
+  assert.equal(bodies[1], bodies[0], "retry re-sent the exact same body");
+});
+
+test("caps a hostile Retry-After so the client can't be parked for hours", async () => {
+  // A huge Retry-After must be clamped to MAX_BACKOFF_MS (10s), not obeyed
+  // literally. We assert the call completes quickly rather than hanging.
+  let calls = 0;
+  handler = (_req, res) => {
+    calls += 1;
+    if (calls === 1) {
+      res.writeHead(503, { "content-type": "application/json", "retry-after": "86400" });
+      res.end(JSON.stringify({ error: "unavailable" }));
+      return;
+    }
+    json(res, 200, { data: [] });
+  };
+
+  const client = new KrovaClient({ apiKey: "kro_x", baseUrl, maxRetries: 1 });
+  const started = Date.now();
+  await client.cubes.list("space_abc");
+  const elapsed = Date.now() - started;
+
+  assert.equal(calls, 2, "one retry");
+  assert.ok(elapsed < 11_000, `retry waited ${elapsed}ms — Retry-After was not capped`);
+});
+
 test("README quickstart flow compiles and runs (create → id/status → sleep → wake)", async () => {
   const created = {
     id: "cube_readme",

@@ -41,10 +41,15 @@ export class KrovaApi implements ICredentialType {
 		},
 	};
 
+	// Validate against an AUTHENTICATED endpoint. `/space` resolves the Space the
+	// key is scoped to and requires a valid X-API-KEY, so a missing/invalid/
+	// revoked key fails the test. (The catalog endpoints — /regions, /images,
+	// /pricing — are public and would report success for any key, even an empty
+	// one.)
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{ $credentials.baseUrl }}',
-			url: '/regions',
+			url: '/space',
 			method: 'GET',
 		},
 	};

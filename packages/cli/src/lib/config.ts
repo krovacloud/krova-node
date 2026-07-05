@@ -104,8 +104,10 @@ export function current(cfg: Config, override?: string): Context | undefined {
   return find(cfg, name);
 }
 
-/** Merge-in a context: only non-empty apiKey/spaceId/spaceName overwrite;
- *  baseUrl is always set. First-ever context becomes current. Returns it. */
+/** Merge-in a context: only NON-EMPTY apiKey/spaceId/spaceName/baseUrl
+ *  overwrite an existing value. This keeps a transient per-command override
+ *  (e.g. a one-off `--base-url`) from being silently persisted over the
+ *  context's real base URL. First-ever context becomes current. Returns it. */
 export function upsert(cfg: Config, incoming: Context): Context {
   cfg.contexts ??= [];
   let ctx = cfg.contexts.find((c) => c.name === incoming.name);
@@ -117,7 +119,7 @@ export function upsert(cfg: Config, incoming: Context): Context {
   if ((incoming.apiKey ?? "").trim()) ctx.apiKey = incoming.apiKey;
   if ((incoming.spaceId ?? "").trim()) ctx.spaceId = incoming.spaceId;
   if ((incoming.spaceName ?? "").trim()) ctx.spaceName = incoming.spaceName;
-  ctx.baseUrl = incoming.baseUrl;
+  if ((incoming.baseUrl ?? "").trim()) ctx.baseUrl = incoming.baseUrl;
   return ctx;
 }
 

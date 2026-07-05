@@ -9,19 +9,45 @@ function fmtVal(v: unknown): string {
   return String(v);
 }
 
-/** Render like the Go CLI: table the first array-valued field, else key/value. */
+/** Flatten a top-level object field one level deep into `key.subkey` rows, so
+ *  nested objects (e.g. pricing's `rates`) render as readable key/value pairs
+ *  instead of a JSON blob. Exported for testing. */
+export function flattenRows(entries: [string, unknown][]): [string, string][] {
+  const rows: [string, string][] = [];
+  for (const [k, v] of entries) {
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      for (const [sk, sv] of Object.entries(v as Record<string, unknown>)) {
+        rows.push([`${k}.${sk}`, fmtVal(sv)]);
+      }
+    } else {
+      rows.push([k, fmtVal(v)]);
+    }
+  }
+  return rows;
+}
+
+/**
+ * Render a catalog payload as text. If the payload has an array field, print any
+ * scalar/object fields first (as key/value) and then the array as a table —
+ * otherwise the non-array fields are silently dropped. This matters for
+ * `pricing`, whose per-resource `rates` (the actual hourly prices), `currency`,
+ * and `note` sit alongside the `tiers` array. `regions`/`images` have only the
+ * array, so their output is unchanged.
+ */
 function renderCatalog(obj: Record<string, unknown>): void {
   const arrKey = Object.keys(obj).find((k) => Array.isArray(obj[k]));
-  if (arrKey) {
-    const arr = (obj[arrKey] as Record<string, unknown>[]) ?? [];
-    const cols = [...new Set(arr.flatMap((o) => Object.keys(o)))];
-    printTable(
-      cols.map((c) => c.toUpperCase()),
-      arr.map((o) => cols.map((c) => fmtVal(o[c])))
-    );
+  if (!arrKey) {
+    printKeyValue(flattenRows(Object.entries(obj)));
     return;
   }
-  printKeyValue(Object.entries(obj).map(([k, v]) => [k, fmtVal(v)]));
+  const rest = flattenRows(Object.entries(obj).filter(([k]) => k !== arrKey));
+  if (rest.length) printKeyValue(rest);
+  const arr = (obj[arrKey] as Record<string, unknown>[]) ?? [];
+  const cols = [...new Set(arr.flatMap((o) => Object.keys(o)))];
+  printTable(
+    cols.map((c) => c.toUpperCase()),
+    arr.map((o) => cols.map((c) => fmtVal(o[c])))
+  );
 }
 
 function catalogCmd(

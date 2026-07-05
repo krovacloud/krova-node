@@ -133,7 +133,10 @@ export const TOOLS: ToolDef[] = [
         .string()
         .min(1)
         .max(256)
-        .describe("Region slug (see the list_regions tool for valid values)."),
+        .optional()
+        .describe(
+          "Optional region slug (see the list_regions tool). Omit to let Krova Cloud auto-select a region with capacity.",
+        ),
       // Upper bounds are generous client-side sanity ceilings; the Krova Cloud
       // API remains authoritative on the real tier/host capacity limits.
       vcpu: z.number().int().positive().max(256).describe("Number of virtual CPUs."),
@@ -158,9 +161,9 @@ export const TOOLS: ToolDef[] = [
       client.cubes.create(resolveSpaceId(args.spaceId, ctx), {
         name: args.name,
         image: args.image,
-        region: args.region,
         resources: { vcpu: args.vcpu, ramGb: args.ramGb, diskGb: args.diskGb },
         sshPublicKey: args.sshPublicKey,
+        ...(args.region ? { region: args.region } : {}),
         ...(args.userData ? { userData: args.userData } : {}),
       }),
   }),

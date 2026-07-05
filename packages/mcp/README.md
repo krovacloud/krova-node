@@ -119,7 +119,7 @@ All 9 tools, their parameters, and what they do. Every Cube tool's `spaceId` is 
 | --- | --- | --- |
 | `list_cubes` | `spaceId?` | List all Cubes (Firecracker microVMs) in a Space. |
 | `get_cube` | `spaceId?`, `cubeId` | Get details for a single Cube by id. |
-| `create_cube` | `spaceId?`, `name`, `image`, `region`, `vcpu`, `ramGb`, `diskGb`, `sshPublicKey`, `userData?` | Provision a new Cube. Asynchronous — the returned Cube starts in a pending state. |
+| `create_cube` | `spaceId?`, `name`, `image`, `vcpu`, `ramGb`, `diskGb`, `sshPublicKey`, `region?`, `userData?` | Provision a new Cube. Asynchronous — the returned Cube starts in a pending state. |
 | `sleep_cube` | `spaceId?`, `cubeId` | Sleep a running Cube (releases compute, keeps disk). Asynchronous. |
 | `wake_cube` | `spaceId?`, `cubeId` | Wake a sleeping Cube. Asynchronous. |
 | `delete_cube` | `spaceId?`, `cubeId` | Delete a Cube. Asynchronous — deletion is enqueued. |
@@ -135,7 +135,7 @@ Every tool advertises MCP **annotations** so your client can treat them appropri
 | --- | --- | --- |
 | `name` | string | Human-readable Cube name. |
 | `image` | string | OS image slug — see `list_images`. |
-| `region` | string | Region slug — see `list_regions`. |
+| `region` | string? | Optional region slug — see `list_regions`. Omit to let Krova Cloud auto-select a region with capacity. |
 | `vcpu` | integer | Number of virtual CPUs (positive). |
 | `ramGb` | integer | RAM in GiB (positive). |
 | `diskGb` | integer | Disk in GiB (positive). |
