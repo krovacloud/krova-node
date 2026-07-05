@@ -1,14 +1,19 @@
+import { createRequire } from "node:module";
+
 import { KrovaClient } from "@krovacloud/sdk";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { McpConfig } from "./config.js";
 import { runTool, TOOLS, type ToolContext } from "./tools.js";
 
-/** Package identity advertised to MCP clients. */
+const pkg = createRequire(import.meta.url)("../package.json") as { version: string };
+
+/** Package identity advertised to MCP clients (version read from package.json,
+ *  so it stays in lockstep with releases). */
 export const SERVER_INFO = {
   name: "krova-mcp",
-  version: "0.1.3",
+  version: pkg.version,
   title: "Krova Cloud",
-} as const;
+};
 
 /**
  * Build an {@link McpServer} with every Krova Cloud tool registered against the
