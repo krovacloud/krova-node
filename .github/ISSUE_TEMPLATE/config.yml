@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Krova Cloud Support
+    url: mailto:support@krova.cloud
+    about: Questions about your account, billing, or the API itself (not a library bug).
+  - name: Security vulnerability
+    url: https://github.com/krovacloud/krova-node/blob/main/SECURITY.md
+    about: Please report security issues privately per our Security Policy, not as a public issue.
+  - name: Documentation & guides
+    url: https://krova.cloud/docs
+    about: The developer documentation for the CLI, SDK, MCP server, and webhooks.

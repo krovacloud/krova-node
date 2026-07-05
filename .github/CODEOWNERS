@@ -1,0 +1,10 @@
+# Code owners for krova-node.
+# Every change requires review from the owner (enforced via branch protection).
+# See https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repo.
+*                       @krova-admin
+
+# Release + CI pipeline and repo governance are especially sensitive.
+/scripts/               @krova-admin
+/.github/               @krova-admin
