@@ -1,0 +1,78 @@
+{
+  "name": "@krovacloud/mcp",
+  "version": "0.1.4",
+  "description": "MCP server for Krova Cloud \u2014 let Claude, Cursor, and any MCP client provision and manage Cubes (Firecracker microVMs).",
+  "license": "MIT",
+  "author": "Krova Inc.",
+  "type": "module",
+  "homepage": "https://github.com/krovacloud/krova-node/tree/main/packages/mcp#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/krovacloud/krova-node.git",
+    "directory": "packages/mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/krovacloud/krova-node/issues"
+  },
+  "keywords": [
+    "krova",
+    "krova-cloud",
+    "mcp",
+    "model-context-protocol",
+    "mcp-server",
+    "ai",
+    "llm",
+    "claude",
+    "cursor",
+    "anthropic",
+    "firecracker",
+    "cube",
+    "cubes",
+    "microvm",
+    "cloud",
+    "agent",
+    "tools"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "krova-mcp": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "@krovacloud/sdk": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.22.4",
+    "typescript": "^5.9.3"
+  }
+}

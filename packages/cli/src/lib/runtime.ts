@@ -1,0 +1,130 @@
+import type { Command } from "commander";
+
+import {
+  type Config,
+  type GlobalFlags,
+  type Resolved,
+  load,
+  resolve,
+  save,
+  upsert,
+} from "./config.js";
+import { makeClient, rawRequest } from "./client.js";
+
+/** Parse a Go-style duration ("30s", "500ms", "2m", "1h") to ms. Non-positive
+ *  or unparseable floors to 30s (matches the Go requestTimeout behavior). */
+export function parseDuration(input: string | undefined): number {
+  const s = (input ?? "").trim();
+  if (!s) return 30_000;
+  let total = 0;
+  const re = /(\d+(?:\.\d+)?)(ms|s|m|h)/g;
+  let m: RegExpExecArray | null = re.exec(s);
+  let matched = false;
+  while (m) {
+    matched = true;
+    const n = Number(m[1]);
+    const unit = m[2];
+    total += unit === "ms" ? n : unit === "s" ? n * 1000 : unit === "m" ? n * 60_000 : n * 3_600_000;
+    m = re.exec(s);
+  }
+  if (!matched) {
+    const n = Number(s);
+    if (Number.isFinite(n)) total = n * 1000; // bare number = seconds
+  }
+  return total > 0 ? total : 30_000;
+}
+
+export interface Runtime {
+  flags: GlobalFlags;
+  cfg: Config;
+  res: Resolved;
+  json: boolean;
+  timeoutMs: number;
+}
+
+export function getRuntime(cmd: Command): Runtime {
+  const opts = cmd.optsWithGlobals() as Record<string, unknown>;
+  const flags: GlobalFlags = {
+    apiKey: opts.apiKey as string | undefined,
+    space: opts.space as string | undefined,
+    baseUrl: opts.baseUrl as string | undefined,
+    context: opts.context as string | undefined,
+  };
+  const cfg = load();
+  const res = resolve(cfg, flags);
+  return {
+    flags,
+    cfg,
+    res,
+    json: Boolean(opts.json),
+    timeoutMs: parseDuration(opts.timeout as string | undefined),
+  };
+}
+
+export interface SpaceInfo {
+  id: string;
+  name?: string;
+  slug?: string;
+}
+
+/** GET /space with the given key; null on 404 / error (non-fatal). */
+export async function fetchSpace(
+  baseUrl: string,
+  apiKey: string,
+  timeoutMs: number
+): Promise<SpaceInfo | null> {
+  try {
+    const { status, data } = await rawRequest<SpaceInfo>({
+      method: "GET",
+      baseUrl,
+      path: "/space",
+      apiKey,
+      timeoutMs,
+    });
+    if (status === 200 && data?.id) return data;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Resolve the active space id: explicit value wins, else auto-detect via
+ *  GET /space (and cache it into the current context). */
+export async function resolveSpace(rt: Runtime): Promise<string> {
+  if (rt.res.spaceId) return rt.res.spaceId;
+  const { status, data } = await rawRequest<SpaceInfo>({
+    method: "GET",
+    baseUrl: rt.res.baseUrl,
+    path: "/space",
+    apiKey: rt.res.apiKey,
+    timeoutMs: rt.timeoutMs,
+  });
+  if (status === 200 && data?.id) {
+    // best-effort cache into the current named context
+    if (rt.res.contextName) {
+      upsert(rt.cfg, {
+        name: rt.res.contextName,
+        spaceId: data.id,
+        spaceName: data.name,
+        baseUrl: rt.res.baseUrl,
+      });
+      try {
+        save(rt.cfg);
+      } catch {
+        /* non-fatal */
+      }
+    }
+    return data.id;
+  }
+  if (status === 404) {
+    throw new Error(
+      "couldn't auto-detect your space (the server doesn't support it yet) — pass --space, set KROVA_SPACE_ID, or run `krova login`"
+    );
+  }
+  if (status === 401 || status === 403) {
+    throw new Error(`auto-detect space failed: the API key was rejected (HTTP ${status})`);
+  }
+  throw new Error(`auto-detect space failed (HTTP ${status})`);
+}
+
+export { makeClient };

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/krovacloud/krova-mcp/security/policy
+    about: Please report security issues privately to security@krova.cloud — do not open a public issue.
+  - name: Krova Cloud support
+    url: https://krova.cloud
+    about: For account, billing, or platform questions, contact Krova Cloud support.

@@ -1,0 +1,75 @@
+{
+  "name": "n8n-nodes-krova",
+  "version": "0.1.4",
+  "description": "n8n community node for Krova Cloud \u2014 create, sleep, wake, list, and delete Cubes (Firecracker microVMs) and read regions, images, and pricing via the Krova Cloud API.",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "n8n-node",
+    "krova",
+    "krova-cloud",
+    "cube",
+    "cubes",
+    "firecracker",
+    "microvm",
+    "cloud",
+    "infrastructure",
+    "iaas",
+    "vm",
+    "server",
+    "provisioning",
+    "automation"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/krovacloud/krova-node/tree/main/packages/n8n-node#readme",
+  "author": {
+    "name": "Krova Inc.",
+    "email": "support@krova.cloud"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/krovacloud/krova-node.git",
+    "directory": "packages/n8n-node"
+  },
+  "bugs": {
+    "url": "https://github.com/krovacloud/krova-node/issues"
+  },
+  "engines": {
+    "node": ">=20.15"
+  },
+  "scripts": {
+    "build": "tsc && node scripts/copy-icons.mjs",
+    "dev": "tsc --watch",
+    "format": "prettier nodes credentials --write",
+    "lint": "eslint nodes credentials package.json",
+    "lint:fix": "eslint nodes credentials package.json --fix",
+    "test": "node --test",
+    "prepublishOnly": "pnpm build && pnpm lint"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/KrovaApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Krova/Krova.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@typescript-eslint/parser": "8.62.1",
+    "@typescript-eslint/utils": "8.62.1",
+    "eslint": "8.57.1",
+    "eslint-plugin-n8n-nodes-base": "1.16.7",
+    "jsonc-eslint-parser": "3.1.0",
+    "n8n-core": "2.16.1",
+    "n8n-workflow": "2.16.0",
+    "prettier": "3.9.4",
+    "typescript": "5.9.3"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  }
+}

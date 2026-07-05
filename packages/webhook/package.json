@@ -1,0 +1,74 @@
+{
+  "name": "@krovacloud/webhook",
+  "version": "0.1.3",
+  "description": "Verify Krova Cloud outbound webhook signatures \u2014 HMAC-SHA256, constant-time comparison, replay protection. Express, Next.js & Fastify helpers. Zero runtime dependencies.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Krova Inc.",
+  "homepage": "https://github.com/krovacloud/krova-node/tree/main/packages/webhook#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/krovacloud/krova-node.git",
+    "directory": "packages/webhook"
+  },
+  "bugs": {
+    "url": "https://github.com/krovacloud/krova-node/issues"
+  },
+  "keywords": [
+    "krova",
+    "krova-cloud",
+    "webhook",
+    "webhooks",
+    "signature",
+    "signature-verification",
+    "hmac",
+    "hmac-sha256",
+    "verify",
+    "security",
+    "replay-protection",
+    "constant-time",
+    "express",
+    "nextjs",
+    "fastify"
+  ],
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts",
+    "prepublishOnly": "pnpm typecheck && pnpm build && pnpm test"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "tsup": "8.5.1",
+    "tsx": "4.22.4",
+    "typescript": "6.0.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

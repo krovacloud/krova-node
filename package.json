@@ -1,0 +1,22 @@
+{
+  "name": "krova-node",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Monorepo for the Krova Cloud JavaScript/TypeScript packages — SDK, CLI, MCP server, webhook verifier, and n8n node.",
+  "type": "module",
+  "packageManager": "pnpm@10.18.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/krovacloud/krova-node.git"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r --if-present lint"
+  }
+}

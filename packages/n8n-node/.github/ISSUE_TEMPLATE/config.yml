@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: mailto:security@krova.cloud
+    about: Please report security issues privately by email, not as a public issue.
+  - name: Krova Cloud support
+    url: mailto:support@krova.cloud
+    about: Questions about the Krova Cloud platform or your account.

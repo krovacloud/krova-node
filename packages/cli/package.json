@@ -1,0 +1,58 @@
+{
+  "name": "@krovacloud/cli",
+  "version": "0.4.0",
+  "description": "Krova Cloud CLI (krova) \u2014 manage Cubes (Firecracker microVMs), browse the catalog, and log in, from your terminal.",
+  "license": "MIT",
+  "author": "Krova Inc.",
+  "type": "module",
+  "homepage": "https://github.com/krovacloud/krova-node/tree/main/packages/cli#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/krovacloud/krova-node.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/krovacloud/krova-node/issues"
+  },
+  "keywords": [
+    "krova",
+    "krova-cloud",
+    "cli",
+    "cubes",
+    "firecracker",
+    "microvm",
+    "cloud"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "krova": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "@krovacloud/sdk": "workspace:*",
+    "commander": "^15.0.0",
+    "@krovacloud/webhook": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.22.4",
+    "typescript": "^5.9.3"
+  }
+}
