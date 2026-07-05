@@ -5,7 +5,7 @@
 [![license: MIT](https://img.shields.io/npm/l/@krovacloud/sdk?color=blue)](./LICENSE)
 [![types: included](https://img.shields.io/npm/types/@krovacloud/sdk?logo=typescript)](https://www.typescriptlang.org/)
 
-The official TypeScript SDK for the [Krova Cloud](https://krova.cloud) API — a fully typed client for provisioning and managing **Cubes** (Firecracker microVMs) on dedicated bare-metal servers.
+The official TypeScript SDK for the [Krova Cloud](https://krova.cloud) API — a fully typed client for provisioning and managing **Cubes** (Firecracker microVMs).
 
 ## Highlights
 

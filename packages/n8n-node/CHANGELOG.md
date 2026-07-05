@@ -6,6 +6,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
 
+
+## 0.2.1
+
+### Changed
+
+- Docs: removed a physical-infrastructure reference from the README.
 ## 0.2.0
 
 ### Added
