@@ -20,14 +20,6 @@ const DRY = process.argv.includes("--dry-run");
 
 const out = (cmd, opts = {}) =>
   execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], ...opts }).trim();
-const ok = (cmd) => {
-  try {
-    execSync(cmd, { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
-};
 const runLoud = (cmd, opts = {}) => {
   console.log(`  $ ${cmd}`);
   if (!DRY) execSync(cmd, { stdio: "inherit", ...opts });
@@ -99,12 +91,39 @@ const NON_PUBLISHED_GLOBS = [
   ".editorconfig",
 ];
 
+// package.json at a git ref with dev-only fields removed. `devDependencies`
+// and `scripts` are never installed or run by a consumer of the published
+// package, so a change confined to them must not force a new release.
+const publishedManifest = (ref, dir) => {
+  try {
+    const json = JSON.parse(
+      out(`git show ${ref}:${dir}/package.json`, { stdio: ["ignore", "pipe", "ignore"] })
+    );
+    delete json.devDependencies;
+    delete json.scripts;
+    return JSON.stringify(json);
+  } catch {
+    return null;
+  }
+};
+
 const changedSince = (dir, name, tagVersion) => {
   if (!tagVersion) return true; // never released
   const tag = `${name}@${tagVersion}`;
   const excludes = NON_PUBLISHED_GLOBS.map((g) => `':(exclude)${dir}/${g}'`).join(" ");
-  // exit code 1 => there ARE differences in the package's PUBLISHED surface
-  return !ok(`git diff --quiet ${tag} HEAD -- ${dir} ${excludes}`);
+  // Files in the package's published surface that changed since the last release.
+  const changed = out(`git diff --name-only ${tag} HEAD -- ${dir} ${excludes}`)
+    .split("\n")
+    .filter(Boolean);
+  if (changed.length === 0) return false;
+  // If the ONLY change is package.json and it's confined to dev-only fields
+  // (devDependencies / scripts), the published artifact is unchanged — skip.
+  if (changed.length === 1 && changed[0] === `${dir}/package.json`) {
+    const before = publishedManifest(tag, dir);
+    const after = publishedManifest("HEAD", dir);
+    if (before !== null && after !== null && before === after) return false;
+  }
+  return true;
 };
 
 const npmLatest = (name) => {

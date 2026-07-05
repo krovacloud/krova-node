@@ -2,7 +2,12 @@
   "compilerOptions": {
     "strict": true,
     "module": "commonjs",
+    // n8n community nodes use node10-style module resolution (expected by the
+    // n8n-workflow / n8n-core toolchain). TypeScript 6 flags this as the TS5107
+    // deprecation error, so we permit it until the n8n scaffold moves to
+    // node16-style resolution.
     "moduleResolution": "node",
+    "ignoreDeprecations": "6.0",
     "target": "es2021",
     "lib": ["es2021", "es2022.error"],
     "declaration": true,
