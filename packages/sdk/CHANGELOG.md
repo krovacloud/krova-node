@@ -4,6 +4,12 @@ All notable changes to `@krovacloud/sdk` are documented here. This project adher
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and the
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
 
+
+## 0.3.1
+
+### Changed
+
+- Docs: removed a physical-infrastructure reference from the README.
 ## 0.3.0
 
 ### Added

@@ -6,7 +6,7 @@
 
 Provision and manage **Krova Cloud** Cubes — and read the platform catalog — straight from your [n8n](https://n8n.io) workflows.
 
-[Krova Cloud](https://krova.cloud) is a self-service cloud platform for running lightweight **Cubes** (Firecracker microVMs) on dedicated bare-metal servers. This community node wraps the Krova Cloud REST API so you can create, sleep, wake, list, and delete Cubes and query regions, images, and pricing — no glue code, no HTTP Request nodes.
+[Krova Cloud](https://krova.cloud) is a self-service cloud platform for running lightweight **Cubes** (Firecracker microVMs). This community node wraps the Krova Cloud REST API so you can create, sleep, wake, list, and delete Cubes and query regions, images, and pricing — no glue code, no HTTP Request nodes.
 
 [Installation](#installation) · [Credential setup](#credential-setup) · [Operations](#operations) · [Example workflow](#example-workflow) · [Compatibility](#compatibility) · [Related packages](#related-packages) · [Resources](#resources)
 
