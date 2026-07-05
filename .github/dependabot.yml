@@ -23,6 +23,13 @@ updates:
           - "major"
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # ESLint is intentionally pinned to 8.x for the n8n package: its required
+      # lint plugin (eslint-plugin-n8n-nodes-base) targets the legacy .eslintrc
+      # config that ESLint 9/10 removed, and that lint runs at publish time.
+      # Don't propose ESLint majors until the n8n toolchain supports flat config.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
 
   # ── GitHub Actions used by the CI/release workflow ──────────────────────────
   - package-ecosystem: "github-actions"
