@@ -138,7 +138,7 @@ export const TOOLS: ToolDef[] = [
           "Optional region slug (see the list_regions tool). Omit to let Krova Cloud auto-select a region with capacity.",
         ),
       // Upper bounds are generous client-side sanity ceilings (spaces can be
-      // raised well past the defaults by an Orbit admin); the Krova Cloud API
+      // raised well past the defaults per space); the Krova Cloud API
       // remains authoritative on the real per-space limits. Disk has a hard
       // minimum of 10 GiB in steps of 5 — a universal API rule, not a cap.
       vcpu: z
@@ -147,7 +147,7 @@ export const TOOLS: ToolDef[] = [
         .positive()
         .max(256)
         .describe(
-          "Number of virtual CPUs. Default per-space cap is 16 (an Orbit admin can raise it).",
+          "Number of virtual CPUs. Default per-space cap is 16 (can be raised for your space).",
         ),
       ramGb: z
         .number()
@@ -155,7 +155,7 @@ export const TOOLS: ToolDef[] = [
         .positive()
         .max(4096)
         .describe(
-          "RAM in whole GiB. Default per-space cap is 32 GB (an Orbit admin can raise it).",
+          "RAM in whole GiB. Default per-space cap is 32 GB (can be raised for your space).",
         ),
       diskGb: z
         .number()
@@ -164,7 +164,7 @@ export const TOOLS: ToolDef[] = [
         .max(65536)
         .multipleOf(5)
         .describe(
-          "Disk in GiB — minimum 10, in steps of 5. Default per-space cap is 100 GB (an Orbit admin can raise it).",
+          "Disk in GiB — minimum 10, in steps of 5. Default per-space cap is 100 GB (can be raised for your space).",
         ),
       sshPublicKey: z
         .string()

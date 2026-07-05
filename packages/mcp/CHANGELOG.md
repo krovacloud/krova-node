@@ -5,6 +5,12 @@ All notable changes to `@krovacloud/mcp` are documented here. The format is base
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+
+## 0.2.1
+
+### Changed
+
+- Reworded the resource-cap descriptions to not reference internal tooling.
 ## 0.2.0
 
 ### Added
@@ -20,7 +26,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - `create_cube` now documents the per-space default resource caps (16 vCPU /
-  32 GB RAM / 100 GB disk, raisable by an Orbit admin) and enforces the disk
+  32 GB RAM / 100 GB disk, raisable for your space) and enforces the disk
   rule (minimum 10 GiB, in steps of 5), so an assistant is less likely to
   request an invalid size.
 

@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
 
+
+## 0.2.2
+
+### Changed
+
+- Reworded the resource-cap field descriptions to not reference internal tooling.
 ## 0.2.1
 
 ### Changed
@@ -28,7 +34,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The **vCPU**, **RAM (GB)**, and **Disk (GB)** fields now enforce the API's
   universal minimums and steps (vCPU ≥1, RAM ≥1 whole GB, disk ≥10 in steps of
   5) and document the per-space default caps (16 vCPU / 32 GB RAM / 100 GB disk,
-  raisable by an Orbit admin). No hard maximum is set client-side, so spaces
+  raisable for your space). No hard maximum is set client-side, so spaces
   with an admin-raised cap aren't blocked in the editor.
 
 ## 0.1.6
