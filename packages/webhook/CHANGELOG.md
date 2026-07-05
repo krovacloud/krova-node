@@ -4,7 +4,15 @@ All notable changes to `@krovacloud/webhook` are documented here. This project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and the
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
 
-## [0.1.2] - 2026-07-02
+## 0.1.4
+
+### Changed
+
+- Re-homed into the **krova-node** monorepo. The source now lives at
+  `github.com/krovacloud/krova-node` — this release restores npm provenance and
+  the correct repository link (the previous per-package repo was made private).
+
+## 0.1.2 - 2026-07-02
 
 ### Security
 
@@ -19,9 +27,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and the
   defense-in-depth to keep parsing predictable and reject ambiguous encodings.
   Regression-tested in `test/verify.test.ts`.
 
-[0.1.2]: https://github.com/krovacloud/krova-webhook-js/releases/tag/v0.1.2
 
-## [0.1.1] - 2026-07-02
+## 0.1.1 - 2026-07-02
 
 ### Documentation
 
@@ -40,9 +47,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and the
 
 No functional or API changes — verification behaviour is identical to 0.1.0.
 
-[0.1.1]: https://github.com/krovacloud/krova-webhook-js/releases/tag/v0.1.1
 
-## [0.1.0] - 2026-07-01
+## 0.1.0 - 2026-07-01
 
 ### Added
 
@@ -61,4 +67,3 @@ No functional or API changes — verification behaviour is identical to 0.1.0.
 - Zero runtime dependencies; ESM + CJS builds with bundled TypeScript
   declarations.
 
-[0.1.0]: https://github.com/krovacloud/krova-webhook-js/releases/tag/v0.1.0

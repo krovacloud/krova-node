@@ -1,6 +1,6 @@
 {
   "name": "@krovacloud/sdk",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Official TypeScript SDK for Krova Cloud \u2014 a typed client for provisioning and managing Cubes (Firecracker microVMs) on bare-metal.",
   "license": "MIT",
   "type": "module",

@@ -280,8 +280,6 @@ Other official Krova Cloud libraries:
 | -------------------------------------------------------------------------- | ---------- | ---------------------------------------- |
 | [`@krovacloud/sdk`](https://www.npmjs.com/package/@krovacloud/sdk)         | TypeScript | The Krova Cloud API client for Node.js.  |
 | [`@krovacloud/mcp`](https://www.npmjs.com/package/@krovacloud/mcp)         | TypeScript | Model Context Protocol server for Krova. |
-| [`krova`](https://pypi.org/project/krova/)                                 | Python     | The Krova Cloud API client for Python.   |
-| [`github.com/krovacloud/krova-go`](https://github.com/krovacloud/krova-go) | Go         | The Krova Cloud API client for Go.       |
 
 ## Requirements
 
