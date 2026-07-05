@@ -4,6 +4,15 @@ All notable changes to `@krovacloud/webhook` are documented here. This project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and the
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
 
+
+## 0.1.5
+
+### Changed
+
+- The Express middleware now returns a clear `raw_body_required` error when the
+  route delivered a parsed (non-raw) body — the most common integration mistake
+  — instead of a misleading `invalid_signature`.
+
 ## 0.1.4
 
 ### Changed

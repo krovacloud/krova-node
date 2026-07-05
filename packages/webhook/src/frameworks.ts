@@ -151,10 +151,24 @@ export function krovaWebhook(options: FrameworkOptions) {
     next: ExpressNext,
   ): void {
     const body = req.body;
-    const payload: WebhookPayload =
-      typeof body === "string" || Buffer.isBuffer(body) || body instanceof Uint8Array
-        ? (body as WebhookPayload)
-        : "";
+    const isRaw =
+      typeof body === "string" || Buffer.isBuffer(body) || body instanceof Uint8Array;
+
+    // A parsed object body means the route used a JSON body parser (e.g.
+    // `express.json()`) instead of `express.raw()`. The signature is over the
+    // exact raw bytes, so verification is impossible — fail closed, but with a
+    // reason that points at the real fix rather than a misleading
+    // "invalid_signature".
+    if (!isRaw && typeof body === "object" && body !== null) {
+      res.status(401).json({
+        error: "raw_body_required",
+        message:
+          "The webhook route received a parsed body. Mount `express.raw({ type: \"application/json\" })` on this route (before this middleware) so the signature can be verified against the raw request bytes.",
+      });
+      return;
+    }
+
+    const payload: WebhookPayload = isRaw ? (body as WebhookPayload) : "";
 
     const result = verifyKrovaRequest({
       payload,

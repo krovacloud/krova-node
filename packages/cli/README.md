@@ -90,7 +90,7 @@ Available on every command (flag > env var > context):
 | `--base-url <url>` | `KROVA_BASE_URL` | override the API base URL |
 | `--context <name>` | `KROVA_CONTEXT` | select a named context |
 | `--json` | | machine-readable JSON output |
-| `--timeout <dur>` | | per-request timeout (e.g. `30s`) |
+| `--timeout <dur>` | | per-request timeout (e.g. `30s`); defaults to `30s` |
 
 ## License
 

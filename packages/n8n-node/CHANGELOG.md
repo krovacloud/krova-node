@@ -4,6 +4,25 @@ All notable changes to `n8n-nodes-krova` are documented here. The format is base
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## 0.1.7
+
+### Changed
+
+- The **vCPU**, **RAM (GB)**, and **Disk (GB)** fields now enforce the API's
+  universal minimums and steps (vCPU ≥1, RAM ≥1 whole GB, disk ≥10 in steps of
+  5) and document the per-space default caps (16 vCPU / 32 GB RAM / 100 GB disk,
+  raisable by an Orbit admin). No hard maximum is set client-side, so spaces
+  with an admin-raised cap aren't blocked in the editor.
+
+## 0.1.6
+
+### Fixed
+
+- The credential **Test** now calls the authenticated `GET /space` instead of
+  the public `/regions`, so an invalid or revoked API key is correctly rejected
+  (it previously reported success for any key).
+
 ## 0.1.5
 
 ### Changed

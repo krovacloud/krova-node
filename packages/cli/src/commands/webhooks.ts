@@ -6,6 +6,42 @@ import { Command } from "commander";
 import { printJSON } from "../lib/output.js";
 import { getRuntime } from "../lib/runtime.js";
 
+const DEFAULT_LISTEN_HOST = "127.0.0.1";
+const DEFAULT_LISTEN_PORT = 4666;
+
+/**
+ * Parse a `--addr` value into `{ host, port }`. Handles `host:port`, a bare host
+ * (e.g. `localhost`), a bare port, bracketed IPv6 (`[::1]:4666`), and bare IPv6
+ * (`::1`). Exported for testing.
+ */
+export function parseListenAddr(addr: string): { host: string; port: number } {
+  const s = (addr ?? "").trim();
+  // Bracketed IPv6: [::1] or [::1]:4666
+  const bracket = s.match(/^\[([^\]]+)\](?::(\d+))?$/);
+  if (bracket) {
+    return { host: bracket[1] as string, port: bracket[2] ? Number(bracket[2]) : DEFAULT_LISTEN_PORT };
+  }
+  // Two or more colons and no brackets ⇒ a bare IPv6 address with no port.
+  if ((s.match(/:/g)?.length ?? 0) >= 2) {
+    return { host: s, port: DEFAULT_LISTEN_PORT };
+  }
+  // Single colon ⇒ host:port.
+  const i = s.lastIndexOf(":");
+  if (i > 0) {
+    const port = Number(s.slice(i + 1));
+    return {
+      host: s.slice(0, i),
+      port: Number.isInteger(port) && port > 0 && port <= 65535 ? port : DEFAULT_LISTEN_PORT,
+    };
+  }
+  // No colon ⇒ a bare port (all digits) or a bare host.
+  if (/^\d+$/.test(s)) {
+    const port = Number(s);
+    return { host: DEFAULT_LISTEN_HOST, port: port > 0 && port <= 65535 ? port : DEFAULT_LISTEN_PORT };
+  }
+  return { host: s || DEFAULT_LISTEN_HOST, port: DEFAULT_LISTEN_PORT };
+}
+
 export function webhooksCommand(): Command {
   const wh = new Command("webhooks").description("developer tools for Krova Cloud webhooks");
 
@@ -22,10 +58,7 @@ export function webhooksCommand(): Command {
           "a signing secret is required: pass --secret or set KROVA_WEBHOOK_SECRET"
         );
       }
-      const addr = String(opts.addr);
-      const lastColon = addr.lastIndexOf(":");
-      const host = lastColon > 0 ? addr.slice(0, lastColon) : "127.0.0.1";
-      const port = Number(lastColon > 0 ? addr.slice(lastColon + 1) : addr) || 4666;
+      const { host, port } = parseListenAddr(String(opts.addr));
       const wantPath = String(opts.path);
 
       const server = createServer((req, res) => {

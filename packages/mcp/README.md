@@ -136,9 +136,9 @@ Every tool advertises MCP **annotations** so your client can treat them appropri
 | `name` | string | Human-readable Cube name. |
 | `image` | string | OS image slug — see `list_images`. |
 | `region` | string? | Optional region slug — see `list_regions`. Omit to let Krova Cloud auto-select a region with capacity. |
-| `vcpu` | integer | Number of virtual CPUs (positive). |
-| `ramGb` | integer | RAM in GiB (positive). |
-| `diskGb` | integer | Disk in GiB (positive). |
+| `vcpu` | integer | Number of virtual CPUs. Default per-space cap 16 (an Orbit admin can raise it). |
+| `ramGb` | integer | RAM in whole GiB. Default per-space cap 32 GB (raisable by an Orbit admin). |
+| `diskGb` | integer | Disk in GiB — minimum 10, in steps of 5. Default per-space cap 100 GB (raisable by an Orbit admin). |
 | `sshPublicKey` | string | Written to `/root/.ssh/authorized_keys` at boot (`ssh-ed25519`, `ssh-rsa`, `ecdsa-sha2-*`, …). Required by the API. |
 | `userData` | string? | Optional cloud-init script (**max 16 KiB, enforced**). |
 
