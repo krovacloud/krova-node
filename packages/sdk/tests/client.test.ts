@@ -379,3 +379,31 @@ test("list/get/catalog responses are typed (not unknown)", async () => {
   firstImage.id satisfies string;
   assert.equal(firstImage.version, "24.04");
 });
+
+test("getSpace resolves the Space the key is scoped to", async () => {
+  handler = (req, res) => {
+    assert.equal(req.url, "/api/v1/space", "hits GET /space");
+    json(res, 200, {
+      id: "space_1",
+      name: "Prod",
+      tier: "tier_2",
+      createdAt: "2026-07-01T00:00:00Z",
+    });
+  };
+  const client = new KrovaClient({ apiKey: "kro_x", baseUrl });
+  const space = await client.getSpace();
+  assert.equal(space.id, "space_1");
+  assert.equal(space.name, "Prod");
+});
+
+test("cubes.ssh returns a Cube's SSH connection info", async () => {
+  handler = (req, res) => {
+    assert.equal(req.url, "/api/v1/spaces/space_1/cubes/cube_1/ssh", "hits the ssh endpoint");
+    json(res, 200, { host: "1.2.3.4", port: 2222, user: "root", hostKeys: [] });
+  };
+  const client = new KrovaClient({ apiKey: "kro_x", baseUrl });
+  const ssh = await client.cubes.ssh("space_1", "cube_1");
+  assert.equal(ssh.host, "1.2.3.4");
+  assert.equal(ssh.port, 2222);
+  assert.equal(ssh.user, "root");
+});

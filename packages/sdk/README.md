@@ -82,7 +82,16 @@ new KrovaClient({
 });
 ```
 
-Throws if `apiKey` is missing. Exposes `client.baseUrl` (the resolved base URL), `client.cubes`, `client.catalog`, and `client.raw`.
+Throws if `apiKey` is missing. Exposes `client.baseUrl` (the resolved base URL), `client.getSpace()`, `client.cubes`, `client.catalog`, and `client.raw`.
+
+### `client.getSpace()`
+
+Resolve the `Space` your API key is scoped to — so you don't have to hardcode a `spaceId`:
+
+```ts
+const space = await krova.getSpace(); // { id, name, tier, createdAt }
+const cubes = await krova.cubes.list(space.id);
+```
 
 ### `client.cubes`
 
@@ -97,6 +106,7 @@ Ergonomic helpers for the Cube lifecycle. Each unwraps the response body and thr
 | `delete` | `(spaceId, cubeId)` | enqueues deletion |
 | `sleep` | `(spaceId, cubeId)` | enqueues sleep |
 | `wake` | `(spaceId, cubeId)` | enqueues wake |
+| `ssh` | `(spaceId, cubeId)` | the Cube's SSH connection info (`host`, `port`, `user`, `hostKeys`) |
 
 ```ts
 // create — sshPublicKey is required; region + userData (cloud-init) are optional.

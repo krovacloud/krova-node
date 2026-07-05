@@ -27,6 +27,69 @@
       }
     },
     "schemas": {
+      "Space": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tier": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "tier",
+          "createdAt"
+        ]
+      },
+      "CubeSshInfo": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string",
+            "nullable": true
+          },
+          "port": {
+            "type": "integer"
+          },
+          "user": {
+            "type": "string"
+          },
+          "hostKeys": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "key": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "key"
+              ]
+            }
+          }
+        },
+        "required": [
+          "host",
+          "port",
+          "user",
+          "hostKeys"
+        ]
+      },
       "Cube": {
         "type": "object",
         "properties": {
@@ -695,6 +758,167 @@
         }
       }
     },
+    "/auth/cli/start": {
+      "post": {
+        "summary": "Begin a CLI device-authorization login (RFC 8628)",
+        "description": "Public, unauthenticated. Mints a device code (returned once) and a short human user code, and returns the verification URIs the user opens in a browser to approve. The CLI then polls /auth/cli/poll. Rate-limited per client IP.",
+        "security": [],
+        "tags": [
+          "CLI Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "Device-authorization request created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "deviceCode",
+                    "userCode",
+                    "verificationUri",
+                    "verificationUriComplete",
+                    "interval",
+                    "expiresIn"
+                  ],
+                  "properties": {
+                    "deviceCode": {
+                      "type": "string",
+                      "description": "High-entropy code the CLI keeps secret and presents on each poll. Only its hash is stored server-side."
+                    },
+                    "userCode": {
+                      "type": "string",
+                      "description": "Short human-readable code (KROVA-XXXX-XXXX) the user confirms in the browser."
+                    },
+                    "verificationUri": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "Browser URL where the user approves."
+                    },
+                    "verificationUriComplete": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "verificationUri with the user code pre-filled."
+                    },
+                    "interval": {
+                      "type": "integer",
+                      "description": "Seconds to wait between polls."
+                    },
+                    "expiresIn": {
+                      "type": "integer",
+                      "description": "Seconds until the device code expires (~600)."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "description": "Could not allocate a login code; retry"
+          }
+        }
+      }
+    },
+    "/auth/cli/poll": {
+      "post": {
+        "summary": "Poll for CLI device-authorization approval (RFC 8628)",
+        "description": "Public, unauthenticated. The CLI submits its deviceCode until the user approves or denies. On approval a real API key is minted ONCE, scoped to the approved Space and the approving user's membership, and returned a single time. Rate-limited per client IP.",
+        "security": [],
+        "tags": [
+          "CLI Auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "deviceCode"
+                ],
+                "properties": {
+                  "deviceCode": {
+                    "type": "string",
+                    "description": "The device code from /auth/cli/start."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Approved \u2014 API key minted (returned once)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "apiKey",
+                    "spaceId"
+                  ],
+                  "properties": {
+                    "apiKey": {
+                      "type": "string",
+                      "description": "The full API key. Shown once and never returned again \u2014 store it securely."
+                    },
+                    "spaceId": {
+                      "type": "string",
+                      "description": "The Space the key is scoped to."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "description": "The user denied the login request"
+          },
+          "410": {
+            "description": "The device code expired, was already consumed, or is unknown"
+          },
+          "428": {
+            "description": "Authorization still pending \u2014 keep polling at the given interval"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/space": {
+      "get": {
+        "summary": "Resolve the space this API key is scoped to",
+        "description": "Returns the single space the API key belongs to. Lets a client auto-resolve the space id from the key alone (no spaceId in the URL).",
+        "tags": [
+          "Spaces"
+        ],
+        "responses": {
+          "200": {
+            "description": "The key's space",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Space"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
     "/spaces/{spaceId}/cubes": {
       "get": {
         "summary": "List Cubes in a Space",
@@ -1091,6 +1315,48 @@
         }
       }
     },
+    "/spaces/{spaceId}/cubes/{cubeId}/ssh": {
+      "get": {
+        "summary": "Get a Cube's SSH connection info",
+        "description": "Host (server public IPv4), host SSH port, login user, and any captured SSH host public keys. `hostKeys` is empty until Krova captures cube host keys \u2014 clients fall back to trust-on-first-use until then.",
+        "tags": [
+          "Cubes"
+        ],
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cubeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSH connection info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CubeSshInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
     "/spaces/{spaceId}/cubes/{cubeId}/domains": {
       "get": {
         "summary": "List custom domains attached to a Cube",
@@ -1182,7 +1448,7 @@
                       "enforced",
                       "app_managed"
                     ],
-                    "description": "enforced = proxy sets platform security headers (HSTS, X-Frame-Options, …); app_managed = the app's own headers pass through. Default enforced."
+                    "description": "enforced = proxy sets platform security headers (HSTS, X-Frame-Options, \u2026); app_managed = the app's own headers pass through. Default enforced."
                   },
                   "responseHeaderTimeoutSecs": {
                     "type": "integer",
@@ -1246,7 +1512,7 @@
                     "items": {
                       "type": "string"
                     },
-                    "description": "Visitor IP/CIDR allow-list (v4+v6). Non-empty ⇒ only these reach the app. Null/empty = open."
+                    "description": "Visitor IP/CIDR allow-list (v4+v6). Non-empty \u21d2 only these reach the app. Null/empty = open."
                   },
                   "ipDenyList": {
                     "type": "array",
@@ -1255,7 +1521,7 @@
                     "items": {
                       "type": "string"
                     },
-                    "description": "Visitor IP/CIDR deny-list (v4+v6) → 403. Null/empty = none."
+                    "description": "Visitor IP/CIDR deny-list (v4+v6) \u2192 403. Null/empty = none."
                   },
                   "basicAuthUser": {
                     "type": "string",
@@ -1265,7 +1531,7 @@
                   "basicAuthPassword": {
                     "type": "string",
                     "writeOnly": true,
-                    "description": "Plaintext Basic Auth password — bcrypt-hashed server-side, never stored or returned. Required when setting basicAuthUser."
+                    "description": "Plaintext Basic Auth password \u2014 bcrypt-hashed server-side, never stored or returned. Required when setting basicAuthUser."
                   }
                 }
               }
@@ -1288,7 +1554,7 @@
     "/spaces/{spaceId}/cubes/{cubeId}/domains/{mappingId}": {
       "patch": {
         "summary": "Update a custom domain's proxy settings",
-        "description": "Partial update — only the fields you send change; omitted fields are left as-is. The Basic Auth password is write-only and bcrypt-hashed server-side.",
+        "description": "Partial update \u2014 only the fields you send change; omitted fields are left as-is. The Basic Auth password is write-only and bcrypt-hashed server-side.",
         "tags": [
           "Domains"
         ],
@@ -1331,7 +1597,7 @@
                       "enforced",
                       "app_managed"
                     ],
-                    "description": "enforced = proxy sets platform security headers (HSTS, X-Frame-Options, …); app_managed = the app's own headers pass through. Default enforced."
+                    "description": "enforced = proxy sets platform security headers (HSTS, X-Frame-Options, \u2026); app_managed = the app's own headers pass through. Default enforced."
                   },
                   "responseHeaderTimeoutSecs": {
                     "type": "integer",
@@ -1395,7 +1661,7 @@
                     "items": {
                       "type": "string"
                     },
-                    "description": "Visitor IP/CIDR allow-list (v4+v6). Non-empty ⇒ only these reach the app. Null/empty = open."
+                    "description": "Visitor IP/CIDR allow-list (v4+v6). Non-empty \u21d2 only these reach the app. Null/empty = open."
                   },
                   "ipDenyList": {
                     "type": "array",
@@ -1404,7 +1670,7 @@
                     "items": {
                       "type": "string"
                     },
-                    "description": "Visitor IP/CIDR deny-list (v4+v6) → 403. Null/empty = none."
+                    "description": "Visitor IP/CIDR deny-list (v4+v6) \u2192 403. Null/empty = none."
                   },
                   "basicAuthUser": {
                     "type": "string",
@@ -1414,7 +1680,7 @@
                   "basicAuthPassword": {
                     "type": "string",
                     "writeOnly": true,
-                    "description": "Plaintext Basic Auth password — bcrypt-hashed server-side, never stored or returned. Required when setting basicAuthUser."
+                    "description": "Plaintext Basic Auth password \u2014 bcrypt-hashed server-side, never stored or returned. Required when setting basicAuthUser."
                   }
                 }
               }
@@ -2443,6 +2709,14 @@
       "description": "No authentication required"
     },
     {
+      "name": "CLI Auth",
+      "description": "OAuth 2.0 Device Authorization Grant (RFC 8628) for `krova login` \u2014 no API key required"
+    },
+    {
+      "name": "Spaces",
+      "description": "Resolve the space an API key is scoped to"
+    },
+    {
       "name": "Cubes",
       "description": "Create, list, manage Cubes"
     },
@@ -2457,11 +2731,11 @@
     },
     {
       "name": "Backups",
-      "description": "Portable .cube archives — download an existing backup as a single file"
+      "description": "Portable .cube archives \u2014 download an existing backup as a single file"
     },
     {
       "name": "Imports",
-      "description": "Customer-uploaded .cube archives — browser-direct multipart upload to S3, then provisioning"
+      "description": "Customer-uploaded .cube archives \u2014 browser-direct multipart upload to S3, then provisioning"
     },
     {
       "name": "Webhooks",

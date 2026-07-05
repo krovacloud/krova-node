@@ -125,6 +125,187 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/cli/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Begin a CLI device-authorization login (RFC 8628)
+         * @description Public, unauthenticated. Mints a device code (returned once) and a short human user code, and returns the verification URIs the user opens in a browser to approve. The CLI then polls /auth/cli/poll. Rate-limited per client IP.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Device-authorization request created */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description High-entropy code the CLI keeps secret and presents on each poll. Only its hash is stored server-side. */
+                            deviceCode: string;
+                            /** @description Short human-readable code (KROVA-XXXX-XXXX) the user confirms in the browser. */
+                            userCode: string;
+                            /**
+                             * Format: uri
+                             * @description Browser URL where the user approves.
+                             */
+                            verificationUri: string;
+                            /**
+                             * Format: uri
+                             * @description verificationUri with the user code pre-filled.
+                             */
+                            verificationUriComplete: string;
+                            /** @description Seconds to wait between polls. */
+                            interval: number;
+                            /** @description Seconds until the device code expires (~600). */
+                            expiresIn: number;
+                        };
+                    };
+                };
+                429: components["responses"]["RateLimited"];
+                /** @description Could not allocate a login code; retry */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/cli/poll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Poll for CLI device-authorization approval (RFC 8628)
+         * @description Public, unauthenticated. The CLI submits its deviceCode until the user approves or denies. On approval a real API key is minted ONCE, scoped to the approved Space and the approving user's membership, and returned a single time. Rate-limited per client IP.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description The device code from /auth/cli/start. */
+                        deviceCode: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Approved — API key minted (returned once) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description The full API key. Shown once and never returned again — store it securely. */
+                            apiKey: string;
+                            /** @description The Space the key is scoped to. */
+                            spaceId: string;
+                        };
+                    };
+                };
+                400: components["responses"]["BadRequest"];
+                /** @description The user denied the login request */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The device code expired, was already consumed, or is unknown */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authorization still pending — keep polling at the given interval */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                429: components["responses"]["RateLimited"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/space": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Resolve the space this API key is scoped to
+         * @description Returns the single space the API key belongs to. Lets a client auto-resolve the space id from the key alone (no spaceId in the URL).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The key's space */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Space"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                404: components["responses"]["NotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/spaces/{spaceId}/cubes": {
         parameters: {
             query?: never;
@@ -407,6 +588,49 @@ export interface paths {
                 429: components["responses"]["RateLimited"];
             };
         };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceId}/cubes/{cubeId}/ssh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a Cube's SSH connection info
+         * @description Host (server public IPv4), host SSH port, login user, and any captured SSH host public keys. `hostKeys` is empty until Krova captures cube host keys — clients fall back to trust-on-first-use until then.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    cubeId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description SSH connection info */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CubeSshInfo"];
+                    };
+                };
+                404: components["responses"]["NotFound"];
+            };
+        };
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1377,6 +1601,22 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Space: {
+            id: string;
+            name: string;
+            tier: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CubeSshInfo: {
+            host: string | null;
+            port: number;
+            user: string;
+            hostKeys: {
+                type: string;
+                key: string;
+            }[];
+        };
         Cube: {
             id: string;
             name: string;
