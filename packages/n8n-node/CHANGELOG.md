@@ -5,6 +5,16 @@ on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+
+## 0.2.0
+
+### Added
+
+- New **Domain**, **Snapshot**, and **TCP Mapping** resources:
+  - Domain — List / Create / Delete a Cube's custom domains.
+  - Snapshot — List / Create / Delete, plus **Restore** (restore a Cube's disk
+    from a snapshot).
+  - TCP Mapping — List / Create / Delete a Cube's TCP port mappings.
 ## 0.1.7
 
 ### Changed

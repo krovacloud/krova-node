@@ -69,6 +69,37 @@ Public read endpoints. The API key is still sent but is not required for these.
 | **Get Images** | — | List available OS images | `GET /images` |
 | **Get Pricing** | — | Per-resource hourly rates and volume pricing tiers | `GET /pricing` |
 
+### Domain
+
+Custom domains attached to a Cube. Every operation takes a **Space ID** and **Cube ID**.
+
+| Operation | Fields | Description | Endpoint |
+| --- | --- | --- | --- |
+| **List** | Space ID, Cube ID | List the custom domains attached to a Cube | `GET /spaces/{spaceId}/cubes/{cubeId}/domains` |
+| **Create** | Space ID, Cube ID, Domain, Port | Attach a custom domain | `POST /spaces/{spaceId}/cubes/{cubeId}/domains` |
+| **Delete** | Space ID, Cube ID, Domain Mapping ID | Detach a custom domain | `DELETE /spaces/{spaceId}/cubes/{cubeId}/domains/{mappingId}` |
+
+### Snapshot
+
+Snapshot and restore a Cube's disk.
+
+| Operation | Fields | Description | Endpoint |
+| --- | --- | --- | --- |
+| **List** | Space ID, Cube ID | List a Cube's disk snapshots | `GET /spaces/{spaceId}/cubes/{cubeId}/snapshots` |
+| **Create** | Space ID, Cube ID, Name (optional) | Snapshot a Cube's disk | `POST /spaces/{spaceId}/cubes/{cubeId}/snapshots` |
+| **Delete** | Space ID, Cube ID, Snapshot ID | Delete a snapshot | `DELETE /spaces/{spaceId}/cubes/{cubeId}/snapshots/{snapshotId}` |
+| **Restore** | Space ID, Cube ID, Snapshot ID | Restore the Cube's disk from a snapshot (replaces the disk) | `POST /spaces/{spaceId}/cubes/{cubeId}/restore` |
+
+### TCP Mapping
+
+Expose a Cube TCP port on the host.
+
+| Operation | Fields | Description | Endpoint |
+| --- | --- | --- | --- |
+| **List** | Space ID, Cube ID | List a Cube's TCP port mappings | `GET /spaces/{spaceId}/cubes/{cubeId}/tcp-mappings` |
+| **Create** | Space ID, Cube ID, Cube Port | Expose a Cube TCP port on the host | `POST /spaces/{spaceId}/cubes/{cubeId}/tcp-mappings` |
+| **Delete** | Space ID, Cube ID, Mapping ID | Remove a TCP port mapping | `DELETE /spaces/{spaceId}/cubes/{cubeId}/tcp-mappings/{mappingId}` |
+
 Each operation returns the raw Krova Cloud API response, ready to reference downstream with n8n expressions.
 
 ## Example workflow
