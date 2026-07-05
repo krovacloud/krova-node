@@ -20,6 +20,21 @@ import {
   validateSSHUser,
 } from "../src/lib/ssh.js";
 import { flattenRows } from "../src/commands/catalog.js";
+import { parseListenAddr } from "../src/commands/webhooks.js";
+
+test("parseListenAddr handles host:port, bare host, bare port, and IPv6", () => {
+  assert.deepEqual(parseListenAddr("127.0.0.1:4666"), { host: "127.0.0.1", port: 4666 });
+  assert.deepEqual(parseListenAddr("0.0.0.0:8080"), { host: "0.0.0.0", port: 8080 });
+  // a bare hostname must be kept (previously it was replaced with 127.0.0.1)
+  assert.deepEqual(parseListenAddr("localhost"), { host: "localhost", port: 4666 });
+  // a bare port
+  assert.deepEqual(parseListenAddr("9000"), { host: "127.0.0.1", port: 9000 });
+  // bracketed + bare IPv6
+  assert.deepEqual(parseListenAddr("[::1]:4666"), { host: "::1", port: 4666 });
+  assert.deepEqual(parseListenAddr("::1"), { host: "::1", port: 4666 });
+  // junk port falls back to the default
+  assert.deepEqual(parseListenAddr("localhost:notaport"), { host: "localhost", port: 4666 });
+});
 
 test("flattenRows expands nested objects so pricing rates aren't dropped", () => {
   // Regression: `krova pricing` used to table only the `tiers` array and drop

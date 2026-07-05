@@ -4,6 +4,23 @@ All notable changes to `@krovacloud/mcp` are documented here. The format is base
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.1.8
+
+### Changed
+
+- `create_cube` now documents the per-space default resource caps (16 vCPU /
+  32 GB RAM / 100 GB disk, raisable by an Orbit admin) and enforces the disk
+  rule (minimum 10 GiB, in steps of 5), so an assistant is less likely to
+  request an invalid size.
+
+## 0.1.7
+
+### Fixed
+
+- The server now starts correctly when launched via `npx -y @krovacloud/mcp`
+  (or any `.bin` symlink). The entrypoint check compared unresolved paths, so
+  under `npx` it never matched and the server started without serving.
+
 ## 0.1.6
 
 ### Changed

@@ -90,3 +90,24 @@ test("express middleware responds 401 with malformed_header when signature missi
   assert.equal(state.code, 401);
   assert.deepEqual(state.body, { error: "malformed_header" });
 });
+
+test("express middleware returns a clear raw_body_required error on a parsed (non-raw) body", () => {
+  // The developer mounted a JSON body parser instead of express.raw(), so
+  // req.body is a parsed object. Verification is impossible; the error must
+  // point at the real fix instead of a misleading invalid_signature.
+  const now = Math.floor(Date.now() / 1000);
+  const req: FakeReq = {
+    body: JSON.parse(BODY), // a parsed object, not the raw bytes
+    headers: { "x-krova-signature": sign(BODY, SECRET, now) },
+  };
+  const { res, state } = fakeRes();
+  let nextCalled = false;
+
+  krovaWebhook({ secret: SECRET })(req as never, res as never, () => {
+    nextCalled = true;
+  });
+
+  assert.equal(nextCalled, false);
+  assert.equal(state.code, 401);
+  assert.equal((state.body as { error: string }).error, "raw_body_required");
+});

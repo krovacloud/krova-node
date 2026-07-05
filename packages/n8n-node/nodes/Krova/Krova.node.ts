@@ -251,8 +251,10 @@ export class Krova implements INodeType {
 				default: 1,
 				typeOptions: {
 					minValue: 1,
+					numberStepSize: 1,
 				},
-				description: 'Number of virtual CPUs',
+				description:
+					'Number of virtual CPUs. Defaults to a per-space cap of 16; an Orbit admin can raise this for your space.',
 				displayOptions: {
 					show: {
 						resource: ['cube'],
@@ -274,8 +276,10 @@ export class Krova implements INodeType {
 				default: 1,
 				typeOptions: {
 					minValue: 1,
+					numberStepSize: 1,
 				},
-				description: 'Amount of RAM in gibibytes',
+				description:
+					'Amount of RAM in whole gibibytes. Defaults to a per-space cap of 32 GB; an Orbit admin can raise this for your space.',
 				displayOptions: {
 					show: {
 						resource: ['cube'],
@@ -296,9 +300,11 @@ export class Krova implements INodeType {
 				required: true,
 				default: 10,
 				typeOptions: {
-					minValue: 1,
+					minValue: 10,
+					numberStepSize: 5,
 				},
-				description: 'Disk size in gibibytes',
+				description:
+					'Disk size in gibibytes (minimum 10, in steps of 5). Defaults to a per-space cap of 100 GB; an Orbit admin can raise this for your space.',
 				displayOptions: {
 					show: {
 						resource: ['cube'],
