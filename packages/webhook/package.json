@@ -1,6 +1,6 @@
 {
   "name": "@krovacloud/webhook",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Verify Krova Cloud outbound webhook signatures \u2014 HMAC-SHA256, constant-time comparison, replay protection. Express, Next.js & Fastify helpers. Zero runtime dependencies.",
   "type": "module",
   "license": "MIT",

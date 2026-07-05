@@ -99,7 +99,7 @@ Krova Cloud ships first-party tooling across the ecosystem:
 
 - [Krova Cloud](https://krova.cloud)
 - [n8n community nodes documentation](https://docs.n8n.io/integrations/community-nodes/)
-- [Report an issue](https://github.com/krovacloud/n8n-nodes-krova/issues)
+- [Report an issue](https://github.com/krovacloud/krova-node/issues)
 - [Changelog](./CHANGELOG.md)
 
 ## License

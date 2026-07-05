@@ -4,7 +4,15 @@ All notable changes to `n8n-nodes-krova` are documented here. The format is base
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.3] - 2026-07-02
+## 0.1.5
+
+### Changed
+
+- Re-homed into the **krova-node** monorepo. The source now lives at
+  `github.com/krovacloud/krova-node` — this release restores npm provenance and
+  the correct repository link (the previous per-package repo was made private).
+
+## 0.1.3 - 2026-07-02
 
 ### Security
 
@@ -19,7 +27,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   aligns with n8n's community-node convention. Added tests asserting every ID
   interpolation is encoded and that the node config never echoes the API key.
 
-## [0.1.2] - 2026-07-02
+## 0.1.2 - 2026-07-02
 
 ### Changed
 
@@ -35,7 +43,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 _No functional change to the node, credential, or their behavior._
 
-## [0.1.1] - 2026-07-01
+## 0.1.1 - 2026-07-01
 
 ### Fixed
 
@@ -47,7 +55,7 @@ _No functional change to the node, credential, or their behavior._
   request body already sends the correct nested `resources.*` fields. No
   behavioral change; this release records the audit.
 
-## [0.1.0] - 2026-07-01
+## 0.1.0 - 2026-07-01
 
 ### Added
 
@@ -60,7 +68,3 @@ _No functional change to the node, credential, or their behavior._
 - **Catalog** resource with operations: Get Regions, Get Images, Get Pricing.
 - Node icon and structural test suite (node:test).
 
-[0.1.3]: https://github.com/krovacloud/n8n-nodes-krova/releases/tag/v0.1.3
-[0.1.2]: https://github.com/krovacloud/n8n-nodes-krova/releases/tag/v0.1.2
-[0.1.1]: https://github.com/krovacloud/n8n-nodes-krova/releases/tag/v0.1.1
-[0.1.0]: https://github.com/krovacloud/n8n-nodes-krova/releases/tag/v0.1.0
