@@ -10,7 +10,7 @@
   },
   "servers": [
     {
-      "url": "https://krova.cloud/api/v1"
+      "url": "http://localhost:3000/api/v1"
     }
   ],
   "security": [
@@ -851,7 +851,7 @@
         },
         "responses": {
           "200": {
-            "description": "Approved \u2014 API key minted (returned once)",
+            "description": "Approved — API key minted (returned once)",
             "content": {
               "application/json": {
                 "schema": {
@@ -863,7 +863,7 @@
                   "properties": {
                     "apiKey": {
                       "type": "string",
-                      "description": "The full API key. Shown once and never returned again \u2014 store it securely."
+                      "description": "The full API key. Shown once and never returned again — store it securely."
                     },
                     "spaceId": {
                       "type": "string",
@@ -884,7 +884,7 @@
             "description": "The device code expired, was already consumed, or is unknown"
           },
           "428": {
-            "description": "Authorization still pending \u2014 keep polling at the given interval"
+            "description": "Authorization still pending — keep polling at the given interval"
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -1318,7 +1318,7 @@
     "/spaces/{spaceId}/cubes/{cubeId}/ssh": {
       "get": {
         "summary": "Get a Cube's SSH connection info",
-        "description": "Host (server public IPv4), host SSH port, login user, and any captured SSH host public keys. `hostKeys` is empty until Krova captures cube host keys \u2014 clients fall back to trust-on-first-use until then.",
+        "description": "Host (server public IPv4), host SSH port, login user, and any captured SSH host public keys. `hostKeys` is empty until Krova captures cube host keys — clients fall back to trust-on-first-use until then.",
         "tags": [
           "Cubes"
         ],
@@ -1383,7 +1383,25 @@
         ],
         "responses": {
           "200": {
-            "description": "Domain list"
+            "description": "Domain list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "domains": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Domain"
+                      }
+                    }
+                  },
+                  "required": [
+                    "domains"
+                  ]
+                }
+              }
+            }
           }
         }
       },
@@ -1448,7 +1466,7 @@
                       "enforced",
                       "app_managed"
                     ],
-                    "description": "enforced = proxy sets platform security headers (HSTS, X-Frame-Options, \u2026); app_managed = the app's own headers pass through. Default enforced."
+                    "description": "enforced = proxy sets platform security headers (HSTS, X-Frame-Options, …); app_managed = the app's own headers pass through. Default enforced."
                   },
                   "responseHeaderTimeoutSecs": {
                     "type": "integer",
@@ -1512,7 +1530,7 @@
                     "items": {
                       "type": "string"
                     },
-                    "description": "Visitor IP/CIDR allow-list (v4+v6). Non-empty \u21d2 only these reach the app. Null/empty = open."
+                    "description": "Visitor IP/CIDR allow-list (v4+v6). Non-empty ⇒ only these reach the app. Null/empty = open."
                   },
                   "ipDenyList": {
                     "type": "array",
@@ -1521,7 +1539,7 @@
                     "items": {
                       "type": "string"
                     },
-                    "description": "Visitor IP/CIDR deny-list (v4+v6) \u2192 403. Null/empty = none."
+                    "description": "Visitor IP/CIDR deny-list (v4+v6) → 403. Null/empty = none."
                   },
                   "basicAuthUser": {
                     "type": "string",
@@ -1531,7 +1549,7 @@
                   "basicAuthPassword": {
                     "type": "string",
                     "writeOnly": true,
-                    "description": "Plaintext Basic Auth password \u2014 bcrypt-hashed server-side, never stored or returned. Required when setting basicAuthUser."
+                    "description": "Plaintext Basic Auth password — bcrypt-hashed server-side, never stored or returned. Required when setting basicAuthUser."
                   }
                 }
               }
@@ -1540,7 +1558,22 @@
         },
         "responses": {
           "201": {
-            "description": "Domain attached"
+            "description": "Domain attached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "domain": {
+                      "$ref": "#/components/schemas/Domain"
+                    }
+                  },
+                  "required": [
+                    "domain"
+                  ]
+                }
+              }
+            }
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
@@ -1554,7 +1587,7 @@
     "/spaces/{spaceId}/cubes/{cubeId}/domains/{mappingId}": {
       "patch": {
         "summary": "Update a custom domain's proxy settings",
-        "description": "Partial update \u2014 only the fields you send change; omitted fields are left as-is. The Basic Auth password is write-only and bcrypt-hashed server-side.",
+        "description": "Partial update — only the fields you send change; omitted fields are left as-is. The Basic Auth password is write-only and bcrypt-hashed server-side.",
         "tags": [
           "Domains"
         ],
@@ -1597,7 +1630,7 @@
                       "enforced",
                       "app_managed"
                     ],
-                    "description": "enforced = proxy sets platform security headers (HSTS, X-Frame-Options, \u2026); app_managed = the app's own headers pass through. Default enforced."
+                    "description": "enforced = proxy sets platform security headers (HSTS, X-Frame-Options, …); app_managed = the app's own headers pass through. Default enforced."
                   },
                   "responseHeaderTimeoutSecs": {
                     "type": "integer",
@@ -1661,7 +1694,7 @@
                     "items": {
                       "type": "string"
                     },
-                    "description": "Visitor IP/CIDR allow-list (v4+v6). Non-empty \u21d2 only these reach the app. Null/empty = open."
+                    "description": "Visitor IP/CIDR allow-list (v4+v6). Non-empty ⇒ only these reach the app. Null/empty = open."
                   },
                   "ipDenyList": {
                     "type": "array",
@@ -1670,7 +1703,7 @@
                     "items": {
                       "type": "string"
                     },
-                    "description": "Visitor IP/CIDR deny-list (v4+v6) \u2192 403. Null/empty = none."
+                    "description": "Visitor IP/CIDR deny-list (v4+v6) → 403. Null/empty = none."
                   },
                   "basicAuthUser": {
                     "type": "string",
@@ -1680,7 +1713,7 @@
                   "basicAuthPassword": {
                     "type": "string",
                     "writeOnly": true,
-                    "description": "Plaintext Basic Auth password \u2014 bcrypt-hashed server-side, never stored or returned. Required when setting basicAuthUser."
+                    "description": "Plaintext Basic Auth password — bcrypt-hashed server-side, never stored or returned. Required when setting basicAuthUser."
                   }
                 }
               }
@@ -1689,7 +1722,22 @@
         },
         "responses": {
           "200": {
-            "description": "Settings updated"
+            "description": "Settings updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "domain": {
+                      "$ref": "#/components/schemas/Domain"
+                    }
+                  },
+                  "required": [
+                    "domain"
+                  ]
+                }
+              }
+            }
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
@@ -1735,7 +1783,22 @@
         ],
         "responses": {
           "200": {
-            "description": "Detached"
+            "description": "Detached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ]
+                }
+              }
+            }
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -1769,7 +1832,25 @@
         ],
         "responses": {
           "200": {
-            "description": "TCP mapping list"
+            "description": "TCP mapping list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tcpMappings": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TcpMapping"
+                      }
+                    }
+                  },
+                  "required": [
+                    "tcpMappings"
+                  ]
+                }
+              }
+            }
           }
         }
       },
@@ -1832,7 +1913,22 @@
         },
         "responses": {
           "201": {
-            "description": "Mapping created"
+            "description": "Mapping created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tcpMapping": {
+                      "$ref": "#/components/schemas/TcpMapping"
+                    }
+                  },
+                  "required": [
+                    "tcpMapping"
+                  ]
+                }
+              }
+            }
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
@@ -1877,7 +1973,22 @@
         ],
         "responses": {
           "200": {
-            "description": "Deleted"
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ]
+                }
+              }
+            }
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -1911,7 +2022,25 @@
         ],
         "responses": {
           "200": {
-            "description": "Snapshot list"
+            "description": "Snapshot list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "snapshots": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Snapshot"
+                      }
+                    }
+                  },
+                  "required": [
+                    "snapshots"
+                  ]
+                }
+              }
+            }
           }
         }
       },
@@ -1965,7 +2094,22 @@
         },
         "responses": {
           "201": {
-            "description": "Snapshot enqueued"
+            "description": "Snapshot enqueued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "snapshot": {
+                      "$ref": "#/components/schemas/Snapshot"
+                    }
+                  },
+                  "required": [
+                    "snapshot"
+                  ]
+                }
+              }
+            }
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -2007,7 +2151,22 @@
         ],
         "responses": {
           "200": {
-            "description": "Deleted"
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ]
+                }
+              }
+            }
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -2059,7 +2218,22 @@
         },
         "responses": {
           "200": {
-            "description": "Restore enqueued"
+            "description": "Restore enqueued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ]
+                }
+              }
+            }
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -2376,7 +2550,22 @@
         ],
         "responses": {
           "200": {
-            "description": "Cancelled"
+            "description": "Cancelled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ]
+                }
+              }
+            }
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -2710,7 +2899,7 @@
     },
     {
       "name": "CLI Auth",
-      "description": "OAuth 2.0 Device Authorization Grant (RFC 8628) for `krova login` \u2014 no API key required"
+      "description": "OAuth 2.0 Device Authorization Grant (RFC 8628) for `krova login` — no API key required"
     },
     {
       "name": "Spaces",
@@ -2731,11 +2920,11 @@
     },
     {
       "name": "Backups",
-      "description": "Portable .cube archives \u2014 download an existing backup as a single file"
+      "description": "Portable .cube archives — download an existing backup as a single file"
     },
     {
       "name": "Imports",
-      "description": "Customer-uploaded .cube archives \u2014 browser-direct multipart upload to S3, then provisioning"
+      "description": "Customer-uploaded .cube archives — browser-direct multipart upload to S3, then provisioning"
     },
     {
       "name": "Webhooks",

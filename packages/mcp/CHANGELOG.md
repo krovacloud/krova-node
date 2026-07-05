@@ -4,6 +4,17 @@ All notable changes to `@krovacloud/mcp` are documented here. The format is base
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## 0.2.0
+
+### Added
+
+- 10 new tools covering a Cube's attached resources: `list_domains` /
+  `create_domain` / `delete_domain`, `list_snapshots` / `create_snapshot` /
+  `delete_snapshot` / `restore_cube`, and `list_tcp_mappings` /
+  `create_tcp_mapping` / `delete_tcp_mapping`. Deletes and `restore_cube`
+  (which replaces the disk) are marked **destructive** so clients gate them
+  behind confirmation.
 ## 0.1.8
 
 ### Changed

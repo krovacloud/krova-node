@@ -251,6 +251,146 @@ export const TOOLS: ToolDef[] = [
     inputSchema: {},
     handler: (client) => client.catalog.pricing(),
   }),
+
+  // ── Custom domains ─────────────────────────────────────────────────────────
+  defineTool({
+    name: "list_domains",
+    title: "List Domains",
+    description: "List the custom domains attached to a Cube.",
+    annotations: { readOnlyHint: true, openWorldHint: true },
+    inputSchema: { ...spaceIdField, ...cubeIdField },
+    handler: (client, args, ctx) =>
+      client.domains.list(resolveSpaceId(args.spaceId, ctx), args.cubeId),
+  }),
+  defineTool({
+    name: "create_domain",
+    title: "Attach Domain",
+    description: "Attach a custom domain to a Cube, routing it to an in-Cube port.",
+    annotations: { readOnlyHint: false, idempotentHint: false, openWorldHint: true },
+    inputSchema: {
+      ...spaceIdField,
+      ...cubeIdField,
+      domain: z.string().min(1).describe("The domain name to attach (e.g. app.example.com)."),
+      port: z.number().int().positive().max(65535).describe("The in-Cube port to route to."),
+    },
+    handler: (client, args, ctx) =>
+      client.domains.create(resolveSpaceId(args.spaceId, ctx), args.cubeId, {
+        domain: args.domain,
+        port: args.port,
+      }),
+  }),
+  defineTool({
+    name: "delete_domain",
+    title: "Detach Domain",
+    description: "Detach a custom domain from a Cube. Irreversible.",
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+    inputSchema: {
+      ...spaceIdField,
+      ...cubeIdField,
+      mappingId: z.string().min(1).describe("The domain mapping id (see list_domains)."),
+    },
+    handler: (client, args, ctx) =>
+      client.domains.delete(resolveSpaceId(args.spaceId, ctx), args.cubeId, args.mappingId),
+  }),
+
+  // ── Snapshots + restore ────────────────────────────────────────────────────
+  defineTool({
+    name: "list_snapshots",
+    title: "List Snapshots",
+    description: "List a Cube's disk snapshots.",
+    annotations: { readOnlyHint: true, openWorldHint: true },
+    inputSchema: { ...spaceIdField, ...cubeIdField },
+    handler: (client, args, ctx) =>
+      client.snapshots.list(resolveSpaceId(args.spaceId, ctx), args.cubeId),
+  }),
+  defineTool({
+    name: "create_snapshot",
+    title: "Create Snapshot",
+    description: "Create a snapshot of a Cube's disk. Asynchronous — the snapshot is enqueued.",
+    annotations: { readOnlyHint: false, idempotentHint: false, openWorldHint: true },
+    inputSchema: {
+      ...spaceIdField,
+      ...cubeIdField,
+      name: z.string().min(1).max(256).optional().describe("Optional name for the snapshot."),
+    },
+    handler: (client, args, ctx) =>
+      client.snapshots.create(
+        resolveSpaceId(args.spaceId, ctx),
+        args.cubeId,
+        args.name ? { name: args.name } : {},
+      ),
+  }),
+  defineTool({
+    name: "delete_snapshot",
+    title: "Delete Snapshot",
+    description: "Delete a Cube snapshot. Irreversible.",
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+    inputSchema: {
+      ...spaceIdField,
+      ...cubeIdField,
+      snapshotId: z.string().min(1).describe("The snapshot id (see list_snapshots)."),
+    },
+    handler: (client, args, ctx) =>
+      client.snapshots.delete(resolveSpaceId(args.spaceId, ctx), args.cubeId, args.snapshotId),
+  }),
+  defineTool({
+    name: "restore_cube",
+    title: "Restore Cube",
+    description:
+      "Restore a Cube's disk from one of its snapshots — REPLACES the current disk. Destructive and irreversible.",
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
+    inputSchema: {
+      ...spaceIdField,
+      ...cubeIdField,
+      snapshotId: z.string().min(1).describe("The snapshot to restore the disk from."),
+    },
+    handler: (client, args, ctx) =>
+      client.cubes.restore(resolveSpaceId(args.spaceId, ctx), args.cubeId, args.snapshotId),
+  }),
+
+  // ── TCP port mappings ──────────────────────────────────────────────────────
+  defineTool({
+    name: "list_tcp_mappings",
+    title: "List TCP Mappings",
+    description: "List a Cube's TCP port mappings.",
+    annotations: { readOnlyHint: true, openWorldHint: true },
+    inputSchema: { ...spaceIdField, ...cubeIdField },
+    handler: (client, args, ctx) =>
+      client.tcpMappings.list(resolveSpaceId(args.spaceId, ctx), args.cubeId),
+  }),
+  defineTool({
+    name: "create_tcp_mapping",
+    title: "Create TCP Mapping",
+    description: "Expose a Cube TCP port on the host, optionally restricted to specific IPs/CIDRs.",
+    annotations: { readOnlyHint: false, idempotentHint: false, openWorldHint: true },
+    inputSchema: {
+      ...spaceIdField,
+      ...cubeIdField,
+      cubePort: z.number().int().positive().max(65535).describe("The in-Cube port to expose."),
+      whitelistIps: z
+        .array(z.string())
+        .optional()
+        .describe("Optional IP/CIDR allow-list restricting who can reach the mapping."),
+    },
+    handler: (client, args, ctx) =>
+      client.tcpMappings.create(resolveSpaceId(args.spaceId, ctx), args.cubeId, {
+        cubePort: args.cubePort,
+        ...(args.whitelistIps ? { whitelistIps: args.whitelistIps } : {}),
+      }),
+  }),
+  defineTool({
+    name: "delete_tcp_mapping",
+    title: "Delete TCP Mapping",
+    description: "Remove a Cube TCP port mapping. Irreversible.",
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+    inputSchema: {
+      ...spaceIdField,
+      ...cubeIdField,
+      mappingId: z.string().min(1).describe("The mapping id (see list_tcp_mappings)."),
+    },
+    handler: (client, args, ctx) =>
+      client.tcpMappings.delete(resolveSpaceId(args.spaceId, ctx), args.cubeId, args.mappingId),
+  }),
 ];
 
 /** The MCP `content` payload returned by a tool call. */

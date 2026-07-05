@@ -23,6 +23,30 @@ export type Space = components["schemas"]["Space"];
 /** A Cube's SSH connection info (host, port, user, and pinned host keys). */
 export type CubeSshInfo = components["schemas"]["CubeSshInfo"];
 
+/** A custom domain attached to a Cube. */
+export type Domain = components["schemas"]["Domain"];
+
+/** A snapshot of a Cube's disk. */
+export type Snapshot = components["schemas"]["Snapshot"];
+
+/** A TCP port mapping exposing a Cube port on the host. */
+export type TcpMapping = components["schemas"]["TcpMapping"];
+
+/** Request body for attaching a custom domain to a Cube. */
+export type CreateDomainInput = NonNullable<
+  paths["/spaces/{spaceId}/cubes/{cubeId}/domains"]["post"]["requestBody"]
+>["content"]["application/json"];
+
+/** Request body for updating a custom domain's proxy settings. */
+export type UpdateDomainInput = NonNullable<
+  paths["/spaces/{spaceId}/cubes/{cubeId}/domains/{mappingId}"]["patch"]["requestBody"]
+>["content"]["application/json"];
+
+/** Request body for creating a TCP port mapping. */
+export type CreateTcpMappingInput = NonNullable<
+  paths["/spaces/{spaceId}/cubes/{cubeId}/tcp-mappings"]["post"]["requestBody"]
+>["content"]["application/json"];
+
 /** Default API base URL — the single `servers[0].url` from the OpenAPI spec. */
 export const DEFAULT_BASE_URL = "https://krova.cloud/api/v1";
 
@@ -326,6 +350,19 @@ export class KrovaClient {
         throw krovaErrorFrom(response, { error: "Cube SSH-info response was empty." });
       return data;
     },
+
+    /**
+     * Restore a Cube's disk from one of its {@link Snapshot}s (asynchronous —
+     * the restore is enqueued). The Cube's current disk is replaced.
+     */
+    restore: async (spaceId: string, cubeId: string, snapshotId: string) => {
+      const { data, error, response } = await this.raw.POST(
+        "/spaces/{spaceId}/cubes/{cubeId}/restore",
+        { params: { path: { spaceId, cubeId } }, body: { snapshotId } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data;
+    },
   };
 
   /**
@@ -345,6 +382,229 @@ export class KrovaClient {
       throw krovaErrorFrom(response, { error: "Space response was empty." });
     return data;
   }
+
+  // ---------------------------------------------------------------------------
+  // Custom domains
+  // ---------------------------------------------------------------------------
+
+  readonly domains = {
+    /** List the custom domains attached to a Cube. */
+    list: async (spaceId: string, cubeId: string): Promise<Domain[]> => {
+      const { data, error, response } = await this.raw.GET(
+        "/spaces/{spaceId}/cubes/{cubeId}/domains",
+        { params: { path: { spaceId, cubeId } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data?.domains ?? [];
+    },
+
+    /** Attach a custom domain to a Cube. `domain` + `port` are required. */
+    create: async (
+      spaceId: string,
+      cubeId: string,
+      body: CreateDomainInput,
+    ): Promise<Domain> => {
+      const { data, error, response } = await this.raw.POST(
+        "/spaces/{spaceId}/cubes/{cubeId}/domains",
+        { params: { path: { spaceId, cubeId } }, body },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      if (!data?.domain)
+        throw krovaErrorFrom(response, { error: "Create domain response had no `domain`." });
+      return data.domain;
+    },
+
+    /** Update a domain's per-domain proxy settings. */
+    update: async (
+      spaceId: string,
+      cubeId: string,
+      mappingId: string,
+      body: UpdateDomainInput,
+    ): Promise<Domain> => {
+      const { data, error, response } = await this.raw.PATCH(
+        "/spaces/{spaceId}/cubes/{cubeId}/domains/{mappingId}",
+        { params: { path: { spaceId, cubeId, mappingId } }, body },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      if (!data?.domain)
+        throw krovaErrorFrom(response, { error: "Update domain response had no `domain`." });
+      return data.domain;
+    },
+
+    /** Detach a custom domain from a Cube. */
+    delete: async (spaceId: string, cubeId: string, mappingId: string) => {
+      const { data, error, response } = await this.raw.DELETE(
+        "/spaces/{spaceId}/cubes/{cubeId}/domains/{mappingId}",
+        { params: { path: { spaceId, cubeId, mappingId } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data;
+    },
+  };
+
+  // ---------------------------------------------------------------------------
+  // Snapshots
+  // ---------------------------------------------------------------------------
+
+  readonly snapshots = {
+    /** List a Cube's snapshots. */
+    list: async (spaceId: string, cubeId: string): Promise<Snapshot[]> => {
+      const { data, error, response } = await this.raw.GET(
+        "/spaces/{spaceId}/cubes/{cubeId}/snapshots",
+        { params: { path: { spaceId, cubeId } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data?.snapshots ?? [];
+    },
+
+    /** Create a snapshot of a Cube's disk (asynchronous — enqueued). */
+    create: async (
+      spaceId: string,
+      cubeId: string,
+      body?: { name?: string },
+    ): Promise<Snapshot> => {
+      const { data, error, response } = await this.raw.POST(
+        "/spaces/{spaceId}/cubes/{cubeId}/snapshots",
+        { params: { path: { spaceId, cubeId } }, body: body ?? {} },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      if (!data?.snapshot)
+        throw krovaErrorFrom(response, { error: "Create snapshot response had no `snapshot`." });
+      return data.snapshot;
+    },
+
+    /** Delete a snapshot. */
+    delete: async (spaceId: string, cubeId: string, snapshotId: string) => {
+      const { data, error, response } = await this.raw.DELETE(
+        "/spaces/{spaceId}/cubes/{cubeId}/snapshots/{snapshotId}",
+        { params: { path: { spaceId, cubeId, snapshotId } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data;
+    },
+  };
+
+  // ---------------------------------------------------------------------------
+  // TCP port mappings
+  // ---------------------------------------------------------------------------
+
+  readonly tcpMappings = {
+    /** List a Cube's TCP port mappings. */
+    list: async (spaceId: string, cubeId: string): Promise<TcpMapping[]> => {
+      const { data, error, response } = await this.raw.GET(
+        "/spaces/{spaceId}/cubes/{cubeId}/tcp-mappings",
+        { params: { path: { spaceId, cubeId } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data?.tcpMappings ?? [];
+    },
+
+    /**
+     * Create a TCP port mapping exposing a Cube port on the host. `cubePort` is
+     * required; `whitelistIps` optionally restricts who can reach it.
+     */
+    create: async (
+      spaceId: string,
+      cubeId: string,
+      body: CreateTcpMappingInput,
+    ): Promise<TcpMapping> => {
+      const { data, error, response } = await this.raw.POST(
+        "/spaces/{spaceId}/cubes/{cubeId}/tcp-mappings",
+        { params: { path: { spaceId, cubeId } }, body },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      if (!data?.tcpMapping)
+        throw krovaErrorFrom(response, { error: "Create TCP mapping response had no `tcpMapping`." });
+      return data.tcpMapping;
+    },
+
+    /** Delete a TCP port mapping. */
+    delete: async (spaceId: string, cubeId: string, mappingId: string) => {
+      const { data, error, response } = await this.raw.DELETE(
+        "/spaces/{spaceId}/cubes/{cubeId}/tcp-mappings/{mappingId}",
+        { params: { path: { spaceId, cubeId, mappingId } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data;
+    },
+  };
+
+  // ---------------------------------------------------------------------------
+  // Imports & backups (.cube archive import / export)
+  // ---------------------------------------------------------------------------
+
+  readonly imports = {
+    /**
+     * Start importing a `.cube` archive into a new Cube. Returns the multipart
+     * upload target (`importId`, `uploadId`, presigned `parts`, …). Upload the
+     * archive to those URLs, then call {@link imports.complete}.
+     */
+    create: async (
+      spaceId: string,
+      body: NonNullable<
+        paths["/spaces/{spaceId}/cubes/imports"]["post"]["requestBody"]
+      >["content"]["application/json"],
+    ) => {
+      const { data, error, response } = await this.raw.POST("/spaces/{spaceId}/cubes/imports", {
+        params: { path: { spaceId } },
+        body,
+      });
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data;
+    },
+
+    /** Get an in-progress or completed import by id. */
+    get: async (spaceId: string, importId: string) => {
+      const { data, error, response } = await this.raw.GET(
+        "/spaces/{spaceId}/cubes/imports/{importId}",
+        { params: { path: { spaceId, importId } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data;
+    },
+
+    /**
+     * Finish an import after the archive has been uploaded — provisions the
+     * Cube. Pass the uploaded `parts` (partNumber + etag) and the resolved
+     * `config`.
+     */
+    complete: async (
+      spaceId: string,
+      importId: string,
+      body: NonNullable<
+        paths["/spaces/{spaceId}/cubes/imports/{importId}/complete"]["post"]["requestBody"]
+      >["content"]["application/json"],
+    ) => {
+      const { data, error, response } = await this.raw.POST(
+        "/spaces/{spaceId}/cubes/imports/{importId}/complete",
+        { params: { path: { spaceId, importId } }, body },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data;
+    },
+
+    /** Cancel an in-progress import. */
+    cancel: async (spaceId: string, importId: string) => {
+      const { data, error, response } = await this.raw.DELETE(
+        "/spaces/{spaceId}/cubes/imports/{importId}",
+        { params: { path: { spaceId, importId } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data;
+    },
+  };
+
+  readonly backups = {
+    /** Get a time-limited download URL for a backup `.cube` archive. */
+    download: async (spaceId: string, backupId: string) => {
+      const { data, error, response } = await this.raw.GET(
+        "/spaces/{spaceId}/backups/{backupId}/download",
+        { params: { path: { spaceId, backupId } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data;
+    },
+  };
 
   // ---------------------------------------------------------------------------
   // Public catalog (no auth required by the API, but the key is harmless)

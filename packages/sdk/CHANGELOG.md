@@ -4,6 +4,18 @@ All notable changes to `@krovacloud/sdk` are documented here. This project adher
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and the
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
 
+## 0.3.0
+
+### Added
+
+- First-class typed helpers for a Cube's attached resources:
+  - `client.domains` — `list` / `create` / `update` / `delete` custom domains.
+  - `client.snapshots` — `list` / `create` / `delete`, plus `client.cubes.restore`.
+  - `client.tcpMappings` — `list` / `create` / `delete` TCP port mappings.
+  - `client.imports` — `create` / `get` / `complete` / `cancel` a `.cube` import.
+  - `client.backups.download` — a time-limited backup download URL.
+- Exported `Domain`, `Snapshot`, `TcpMapping`, and the create/update input types.
+
 ## 0.2.0
 
 ### Added

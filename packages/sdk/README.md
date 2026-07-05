@@ -161,9 +161,54 @@ const images = await krova.catalog.images();   // available OS images
 const pricing = await krova.catalog.pricing(); // per-resource hourly rates + volume tiers
 ```
 
+### Domains, snapshots & TCP mappings
+
+Typed helpers for a Cube's attached resources — each unwraps the response and throws `KrovaError` on failure.
+
+```ts
+// Custom domains
+const domains = await krova.domains.list("space_123", "cube_123");
+const domain = await krova.domains.create("space_123", "cube_123", {
+  domain: "app.example.com",
+  port: 8080,
+});
+await krova.domains.update("space_123", "cube_123", domain.id, { responseCompression: true });
+await krova.domains.delete("space_123", "cube_123", domain.id);
+
+// Snapshots + restore
+const snap = await krova.snapshots.create("space_123", "cube_123", { name: "nightly" });
+const snaps = await krova.snapshots.list("space_123", "cube_123");
+await krova.cubes.restore("space_123", "cube_123", snap.id); // replace the disk from a snapshot
+await krova.snapshots.delete("space_123", "cube_123", snap.id);
+
+// TCP port mappings (expose a Cube port on the host)
+const mapping = await krova.tcpMappings.create("space_123", "cube_123", {
+  cubePort: 5432,
+  whitelistIps: ["203.0.113.4/32"],
+});
+await krova.tcpMappings.list("space_123", "cube_123");
+await krova.tcpMappings.delete("space_123", "cube_123", mapping.id);
+```
+
+`Domain`, `Snapshot`, and `TcpMapping` are exported for your own signatures.
+
+### Imports & backups
+
+Move `.cube` archives in and out. `imports.create` returns a multipart upload target; upload the archive to the presigned parts, then call `imports.complete`.
+
+```ts
+const start = await krova.imports.create("space_123", { name: "restored", fileSizeBytes: 1_048_576 });
+// ...upload the archive to start.parts (presigned URLs)...
+await krova.imports.complete("space_123", start.importId, { parts, config });
+const status = await krova.imports.get("space_123", start.importId);
+
+// Export: get a time-limited download URL for a backup archive
+const dl = await krova.backups.download("space_123", "backup_123");
+```
+
 ### `client.raw` — every endpoint
 
-The helpers cover Cubes and the catalog. For everything else — Domains, TCP mappings, Snapshots, Backups, Imports, Webhooks — use `client.raw`, the fully typed [`openapi-fetch`](https://github.com/openapi-ts/openapi-typescript/tree/main/packages/openapi-fetch) client. It returns `{ data, error, response }` and **never throws**:
+The helpers cover Cubes, the catalog, domains, snapshots, TCP mappings, imports, and backups. For anything else — e.g. Webhooks — use `client.raw`, the fully typed [`openapi-fetch`](https://github.com/openapi-ts/openapi-typescript/tree/main/packages/openapi-fetch) client. It returns `{ data, error, response }` and **never throws**:
 
 ```ts
 const { data, error } = await krova.raw.POST("/spaces/{spaceId}/webhooks", {

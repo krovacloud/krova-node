@@ -98,6 +98,16 @@ describe("tool registry", () => {
       "list_regions",
       "list_images",
       "get_pricing",
+      "list_domains",
+      "create_domain",
+      "delete_domain",
+      "list_snapshots",
+      "create_snapshot",
+      "delete_snapshot",
+      "restore_cube",
+      "list_tcp_mappings",
+      "create_tcp_mapping",
+      "delete_tcp_mapping",
     ].sort();
     assert.deepEqual(TOOLS.map((t) => t.name).sort(), expected);
 
@@ -110,7 +120,16 @@ describe("tool registry", () => {
   });
 
   it("marks read-only tools readOnly and destructive tools destructive", () => {
-    const readOnly = ["list_cubes", "get_cube", "list_regions", "list_images", "get_pricing"];
+    const readOnly = [
+      "list_cubes",
+      "get_cube",
+      "list_regions",
+      "list_images",
+      "get_pricing",
+      "list_domains",
+      "list_snapshots",
+      "list_tcp_mappings",
+    ];
     for (const name of readOnly) {
       const tool = findTool(name);
       assert.equal(tool.annotations.readOnlyHint, true, `${name} is readOnlyHint`);
@@ -120,14 +139,29 @@ describe("tool registry", () => {
     // The destructive/billable mutations must advertise destructiveHint so an
     // MCP client can require human confirmation before executing — the guard
     // against a prompt-injected model firing create/delete on untrusted input.
-    for (const name of ["create_cube", "delete_cube"]) {
+    // restore_cube REPLACES the disk, so it is destructive too.
+    for (const name of [
+      "create_cube",
+      "delete_cube",
+      "delete_domain",
+      "delete_snapshot",
+      "restore_cube",
+      "delete_tcp_mapping",
+    ]) {
       const tool = findTool(name);
       assert.equal(tool.annotations.readOnlyHint, false, `${name} is not read-only`);
       assert.equal(tool.annotations.destructiveHint, true, `${name} is destructive`);
     }
 
-    // Sleep/wake mutate but preserve data — not read-only, not destructive.
-    for (const name of ["sleep_cube", "wake_cube"]) {
+    // Sleep/wake + the create-resource tools mutate but preserve data — not
+    // read-only, not destructive.
+    for (const name of [
+      "sleep_cube",
+      "wake_cube",
+      "create_domain",
+      "create_snapshot",
+      "create_tcp_mapping",
+    ]) {
       const tool = findTool(name);
       assert.equal(tool.annotations.readOnlyHint, false, `${name} is not read-only`);
       assert.notEqual(tool.annotations.destructiveHint, true, `${name} is not destructive`);
@@ -276,5 +310,58 @@ describe("catalog tools", () => {
       assert.equal(mock.requests[0]!.url, path);
       assert.deepEqual(JSON.parse(result.content[0]!.text), body);
     }
+  });
+});
+
+describe("resource tools (domains, snapshots, tcp)", () => {
+  it("list_domains unwraps { domains } and hits the right path", async () => {
+    mock.handle((_req, res) => {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ domains: [{ id: "dom_1", domain: "app.example.com" }] }));
+    });
+    const result = await runTool(
+      findTool("list_domains"),
+      makeClient(mock.baseUrl),
+      { spaceId: "space_abc", cubeId: "cube_1" },
+      ctx,
+    );
+    assert.equal(result.isError, undefined);
+    assert.equal(mock.requests[0]!.url, "/spaces/space_abc/cubes/cube_1/domains");
+    const payload = JSON.parse(result.content[0]!.text) as Array<{ id: string }>;
+    assert.equal(payload[0]!.id, "dom_1");
+  });
+
+  it("create_snapshot posts to the snapshots endpoint and returns the snapshot", async () => {
+    mock.handle((_req, res) => {
+      res.writeHead(201, { "content-type": "application/json" });
+      res.end(JSON.stringify({ snapshot: { id: "snap_1", name: "nightly" } }));
+    });
+    const result = await runTool(
+      findTool("create_snapshot"),
+      makeClient(mock.baseUrl),
+      { spaceId: "space_abc", cubeId: "cube_1", name: "nightly" },
+      ctx,
+    );
+    assert.equal(result.isError, undefined);
+    assert.equal(mock.requests[0]!.method, "POST");
+    assert.equal(mock.requests[0]!.url, "/spaces/space_abc/cubes/cube_1/snapshots");
+    const snap = JSON.parse(result.content[0]!.text) as { id: string };
+    assert.equal(snap.id, "snap_1");
+  });
+
+  it("restore_cube is destructive and posts the snapshotId", async () => {
+    mock.handle((_req, res) => {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ success: true }));
+    });
+    const result = await runTool(
+      findTool("restore_cube"),
+      makeClient(mock.baseUrl),
+      { spaceId: "space_abc", cubeId: "cube_1", snapshotId: "snap_9" },
+      ctx,
+    );
+    assert.equal(result.isError, undefined);
+    assert.equal(mock.requests[0]!.url, "/spaces/space_abc/cubes/cube_1/restore");
+    assert.equal((mock.requests[0]!.body as { snapshotId: string }).snapshotId, "snap_9");
   });
 });

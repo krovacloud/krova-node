@@ -407,3 +407,63 @@ test("cubes.ssh returns a Cube's SSH connection info", async () => {
   assert.equal(ssh.port, 2222);
   assert.equal(ssh.user, "root");
 });
+
+test("domains.list unwraps { domains } and create unwraps { domain }", async () => {
+  handler = (req, res) => {
+    if (req.method === "GET") {
+      assert.equal(req.url, "/api/v1/spaces/s1/cubes/c1/domains");
+      json(res, 200, { domains: [{ id: "dom_1", domain: "app.example.com" }] });
+    } else {
+      assert.equal(req.url, "/api/v1/spaces/s1/cubes/c1/domains");
+      json(res, 201, { domain: { id: "dom_2", domain: "api.example.com" } });
+    }
+  };
+  const client = new KrovaClient({ apiKey: "kro_x", baseUrl });
+  const list = await client.domains.list("s1", "c1");
+  assert.equal(list[0]?.id, "dom_1");
+  const created = await client.domains.create("s1", "c1", { domain: "api.example.com", port: 8080 });
+  assert.equal(created.id, "dom_2");
+});
+
+test("snapshots.create unwraps { snapshot } and list unwraps { snapshots }", async () => {
+  handler = (req, res) => {
+    if (req.method === "GET") json(res, 200, { snapshots: [{ id: "snap_1", name: "nightly" }] });
+    else json(res, 201, { snapshot: { id: "snap_2", name: "manual" } });
+  };
+  const client = new KrovaClient({ apiKey: "kro_x", baseUrl });
+  assert.equal((await client.snapshots.list("s1", "c1"))[0]?.id, "snap_1");
+  assert.equal((await client.snapshots.create("s1", "c1", { name: "manual" })).id, "snap_2");
+});
+
+test("tcpMappings.create unwraps { tcpMapping }", async () => {
+  handler = (req, res) => {
+    assert.equal(req.url, "/api/v1/spaces/s1/cubes/c1/tcp-mappings");
+    json(res, 201, { tcpMapping: { id: "tcp_1", cubePort: 5432, hostPort: 15432 } });
+  };
+  const client = new KrovaClient({ apiKey: "kro_x", baseUrl });
+  const m = await client.tcpMappings.create("s1", "c1", { cubePort: 5432 });
+  assert.equal(m.id, "tcp_1");
+  assert.equal(m.hostPort, 15432);
+});
+
+test("cubes.restore posts the snapshotId to the restore endpoint", async () => {
+  let seenBody = "";
+  handler = (req, res, body) => {
+    assert.equal(req.url, "/api/v1/spaces/s1/cubes/c1/restore");
+    seenBody = body;
+    json(res, 200, { success: true });
+  };
+  const client = new KrovaClient({ apiKey: "kro_x", baseUrl });
+  await client.cubes.restore("s1", "c1", "snap_1");
+  assert.ok(seenBody.includes("snap_1"), "restore sends the snapshotId");
+});
+
+test("backups.download returns the signed URL body", async () => {
+  handler = (req, res) => {
+    assert.equal(req.url, "/api/v1/spaces/s1/backups/bak_1/download");
+    json(res, 200, { url: "https://x/y", filename: "cube.cube", sizeBytes: 10, expiresAt: "2026-07-05T00:00:00Z" });
+  };
+  const client = new KrovaClient({ apiKey: "kro_x", baseUrl });
+  const dl = await client.backups.download("s1", "bak_1");
+  assert.equal(dl?.filename, "cube.cube");
+});

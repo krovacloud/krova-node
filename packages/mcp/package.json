@@ -1,6 +1,6 @@
 {
   "name": "@krovacloud/mcp",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "description": "MCP server for Krova Cloud \u2014 let Claude, Cursor, and any MCP client provision and manage Cubes (Firecracker microVMs).",
   "license": "MIT",
   "author": "Krova Inc.",

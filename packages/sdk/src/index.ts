@@ -21,6 +21,12 @@ export {
   type Pagination,
   type Space,
   type CubeSshInfo,
+  type Domain,
+  type Snapshot,
+  type TcpMapping,
+  type CreateDomainInput,
+  type UpdateDomainInput,
+  type CreateTcpMappingInput,
 } from "./client.js";
 export { KrovaError, krovaErrorFrom, type KrovaErrorBody } from "./error.js";
 

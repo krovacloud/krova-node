@@ -3,6 +3,16 @@
 All notable changes to `@krovacloud/cli` are documented here.
 
 
+
+## 0.5.0
+
+### Added
+
+- `krova domains` (list / add / rm) — manage a Cube's custom domains.
+- `krova snapshots` (list / create / restore / rm) — snapshot and restore a
+  Cube's disk.
+- `krova tcp` (list / add / rm) — manage a Cube's TCP port mappings, with an
+  optional `--whitelist` IP allow-list.
 ## 0.4.3
 
 ### Fixed
