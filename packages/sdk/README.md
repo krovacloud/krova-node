@@ -11,7 +11,7 @@ The official TypeScript SDK for the [Krova Cloud](https://krova.cloud) API — a
 
 - **Fully typed** — request bodies, responses, and path params are generated from the Krova Cloud OpenAPI spec via [`openapi-typescript`](https://github.com/openapi-ts/openapi-typescript) + [`openapi-fetch`](https://github.com/openapi-ts/openapi-typescript/tree/main/packages/openapi-fetch).
 - **Ergonomic helpers** — `client.cubes.*` and `client.catalog.*` unwrap the response body and throw a typed `KrovaError` on failure.
-- **Full escape hatch** — `client.raw` exposes the underlying typed client for *every* operation in the spec (31 operations across 22 resource paths).
+- **Full escape hatch** — `client.raw` exposes the underlying typed client for every operation in the bundled OpenAPI spec (Domains, TCP mappings, Snapshots, Backups, Imports, Webhooks, and more).
 - **Zero-config resilience** — automatic retries on `429` / `503`, honoring `Retry-After`.
 - **ESM + CJS** — ships both, with bundled `.d.ts` declarations. No runtime dependencies beyond `openapi-fetch`.
 

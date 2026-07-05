@@ -19,6 +19,35 @@ import {
   validateSSHHost,
   validateSSHUser,
 } from "../src/lib/ssh.js";
+import { flattenRows } from "../src/commands/catalog.js";
+
+test("flattenRows expands nested objects so pricing rates aren't dropped", () => {
+  // Regression: `krova pricing` used to table only the `tiers` array and drop
+  // `rates`/`currency`/`note`. flattenRows must surface those scalar/object
+  // fields as key/value rows.
+  const rows = flattenRows(
+    Object.entries({
+      currency: "USD",
+      rates: { vcpuPerHour: 0.001, ramGbPerHour: 0.0025, diskGbPerHour: 0.00005 },
+      note: "billed by the minute",
+    })
+  );
+  const map = new Map(rows);
+  assert.equal(map.get("currency"), "USD");
+  assert.equal(map.get("rates.vcpuPerHour"), "0.001"); // nested object flattened
+  assert.equal(map.get("rates.diskGbPerHour"), "0.00005");
+  assert.equal(map.get("note"), "billed by the minute");
+});
+
+test("upsert only overwrites baseUrl with a non-empty value (no transient --base-url persistence)", () => {
+  const cfg = { contexts: [], currentContext: "" } as Parameters<typeof upsert>[0];
+  upsert(cfg, { name: "prod", apiKey: "kro_a", baseUrl: "https://krova.cloud/api/v1" });
+  // A later merge without a baseUrl (e.g. caching a resolved space) must NOT
+  // clear or change the stored base URL.
+  upsert(cfg, { name: "prod", spaceId: "space_1" });
+  assert.equal(cfg.contexts[0]?.baseUrl, "https://krova.cloud/api/v1");
+  assert.equal(cfg.contexts[0]?.spaceId, "space_1");
+});
 
 test("validateSSHHost rejects option/metacharacter injection", () => {
   validateSSHHost("1.2.3.4");

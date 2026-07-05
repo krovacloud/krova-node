@@ -17,7 +17,9 @@ export async function persistLogin(input: {
 
   const sp = await fetchSpace(input.baseUrl, input.apiKey, input.timeoutMs);
   if (sp) {
-    spaceId = sp.id;
+    // Prefer an explicitly-provided --space over the fetched id; only fall back
+    // to the resolved space when the caller didn't pin one.
+    if (!spaceId) spaceId = sp.id;
     spaceName = sp.name ?? "";
     derivedName = (sp.slug || sp.name || "").trim();
   }

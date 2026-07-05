@@ -92,12 +92,29 @@ function authMiddleware(apiKey: string, scheme: AuthScheme): Middleware {
 
 /**
  * Retry middleware: on a retryable status, wait (honoring `Retry-After` when
- * present, else exponential backoff) and re-issue the request. openapi-fetch
- * clones the request per attempt, so re-fetching here is safe.
+ * present, else exponential backoff) and re-issue the request.
+ *
+ * A retried request may have a body (POST/PUT/DELETE — exactly the mutating,
+ * rate-limited endpoints). By the time `onResponse` runs, the request that was
+ * handed to `fetch` has had its body stream consumed, so `request.clone()` here
+ * throws `TypeError: unusable`. To re-issue it we stash a *pristine* clone in
+ * `onRequest` — captured before the body is read — keyed by openapi-fetch's
+ * per-request `id`, and clone from that pristine copy on each attempt.
  */
 function retryMiddleware(maxRetries: number, doFetch: typeof fetch): Middleware {
+  const pristine = new Map<string, Request>();
   return {
-    async onResponse({ request, response }) {
+    onRequest({ request, id }) {
+      pristine.set(id, request.clone());
+      return request;
+    },
+    onError({ id }) {
+      // fetch rejected (network error) — no onResponse will fire; don't leak.
+      pristine.delete(id);
+    },
+    async onResponse({ request, response, id }) {
+      const original = pristine.get(id) ?? request;
+      pristine.delete(id);
       if (maxRetries <= 0 || !RETRYABLE_STATUSES.has(response.status)) {
         return response;
       }
@@ -106,8 +123,12 @@ function retryMiddleware(maxRetries: number, doFetch: typeof fetch): Middleware 
         if (!RETRYABLE_STATUSES.has(current.status)) break;
         const retryAfterMs = parseRetryAfterMs(current.headers.get("retry-after"));
         const backoff = Math.min(BASE_BACKOFF_MS * 2 ** (attempt - 1), MAX_BACKOFF_MS);
-        await sleep(retryAfterMs ?? backoff);
-        current = await doFetch(request.clone());
+        // Cap the wait — including a server-supplied `Retry-After` — so a hostile
+        // or misconfigured server can't park the client for minutes/hours.
+        await sleep(Math.min(retryAfterMs ?? backoff, MAX_BACKOFF_MS));
+        // Re-issue from the pristine clone; `.clone()` keeps it reusable across
+        // multiple attempts.
+        current = await doFetch(original.clone());
       }
       return current;
     },

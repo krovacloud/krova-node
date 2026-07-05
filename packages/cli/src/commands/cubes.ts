@@ -71,14 +71,23 @@ function createCmd(): Command {
       const rt = getRuntime(cmd);
       const client = makeClient(rt.res);
       const space = await resolveSpace(rt);
+      // Validate resources client-side so bad input fails with a clear message
+      // rather than being coerced to NaN → JSON null → a generic server 400.
+      const posInt = (flag: string, raw: string): number => {
+        const n = Number(raw);
+        if (!Number.isInteger(n) || n <= 0) {
+          throw new Error(`--${flag} must be a positive integer (got "${raw}").`);
+        }
+        return n;
+      };
       const body: Record<string, unknown> = {
         name: opts.name,
         image: opts.image,
         sshPublicKey: opts.sshKey,
         resources: {
-          vcpu: Number(opts.vcpu),
-          ramGb: Number(opts.ram),
-          diskGb: Number(opts.disk),
+          vcpu: posInt("vcpu", opts.vcpu),
+          ramGb: posInt("ram", opts.ram),
+          diskGb: posInt("disk", opts.disk),
         },
       };
       if (opts.region) body.region = opts.region;
