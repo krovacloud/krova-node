@@ -113,7 +113,7 @@ The server is configured entirely through environment variables:
 
 ## Tools
 
-All 9 tools, their parameters, and what they do. Every Cube tool's `spaceId` is optional when `KROVA_SPACE_ID` is set.
+All 19 tools, their parameters, and what they do. Every tool's `spaceId` is optional when `KROVA_SPACE_ID` is set.
 
 | Tool | Parameters | Description |
 | --- | --- | --- |
@@ -126,6 +126,16 @@ All 9 tools, their parameters, and what they do. Every Cube tool's `spaceId` is 
 | `list_regions` | — | List regions with available capacity. |
 | `list_images` | — | List available OS images for new Cubes. |
 | `get_pricing` | — | Get per-resource hourly rates and volume pricing tiers. |
+| `list_domains` | `spaceId?`, `cubeId` | List the custom domains attached to a Cube. |
+| `create_domain` | `spaceId?`, `cubeId`, `domain`, `port` | Attach a custom domain to a Cube. |
+| `delete_domain` | `spaceId?`, `cubeId`, `mappingId` | Detach a custom domain. **Destructive.** |
+| `list_snapshots` | `spaceId?`, `cubeId` | List a Cube's disk snapshots. |
+| `create_snapshot` | `spaceId?`, `cubeId`, `name?` | Snapshot a Cube's disk. Asynchronous. |
+| `delete_snapshot` | `spaceId?`, `cubeId`, `snapshotId` | Delete a snapshot. **Destructive.** |
+| `restore_cube` | `spaceId?`, `cubeId`, `snapshotId` | Restore a Cube's disk from a snapshot — **replaces the disk. Destructive.** |
+| `list_tcp_mappings` | `spaceId?`, `cubeId` | List a Cube's TCP port mappings. |
+| `create_tcp_mapping` | `spaceId?`, `cubeId`, `cubePort`, `whitelistIps?` | Expose a Cube TCP port on the host. |
+| `delete_tcp_mapping` | `spaceId?`, `cubeId`, `mappingId` | Remove a TCP port mapping. **Destructive.** |
 
 Every tool advertises MCP **annotations** so your client can treat them appropriately: the five read tools are marked read-only, while `create_cube` (billable) and `delete_cube` (irreversible) are marked **destructive**. Most MCP clients surface a confirmation prompt before running a destructive tool — keep that confirmation on, since an LLM driven by untrusted content could be induced to call one.
 

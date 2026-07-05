@@ -4,8 +4,11 @@ import { authCommand } from "./commands/auth.js";
 import { imagesCommand, pricingCommand, regionsCommand } from "./commands/catalog.js";
 import { contextCommand } from "./commands/context.js";
 import { cubesCommand, rootGetCommand, rootListCommand } from "./commands/cubes.js";
+import { domainsCommand } from "./commands/domains.js";
 import { loginCommand } from "./commands/login.js";
+import { snapshotsCommand } from "./commands/snapshots.js";
 import { sshCommand } from "./commands/ssh.js";
+import { tcpCommand } from "./commands/tcp.js";
 import { CLI_VERSION, versionCommand } from "./commands/version.js";
 import { webhooksCommand } from "./commands/webhooks.js";
 import { whoamiCommand } from "./commands/whoami.js";
@@ -40,6 +43,9 @@ program.addCommand(authCommand());
 program.addCommand(contextCommand());
 program.addCommand(whoamiCommand());
 program.addCommand(cubesCommand());
+program.addCommand(domainsCommand());
+program.addCommand(snapshotsCommand());
+program.addCommand(tcpCommand());
 program.addCommand(sshCommand());
 program.addCommand(rootListCommand()); // `krova list` (alias `ls`)
 program.addCommand(rootGetCommand()); // `krova get`

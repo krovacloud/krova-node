@@ -663,7 +663,11 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            domains: components["schemas"]["Domain"][];
+                        };
+                    };
                 };
             };
         };
@@ -734,7 +738,11 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            domain: components["schemas"]["Domain"];
+                        };
+                    };
                 };
                 400: components["responses"]["BadRequest"];
                 429: components["responses"]["RateLimited"];
@@ -775,7 +783,11 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            success: boolean;
+                        };
+                    };
                 };
                 404: components["responses"]["NotFound"];
             };
@@ -842,7 +854,11 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            domain: components["schemas"]["Domain"];
+                        };
+                    };
                 };
                 400: components["responses"]["BadRequest"];
                 404: components["responses"]["NotFound"];
@@ -876,7 +892,11 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            tcpMappings: components["schemas"]["TcpMapping"][];
+                        };
+                    };
                 };
             };
         };
@@ -909,7 +929,11 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            tcpMapping: components["schemas"]["TcpMapping"];
+                        };
+                    };
                 };
                 400: components["responses"]["BadRequest"];
                 429: components["responses"]["RateLimited"];
@@ -950,7 +974,11 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            success: boolean;
+                        };
+                    };
                 };
                 404: components["responses"]["NotFound"];
             };
@@ -985,7 +1013,11 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            snapshots: components["schemas"]["Snapshot"][];
+                        };
+                    };
                 };
             };
         };
@@ -1017,7 +1049,11 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            snapshot: components["schemas"]["Snapshot"];
+                        };
+                    };
                 };
                 429: components["responses"]["RateLimited"];
             };
@@ -1057,7 +1093,11 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            success: boolean;
+                        };
+                    };
                 };
                 404: components["responses"]["NotFound"];
             };
@@ -1100,7 +1140,11 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            success: boolean;
+                        };
+                    };
                 };
                 404: components["responses"]["NotFound"];
             };
@@ -1321,7 +1365,11 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            success: boolean;
+                        };
+                    };
                 };
                 404: components["responses"]["NotFound"];
                 /** @description Cannot cancel an import past the 'uploading' state */

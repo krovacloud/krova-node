@@ -64,6 +64,29 @@ checking (no trust-on-first-use window). The destination is always passed after
 a `--` separator, with host/user validated against option-injection — a hostile
 value aborts before `ssh` ever runs.
 
+## Domains, snapshots & TCP mappings
+
+Manage a Cube's attached resources. All take a `<cube>` name or ID and support
+`--json`.
+
+```sh
+# Custom domains
+krova domains list <cube>
+krova domains add <cube> --domain app.example.com --port 8080
+krova domains rm <cube> <domain-id>
+
+# Snapshots + restore
+krova snapshots list <cube>
+krova snapshots create <cube> --name nightly
+krova snapshots restore <cube> <snapshot-id>   # replaces the Cube's disk
+krova snapshots rm <cube> <snapshot-id>
+
+# TCP port mappings (expose a Cube port on the host)
+krova tcp list <cube>
+krova tcp add <cube> --port 5432 --whitelist 203.0.113.4/32
+krova tcp rm <cube> <mapping-id>
+```
+
 ## Catalog
 
 ```sh
