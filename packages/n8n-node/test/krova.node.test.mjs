@@ -39,11 +39,11 @@ test('requestDefaults use the credential base URL', () => {
 	assert.equal(desc.requestDefaults.baseURL, '={{ $credentials.baseUrl }}');
 });
 
-test('exposes Cube and Catalog resources', () => {
+test('exposes all resources', () => {
 	const resourceProp = desc.properties.find((p) => p.name === 'resource');
 	assert.ok(resourceProp, 'resource selector exists');
 	const values = resourceProp.options.map((o) => o.value);
-	assert.deepEqual(values.sort(), ['catalog', 'cube']);
+	assert.deepEqual(values.sort(), ['catalog', 'cube', 'domain', 'snapshot', 'tcpMapping']);
 });
 
 test('Cube resource has the expected operations', () => {
@@ -54,6 +54,23 @@ test('Cube resource has the expected operations', () => {
 test('Catalog resource has the expected operations', () => {
 	const ops = operationsForResource('catalog').sort();
 	assert.deepEqual(ops, ['getImages', 'getPricing', 'getRegions']);
+});
+
+test('Domain resource has list/create/delete operations', () => {
+	assert.deepEqual(operationsForResource('domain').sort(), ['create', 'delete', 'list']);
+});
+
+test('Snapshot resource has list/create/delete/restore operations', () => {
+	assert.deepEqual(operationsForResource('snapshot').sort(), [
+		'create',
+		'delete',
+		'list',
+		'restore',
+	]);
+});
+
+test('TCP Mapping resource has list/create/delete operations', () => {
+	assert.deepEqual(operationsForResource('tcpMapping').sort(), ['create', 'delete', 'list']);
 });
 
 test('Cube Create maps name/image/region/vcpu/ramGb/diskGb to the request body', () => {
