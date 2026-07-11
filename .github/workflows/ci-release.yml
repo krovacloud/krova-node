@@ -25,6 +25,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history + tags for per-package change detection
+      # Trusted publishing needs npm CLI >= 11.5.1 (Node 22 bundles npm 10,
+      # which can't mint OIDC credentials — publishes die with ENEEDAUTH).
+      # pnpm delegates the final registry call to npm, so npm is what matters.
       - uses: pnpm/action-setup@v6
       # NOTE: no `registry-url:` here — that option writes an .npmrc wired to
       # NODE_AUTH_TOKEN and exports a placeholder value when the secret is
@@ -35,6 +38,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - run: npm install -g npm@latest
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
       - run: pnpm -r test
