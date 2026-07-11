@@ -26,10 +26,14 @@ jobs:
         with:
           fetch-depth: 0 # full history + tags for per-package change detection
       - uses: pnpm/action-setup@v6
+      # NOTE: no `registry-url:` here — that option writes an .npmrc wired to
+      # NODE_AUTH_TOKEN and exports a placeholder value when the secret is
+      # absent, which BLOCKS OIDC trusted publishing (the client sends the
+      # placeholder instead of minting an OIDC credential). With no token in
+      # the environment, pnpm 10.13+ performs the OIDC exchange itself.
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          registry-url: https://registry.npmjs.org
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
