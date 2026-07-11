@@ -36,7 +36,9 @@ jobs:
       - run: pnpm -r test
       - name: Release changed packages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        # npm auth is OIDC trusted publishing (id-token: write above) — each
+        # package's npmjs.com settings trust THIS repo + workflow. No npm
+        # token exists to leak or revoke.
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           GH_TOKEN: ${{ github.token }}
         run: node scripts/release.mjs
