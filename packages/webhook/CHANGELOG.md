@@ -5,6 +5,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and the
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
 
 
+## 0.1.6
+
+### Changed
+
+- Republished to validate the automated release pipeline. No code changes.
+
+
 ## 0.1.5
 
 ### Changed

@@ -8,6 +8,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
 
+## 0.2.3
+
+### Changed
+
+- Docs: install instructions reference only `n8n-nodes-krova` — the pre-rename scoped alias (`@krovacloud/n8n-nodes-krova`) was removed from npm.
+
+
 ## 0.2.2
 
 ### Changed

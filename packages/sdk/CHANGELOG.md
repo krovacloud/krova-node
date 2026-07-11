@@ -5,6 +5,13 @@ All notable changes to `@krovacloud/sdk` are documented here. This project adher
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
 
 
+## 0.3.2
+
+### Changed
+
+- Docs: the npm package description no longer references physical infrastructure.
+
+
 ## 0.3.1
 
 ### Changed

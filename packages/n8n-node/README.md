@@ -16,7 +16,7 @@ Install this node from within n8n — no CLI, no server restart:
 
 1. Open **Settings → Community Nodes**.
 2. Select **Install**.
-3. Enter the package name **`n8n-nodes-krova`** (or the scoped alias **`@krovacloud/n8n-nodes-krova`** — identical contents).
+3. Enter the package name **`n8n-nodes-krova`**.
 4. Acknowledge the community-node risk prompt and select **Install**.
 
 The **Krova Cloud** node appears in the node panel immediately after install. For self-hosted / manual setups, see the official [community-nodes installation guide](https://docs.n8n.io/integrations/community-nodes/installation/).
@@ -124,7 +124,6 @@ Krova Cloud ships first-party tooling across the ecosystem:
 - **[@krovacloud/sdk](https://www.npmjs.com/package/@krovacloud/sdk)** — official TypeScript/JavaScript SDK.
 - **[@krovacloud/mcp](https://www.npmjs.com/package/@krovacloud/mcp)** — Model Context Protocol server for AI agents.
 - **[@krovacloud/webhook](https://www.npmjs.com/package/@krovacloud/webhook)** — HMAC signature verification for Krova webhooks.
-- **[@krovacloud/n8n-nodes-krova](https://www.npmjs.com/package/@krovacloud/n8n-nodes-krova)** — the scoped alias of this exact package.
 
 ## Resources
 
