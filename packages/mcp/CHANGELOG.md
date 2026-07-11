@@ -6,6 +6,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
 
+## 0.2.2
+
+### Changed
+
+- Republished to validate the automated release pipeline. No code changes.
+
+
 ## 0.2.1
 
 ### Changed

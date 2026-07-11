@@ -4,6 +4,13 @@ All notable changes to `@krovacloud/cli` are documented here.
 
 
 
+## 0.5.1
+
+### Changed
+
+- Republished to validate the automated release pipeline. No code changes.
+
+
 ## 0.5.0
 
 ### Added
