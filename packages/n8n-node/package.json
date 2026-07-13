@@ -21,7 +21,7 @@
     "automation"
   ],
   "license": "MIT",
-  "homepage": "https://github.com/krovacloud/krova-node/tree/main/packages/n8n-node#readme",
+  "homepage": "https://krova.cloud/developers",
   "author": {
     "name": "Krova Inc.",
     "email": "support@krova.cloud"

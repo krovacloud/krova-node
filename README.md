@@ -1,6 +1,6 @@
 # krova-node
 
-The single home for the Krova Cloud **JavaScript / TypeScript** packages — SDK,
+The single home for the [Krova Cloud](https://krova.cloud) **JavaScript / TypeScript** packages — SDK,
 CLI, MCP server, webhook verifier, and the n8n node. A pnpm-workspace monorepo:
 the CLI/MCP consume the SDK via `workspace:*`, so everything stays in sync and a
 cross-package change is one PR.

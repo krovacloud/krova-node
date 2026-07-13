@@ -6,7 +6,7 @@
 [![license](https://img.shields.io/npm/l/@krovacloud/webhook)](./LICENSE)
 [![types](https://img.shields.io/npm/types/@krovacloud/webhook)](https://www.npmjs.com/package/@krovacloud/webhook)
 
-Verify **Krova Cloud** outbound webhook signatures in Node.js — HMAC-SHA256,
+Verify [**Krova Cloud**](https://krova.cloud) outbound webhook signatures in Node.js — HMAC-SHA256,
 constant-time comparison, and replay protection. **Zero runtime dependencies**
 (built on `node:crypto`), ESM + CommonJS, first-class TypeScript types.
 

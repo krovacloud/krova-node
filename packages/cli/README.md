@@ -1,6 +1,6 @@
 # @krovacloud/cli
 
-The **Krova Cloud** command-line interface (`krova`) — manage Cubes (Firecracker
+The [**Krova Cloud**](https://krova.cloud) command-line interface (`krova`) — manage Cubes (Firecracker
 microVMs), browse the catalog, log in through your browser, and SSH into a Cube,
 all from your terminal. A pure Node.js CLI built on
 [`@krovacloud/sdk`](https://www.npmjs.com/package/@krovacloud/sdk) — no native
