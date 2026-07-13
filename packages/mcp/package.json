@@ -5,7 +5,7 @@
   "license": "MIT",
   "author": "Krova Inc.",
   "type": "module",
-  "homepage": "https://github.com/krovacloud/krova-node/tree/main/packages/mcp#readme",
+  "homepage": "https://krova.cloud/developers",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/krovacloud/krova-node.git",
