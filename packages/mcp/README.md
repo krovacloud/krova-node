@@ -119,10 +119,10 @@ All 19 tools, their parameters, and what they do. Every tool's `spaceId` is opti
 | --- | --- | --- |
 | `list_cubes` | `spaceId?` | List all Cubes (Firecracker microVMs) in a Space. |
 | `get_cube` | `spaceId?`, `cubeId` | Get details for a single Cube by id. |
-| `create_cube` | `spaceId?`, `name`, `image`, `vcpu`, `ramGb`, `diskGb`, `sshPublicKey`, `region?`, `userData?` | Provision a new Cube. Asynchronous — the returned Cube starts in a pending state. |
+| `create_cube` | `spaceId?`, `name`, `image`, `vcpu`, `ramGb`, `diskGb`, `sshPublicKey`, `region?`, `userData?` | Provision a new Cube. Asynchronous — the returned Cube starts in a pending state. **Billable. Destructive.** |
 | `sleep_cube` | `spaceId?`, `cubeId` | Sleep a running Cube (releases compute, keeps disk). Asynchronous. |
 | `wake_cube` | `spaceId?`, `cubeId` | Wake a sleeping Cube. Asynchronous. |
-| `delete_cube` | `spaceId?`, `cubeId` | Delete a Cube. Asynchronous — deletion is enqueued. |
+| `delete_cube` | `spaceId?`, `cubeId` | Delete a Cube. Asynchronous — deletion is enqueued. **Destructive.** |
 | `list_regions` | — | List regions with available capacity. |
 | `list_images` | — | List available OS images for new Cubes. |
 | `get_pricing` | — | Get per-resource hourly rates and volume pricing tiers. |
@@ -137,7 +137,7 @@ All 19 tools, their parameters, and what they do. Every tool's `spaceId` is opti
 | `create_tcp_mapping` | `spaceId?`, `cubeId`, `cubePort`, `whitelistIps?` | Expose a Cube TCP port on the host. |
 | `delete_tcp_mapping` | `spaceId?`, `cubeId`, `mappingId` | Remove a TCP port mapping. **Destructive.** |
 
-Every tool advertises MCP **annotations** so your client can treat them appropriately: the five read tools are marked read-only, while `create_cube` (billable) and `delete_cube` (irreversible) are marked **destructive**. Most MCP clients surface a confirmation prompt before running a destructive tool — keep that confirmation on, since an LLM driven by untrusted content could be induced to call one.
+Every tool advertises MCP **annotations** so your client can treat them appropriately: the **eight** read tools (`list_cubes`, `get_cube`, `list_regions`, `list_images`, `get_pricing`, `list_domains`, `list_snapshots`, `list_tcp_mappings`) are marked read-only, while the **six** mutating tools (`create_cube`, `delete_cube`, `delete_domain`, `delete_snapshot`, `restore_cube`, `delete_tcp_mapping`) are marked **destructive**. Most MCP clients surface a confirmation prompt before running a destructive tool — keep that confirmation on, since an LLM driven by untrusted content could be induced to call one.
 
 ### `create_cube` parameters
 
@@ -158,7 +158,7 @@ Successful calls return the API's JSON response as text; API errors surface as a
 
 You need a Krova Cloud API key. Create one from your Space settings in the [Krova Cloud dashboard](https://krova.cloud) — keys are **scoped per Space**, inherit the permissions of the membership that created them, and look like `kro_...`.
 
-Never commit your key or paste it into logs, issues, or chats. Rotate any key you believe has been exposed. See [SECURITY.md](./SECURITY.md).
+Never commit your key or paste it into logs, issues, or chats. Rotate any key you believe has been exposed. See [SECURITY.md](https://github.com/krovacloud/krova-node/blob/main/SECURITY.md).
 
 ## Requirements
 
@@ -174,7 +174,7 @@ Part of the Krova Cloud developer toolkit:
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md). The tool registry in `src/tools.ts` is the single source of truth — add a `defineTool(...)`, cover it in `tests/`, and update the table above. Run `pnpm typecheck`, `pnpm test`, and `pnpm build` before opening a PR.
+See [CONTRIBUTING.md](https://github.com/krovacloud/krova-node/blob/main/CONTRIBUTING.md). The tool registry in `src/tools.ts` is the single source of truth — add a `defineTool(...)`, cover it in `tests/`, and update the table above. Run `pnpm typecheck`, `pnpm test`, and `pnpm build` before opening a PR.
 
 ## License
 
