@@ -132,22 +132,22 @@ export class Krova implements INodeType {
 						},
 					},
 					{
-						name: 'Sleep',
-						value: 'sleep',
-						action: 'Sleep a cube',
-						description: 'Sleep a running Cube (preserves data, stops compute billing)',
+						name: 'Power Off',
+						value: 'power-off',
+						action: 'Power off a cube',
+						description: 'Power off a running Cube (preserves data, stops compute billing, frees host RAM)',
 						routing: {
 							request: {
 								method: 'POST',
-								url: '=/spaces/{{ encodeURIComponent($parameter["spaceId"]) }}/cubes/{{ encodeURIComponent($parameter["cubeId"]) }}/sleep',
+								url: '=/spaces/{{ encodeURIComponent($parameter["spaceId"]) }}/cubes/{{ encodeURIComponent($parameter["cubeId"]) }}/power-off',
 							},
 						},
 					},
 					{
-						name: 'Wake',
+						name: 'Start',
 						value: 'wake',
-						action: 'Wake a cube',
-						description: 'Wake a sleeping Cube',
+						action: 'Start a cube',
+						description: 'Start a stopped Cube (cold boot)',
 						routing: {
 							request: {
 								method: 'POST',
@@ -185,7 +185,7 @@ export class Krova implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['cube'],
-						operation: ['get', 'delete', 'sleep', 'wake'],
+						operation: ['get', 'delete', 'power-off', 'wake'],
 					},
 				},
 			},

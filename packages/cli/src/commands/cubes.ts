@@ -146,8 +146,10 @@ export function cubesCommand(): Command {
   cubes.addCommand(listCmd());
   cubes.addCommand(getCmd());
   cubes.addCommand(createCmd());
-  cubes.addCommand(actionCmd("sleep", "Sleeping", (c, s, id) => c.sleep(s, id)));
-  cubes.addCommand(actionCmd("wake", "Waking", (c, s, id) => c.wake(s, id)));
+  cubes.addCommand(
+    actionCmd("power-off", "Powering off", (c, s, id) => c.powerOff(s, id)),
+  );
+  cubes.addCommand(actionCmd("wake", "Starting", (c, s, id) => c.wake(s, id)));
   cubes.addCommand(actionCmd("delete", "Deleting", (c, s, id) => c.delete(s, id)));
   cubes.addCommand(sshPortCmd());
   return cubes;

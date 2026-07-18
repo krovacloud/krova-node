@@ -47,8 +47,8 @@ Cubes are scoped to a **Space**, so every Cube operation takes a **Space ID**.
 | **List** | Space ID | List all Cubes in a Space | `GET /spaces/{spaceId}/cubes` |
 | **Get** | Space ID, Cube ID | Retrieve a single Cube by ID | `GET /spaces/{spaceId}/cubes/{cubeId}` |
 | **Create** | Space ID, Name, Image, SSH Public Key, vCPU, RAM (GB), Disk (GB); optional Region, User Data | Create a new Cube in a Space | `POST /spaces/{spaceId}/cubes` |
-| **Sleep** | Space ID, Cube ID | Sleep a running Cube — preserves data, stops compute billing | `POST /spaces/{spaceId}/cubes/{cubeId}/sleep` |
-| **Wake** | Space ID, Cube ID | Wake a sleeping Cube | `POST /spaces/{spaceId}/cubes/{cubeId}/wake` |
+| **Power Off** | Space ID, Cube ID | Power off a running Cube — preserves data, stops compute billing, frees host RAM | `POST /spaces/{spaceId}/cubes/{cubeId}/power-off` |
+| **Start** | Space ID, Cube ID | Start a stopped Cube (cold boot) | `POST /spaces/{spaceId}/cubes/{cubeId}/wake` |
 | **Delete** | Space ID, Cube ID | Delete a Cube (asynchronous) | `DELETE /spaces/{spaceId}/cubes/{cubeId}` |
 
 #### Create field notes
@@ -110,7 +110,7 @@ Each operation returns the raw Krova Cloud API response, ready to reference down
 2. **Krova Cloud** — Resource *Cube*, Operation *Create*. Set the Space ID, a Name, the Image slug from step 1, your SSH Public Key, and `vCPU` / `RAM (GB)` / `Disk (GB)`. The response contains the new Cube's ID.
 3. A second **Schedule Trigger** (`0 20 * * *`) → **Krova Cloud** — Resource *Cube*, Operation *List* → **Filter** for the Cubes you want idle → **Krova Cloud** — Operation *Sleep* on each Cube ID.
 
-Because a sleeping Cube keeps its disk but stops compute billing, this pattern gives you an ephemeral-by-day, zero-compute-by-night box driven entirely from n8n. Swap *Sleep* for *Delete* if you want it torn down instead of parked.
+Because a stopped Cube keeps its disk but stops compute billing, this pattern gives you an ephemeral-by-day, zero-compute-by-night box driven entirely from n8n. Swap *Power Off* for *Delete* if you want it torn down instead of parked.
 
 ## Compatibility
 

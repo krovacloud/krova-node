@@ -42,7 +42,7 @@ krova cubes create \
   --name web --image ubuntu-24.04 \
   --vcpu 1 --ram 1 --disk 10 \
   --ssh-key "$(cat ~/.ssh/id_ed25519.pub)"
-krova cubes sleep <cube>
+krova cubes power-off <cube>
 krova cubes wake <cube>
 krova cubes ssh-port <cube> --port 2222
 krova cubes delete <cube>

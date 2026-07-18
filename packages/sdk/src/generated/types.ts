@@ -467,7 +467,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/spaces/{spaceId}/cubes/{cubeId}/sleep": {
+    "/spaces/{spaceId}/cubes/{cubeId}/power-off": {
         parameters: {
             query?: never;
             header?: never;
@@ -476,7 +476,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Sleep a running Cube */
+        /** Power off a running Cube */
         post: {
             parameters: {
                 query?: never;
@@ -489,7 +489,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Sleep enqueued */
+                /** @description Power off enqueued */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -515,7 +515,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Wake a sleeping Cube */
+        /** Start a stopped Cube */
         post: {
             parameters: {
                 query?: never;
@@ -528,7 +528,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Wake enqueued */
+                /** @description Start enqueued */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1525,7 +1525,7 @@ export interface paths {
                     "application/json": {
                         /** Format: uri */
                         url: string;
-                        events: ("cube.running" | "cube.sleeping" | "cube.error" | "cube.deleted")[];
+                        events: ("cube.running" | "cube.stopped" | "cube.error" | "cube.deleted")[];
                     };
                 };
             };
@@ -1669,7 +1669,7 @@ export interface components {
             id: string;
             name: string;
             /** @enum {string} */
-            state: "pending" | "booting" | "running" | "sleeping" | "stopping" | "error" | "deleted";
+            state: "pending" | "booting" | "running" | "stopped" | "stopping" | "error" | "deleted";
             publicIpv4: string | null;
             resources: {
                 vcpu: number;

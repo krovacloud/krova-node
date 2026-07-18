@@ -258,7 +258,7 @@ test("caps a hostile Retry-After so the client can't be parked for hours", async
   assert.ok(elapsed < 11_000, `retry waited ${elapsed}ms — Retry-After was not capped`);
 });
 
-test("README quickstart flow compiles and runs (create → id/status → sleep → wake)", async () => {
+test("README quickstart flow compiles and runs (create → id/status → power-off → start)", async () => {
   const created = {
     id: "cube_readme",
     name: "web-server",
@@ -300,12 +300,12 @@ test("README quickstart flow compiles and runs (create → id/status → sleep �
   assert.equal(state, "pending");
   assert.equal(vcpu, 2);
 
-  await krova.cubes.sleep("space_123", cube.id);
+  await krova.cubes.powerOff("space_123", cube.id);
   await krova.cubes.wake("space_123", cube.id);
 
   assert.deepEqual(seenMethods, [
     "POST /api/v1/spaces/space_123/cubes",
-    "POST /api/v1/spaces/space_123/cubes/cube_readme/sleep",
+    "POST /api/v1/spaces/space_123/cubes/cube_readme/power-off",
     "POST /api/v1/spaces/space_123/cubes/cube_readme/wake",
   ]);
 });

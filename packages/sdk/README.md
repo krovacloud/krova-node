@@ -50,7 +50,7 @@ console.log(`Created cube ${cube.id} (${cube.state})`);
 console.log(`  ${cube.resources.vcpu} vCPU / ${cube.resources.ramGb} GB RAM, image ${cube.image}`);
 
 // Sleep it, then wake it
-await krova.cubes.sleep("space_123", cube.id);
+await krova.cubes.powerOff("space_123", cube.id);
 await krova.cubes.wake("space_123", cube.id);
 ```
 
@@ -133,7 +133,7 @@ const all = await krova.cubes.list("space_123");
 await krova.cubes.update("space_123", cube.id, { cubePort: 2222 });
 
 // lifecycle — sleep, wake, delete are asynchronous (enqueued)
-await krova.cubes.sleep("space_123", cube.id);
+await krova.cubes.powerOff("space_123", cube.id);
 await krova.cubes.wake("space_123", cube.id);
 await krova.cubes.delete("space_123", cube.id);
 ```
@@ -144,7 +144,7 @@ The `Cube` type is exported for your own signatures:
 import type { Cube } from "@krovacloud/sdk";
 // {
 //   id: string; name: string;
-//   state: "pending" | "booting" | "running" | "sleeping" | "stopping" | "error" | "deleted";
+//   state: "pending" | "booting" | "running" | "stopped" | "stopping" | "error" | "deleted";
 //   publicIpv4: string | null;
 //   resources: { vcpu: number; ramGb: number; diskGb: number };
 //   image: string; costPerHour: number;
