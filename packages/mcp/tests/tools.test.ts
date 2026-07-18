@@ -92,7 +92,7 @@ describe("tool registry", () => {
       "list_cubes",
       "get_cube",
       "create_cube",
-      "sleep_cube",
+      "power_off_cube",
       "wake_cube",
       "delete_cube",
       "list_regions",
@@ -156,7 +156,7 @@ describe("tool registry", () => {
     // Sleep/wake + the create-resource tools mutate but preserve data — not
     // read-only, not destructive.
     for (const name of [
-      "sleep_cube",
+      "power_off_cube",
       "wake_cube",
       "create_domain",
       "create_snapshot",
@@ -184,7 +184,7 @@ describe("list_cubes", () => {
   it("returns the cubes from the API and hits the right path with X-API-KEY", async () => {
     const cubes = [
       { id: "cube_1", name: "web", state: "running" },
-      { id: "cube_2", name: "db", state: "sleeping" },
+      { id: "cube_2", name: "db", state: "stopped" },
     ];
     mock.handle((_req, res) => {
       res.writeHead(200, { "content-type": "application/json" });

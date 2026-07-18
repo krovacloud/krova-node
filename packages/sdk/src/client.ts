@@ -316,17 +316,18 @@ export class KrovaClient {
       return data;
     },
 
-    /** Sleep a running Cube (asynchronous — sleep is enqueued). */
-    sleep: async (spaceId: string, cubeId: string): Promise<unknown> => {
+    /** Power off a running Cube (asynchronous — power-off is enqueued). The Cube
+     *  becomes `stopped` (its host RAM is freed); start it again with `wake`. */
+    powerOff: async (spaceId: string, cubeId: string): Promise<unknown> => {
       const { data, error, response } = await this.raw.POST(
-        "/spaces/{spaceId}/cubes/{cubeId}/sleep",
+        "/spaces/{spaceId}/cubes/{cubeId}/power-off",
         { params: { path: { spaceId, cubeId } } },
       );
       if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
       return data;
     },
 
-    /** Wake a sleeping Cube (asynchronous — wake is enqueued). */
+    /** Start a stopped Cube — a cold boot (asynchronous — start is enqueued). */
     wake: async (spaceId: string, cubeId: string): Promise<unknown> => {
       const { data, error, response } = await this.raw.POST(
         "/spaces/{spaceId}/cubes/{cubeId}/wake",

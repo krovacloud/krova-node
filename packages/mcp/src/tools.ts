@@ -192,23 +192,23 @@ export const TOOLS: ToolDef[] = [
       }),
   }),
   defineTool({
-    name: "sleep_cube",
-    title: "Sleep Cube",
+    name: "power_off_cube",
+    title: "Power Off Cube",
     description:
-      "Sleep a running Cube (asynchronous). Compute is released while disk is preserved.",
-    // Mutates state but preserves data — not destructive; idempotent (a sleep
-    // on an already-sleeping Cube is a no-op on the API side).
+      "Power off a running Cube (asynchronous). Compute + host RAM are released while disk is preserved; the Cube becomes stopped.",
+    // Mutates state but preserves data — not destructive; idempotent (a power-off
+    // on an already-stopped Cube is a no-op on the API side).
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     inputSchema: { ...spaceIdField, ...cubeIdField },
     handler: (client, args, ctx) =>
-      client.cubes.sleep(resolveSpaceId(args.spaceId, ctx), args.cubeId),
+      client.cubes.powerOff(resolveSpaceId(args.spaceId, ctx), args.cubeId),
   }),
   defineTool({
     name: "wake_cube",
-    title: "Wake Cube",
-    description: "Wake a sleeping Cube (asynchronous).",
+    title: "Start Cube",
+    description: "Start a stopped Cube — a cold boot (asynchronous).",
     // Mutates state, restores compute (resumes billing) but preserves data —
-    // not destructive; idempotent (waking a running Cube is a no-op).
+    // not destructive; idempotent (starting a running Cube is a no-op).
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     inputSchema: { ...spaceIdField, ...cubeIdField },
     handler: (client, args, ctx) =>

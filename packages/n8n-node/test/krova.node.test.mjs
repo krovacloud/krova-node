@@ -48,7 +48,7 @@ test('exposes all resources', () => {
 
 test('Cube resource has the expected operations', () => {
 	const ops = operationsForResource('cube').sort();
-	assert.deepEqual(ops, ['create', 'delete', 'get', 'list', 'sleep', 'wake']);
+	assert.deepEqual(ops, ['create', 'delete', 'get', 'list', 'power-off', 'wake']);
 });
 
 test('Catalog resource has the expected operations', () => {
@@ -102,8 +102,8 @@ test('Cube operations route to the correct space-scoped endpoints', () => {
 	assert.match(routes.list.url, /\/spaces\/.*\/cubes$/);
 	assert.equal(routes.create.method, 'POST');
 	assert.equal(routes.delete.method, 'DELETE');
-	assert.equal(routes.sleep.method, 'POST');
-	assert.match(routes.sleep.url, /\/sleep$/);
+	assert.equal(routes['power-off'].method, 'POST');
+	assert.match(routes['power-off'].url, /\/power-off$/);
 	assert.equal(routes.wake.method, 'POST');
 	assert.match(routes.wake.url, /\/wake$/);
 });
