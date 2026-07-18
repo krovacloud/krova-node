@@ -82,7 +82,7 @@ new KrovaClient({
 });
 ```
 
-Throws if `apiKey` is missing. Exposes `client.baseUrl` (the resolved base URL), `client.getSpace()`, `client.cubes`, `client.catalog`, and `client.raw`.
+Throws if `apiKey` is missing. Exposes `client.baseUrl` (the resolved base URL), `client.getSpace()`, and the resource helpers `client.cubes`, `client.domains`, `client.snapshots`, `client.tcpMappings`, `client.imports`, `client.backups`, `client.catalog` (each documented in its section below), plus the raw typed client `client.raw`.
 
 ### `client.getSpace()`
 
@@ -107,6 +107,7 @@ Ergonomic helpers for the Cube lifecycle. Each unwraps the response body and thr
 | `sleep` | `(spaceId, cubeId)` | enqueues sleep |
 | `wake` | `(spaceId, cubeId)` | enqueues wake |
 | `ssh` | `(spaceId, cubeId)` | the Cube's SSH connection info (`host`, `port`, `user`, `hostKeys`) |
+| `restore` | `(spaceId, cubeId, snapshotId)` | enqueues a restore — replaces the Cube's disk from a snapshot |
 
 ```ts
 // create — sshPublicKey is required; region + userData (cloud-init) are optional.
@@ -292,7 +293,7 @@ The package ships its own type declarations — no `@types/*` install needed. `C
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md). Report security issues privately per [SECURITY.md](./SECURITY.md).
+See [CONTRIBUTING.md](https://github.com/krovacloud/krova-node/blob/main/CONTRIBUTING.md). Report security issues privately per [SECURITY.md](https://github.com/krovacloud/krova-node/blob/main/SECURITY.md).
 
 ## License
 

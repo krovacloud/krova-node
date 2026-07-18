@@ -270,7 +270,7 @@ Thrown by the throwing helpers. Has a `.reason` of
 - Stale requests are rejected via the timestamp tolerance window, mitigating
   replay attacks.
 - Always keep your webhook secret out of source control and rotate it if
-  exposed. See [SECURITY.md](./SECURITY.md).
+  exposed. See [SECURITY.md](https://github.com/krovacloud/krova-node/blob/main/SECURITY.md).
 
 ## Related packages
 
