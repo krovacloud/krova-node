@@ -30,4 +30,7 @@ latest version on npm, publishes it (with provenance), and records a
 `<name>@<version>` git tag + GitHub release. Unchanged packages are skipped.
 An explicit higher version in a package's `package.json` is honored as-is.
 
-The `NPM_TOKEN` secret (npm Automation token) must be available to Actions.
+Publishing uses npm **trusted publishing (OIDC)** — the release workflow has
+`id-token: write` and runs `pnpm publish --provenance`, so **no `NPM_TOKEN`** (or
+any long-lived npm token) is required. See "How releases work" in
+[CONTRIBUTING.md](./CONTRIBUTING.md).
