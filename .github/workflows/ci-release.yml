@@ -34,7 +34,7 @@ jobs:
       # absent, which BLOCKS OIDC trusted publishing (the client sends the
       # placeholder instead of minting an OIDC credential). With no token in
       # the environment, pnpm 10.13+ performs the OIDC exchange itself.
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
