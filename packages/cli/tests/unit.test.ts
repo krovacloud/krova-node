@@ -60,8 +60,8 @@ test("upsert only overwrites baseUrl with a non-empty value (no transient --base
   // A later merge without a baseUrl (e.g. caching a resolved space) must NOT
   // clear or change the stored base URL.
   upsert(cfg, { name: "prod", spaceId: "space_1" });
-  assert.equal(cfg.contexts[0]?.baseUrl, "https://krova.cloud/api/v1");
-  assert.equal(cfg.contexts[0]?.spaceId, "space_1");
+  assert.equal(cfg.contexts?.[0]?.baseUrl, "https://krova.cloud/api/v1");
+  assert.equal(cfg.contexts?.[0]?.spaceId, "space_1");
 });
 
 test("validateSSHHost rejects option/metacharacter injection", () => {

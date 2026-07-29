@@ -67,12 +67,34 @@ export interface SpaceInfo {
   slug?: string;
 }
 
-/** GET /space with the given key; null on 404 / error (non-fatal). */
-export async function fetchSpace(
+/**
+ * The outcome of actually asking the server whether a key works.
+ *
+ * A stored key is NOT a working key: it can be revoked server-side at any
+ * time, and the local config has no way to know. Every caller that wants to
+ * report on credentials must distinguish "rejected" from "couldn't reach the
+ * server" — collapsing either into a plain boolean is what made `auth status`
+ * print "Authenticated: yes" for a key the API answers 401 to.
+ */
+export type AuthProbe =
+  /** The server accepted the key and told us which space it belongs to. */
+  | { state: "valid"; space: SpaceInfo }
+  /** The key is absent locally — nothing to check. */
+  | { state: "missing" }
+  /** The server actively rejected the key (revoked, deleted, wrong env). */
+  | { state: "rejected"; status: number }
+  /** Endpoint absent (older server) — the key may still be fine. */
+  | { state: "unsupported" }
+  /** Network/DNS/timeout — says nothing about the key's validity. */
+  | { state: "unreachable"; error: string };
+
+/** Ask the server whether `apiKey` is actually accepted. Never throws. */
+export async function probeAuth(
   baseUrl: string,
   apiKey: string,
   timeoutMs: number
-): Promise<SpaceInfo | null> {
+): Promise<AuthProbe> {
+  if (!apiKey) return { state: "missing" };
   try {
     const { status, data } = await rawRequest<SpaceInfo>({
       method: "GET",
@@ -81,11 +103,27 @@ export async function fetchSpace(
       apiKey,
       timeoutMs,
     });
-    if (status === 200 && data?.id) return data;
-    return null;
-  } catch {
-    return null;
+    if (status === 200 && data?.id) return { state: "valid", space: data };
+    if (status === 401 || status === 403) return { state: "rejected", status };
+    if (status === 404) return { state: "unsupported" };
+    return { state: "unreachable", error: `HTTP ${status}` };
+  } catch (err) {
+    return {
+      state: "unreachable",
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
+}
+
+/** GET /space with the given key; null on 404 / error (non-fatal). Thin
+ *  wrapper over `probeAuth` for callers that only need the space. */
+export async function fetchSpace(
+  baseUrl: string,
+  apiKey: string,
+  timeoutMs: number
+): Promise<SpaceInfo | null> {
+  const probe = await probeAuth(baseUrl, apiKey, timeoutMs);
+  return probe.state === "valid" ? probe.space : null;
 }
 
 /** Resolve the active space id: explicit value wins, else auto-detect via
