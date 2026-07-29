@@ -3,7 +3,7 @@ import { Command } from "commander";
 import { configPath, maskKey } from "../lib/config.js";
 import { printJSON, printKeyValue } from "../lib/output.js";
 import { persistLogin } from "../lib/persist.js";
-import { getRuntime } from "../lib/runtime.js";
+import { getRuntime, probeAuth } from "../lib/runtime.js";
 
 /** Prompt for an API key. Hidden echo when stdin is a TTY. */
 function promptAPIKey(): Promise<string> {
@@ -73,30 +73,79 @@ export function authCommand(): Command {
 
   auth
     .command("status")
-    .description("show the resolved credentials")
-    .action((_opts, cmd: Command) => {
+    .description("show the resolved credentials and verify them against the API")
+    .option("--offline", "skip the live check; only report what's stored locally")
+    .action(async (opts, cmd: Command) => {
       const rt = getRuntime(cmd);
-      const authenticated = Boolean(rt.res.apiKey);
+      const offline = Boolean(opts.offline);
+
+      // A STORED key is not a WORKING key — it can be revoked server-side at
+      // any time. Reporting local presence as "Authenticated: yes" sends the
+      // user hunting for a config problem that isn't there, so unless they ask
+      // for --offline we go and ask the API.
+      const probe = offline
+        ? ({ state: "missing" } as const)
+        : await probeAuth(rt.res.baseUrl, rt.res.apiKey, rt.timeoutMs);
+
+      const hasKey = Boolean(rt.res.apiKey);
+      const authenticated = offline ? hasKey : probe.state === "valid";
+
+      const detail =
+        offline || !hasKey
+          ? ""
+          : probe.state === "rejected"
+            ? `the API rejected this key (HTTP ${probe.status}) — it was revoked or belongs to another environment; run \`krova login\``
+            : probe.state === "unreachable"
+              ? `could not reach ${rt.res.baseUrl} (${probe.error}) — the key was NOT verified`
+              : probe.state === "unsupported"
+                ? "this server has no /space endpoint, so the key could not be verified"
+                : "";
+
+      // Live space beats the cached copy: a stale spaceId in the config is
+      // exactly the kind of drift this command exists to surface.
+      const spaceId = probe.state === "valid" ? probe.space.id : rt.res.spaceId;
+
       if (rt.json) {
         return printJSON({
           authenticated,
+          verified: probe.state === "valid",
+          checkState: offline ? "skipped" : probe.state,
+          detail: detail || undefined,
           context: rt.res.contextName,
           apiKeySource: rt.res.apiKeySource,
           apiKeyMasked: maskKey(rt.res.apiKey),
-          spaceId: rt.res.spaceId,
+          spaceId,
           spaceSource: rt.res.spaceIdSource,
           baseUrl: rt.res.baseUrl,
           configPath: configPath(),
         });
       }
+
+      const label = !hasKey
+        ? "no (no API key found)"
+        : offline
+          ? "not checked (--offline; a key is stored)"
+          : probe.state === "valid"
+            ? "yes (verified against the API)"
+            : probe.state === "rejected"
+              ? "NO — key rejected by the API"
+              : "unknown (could not verify)";
+
       printKeyValue([
-        ["Authenticated", authenticated ? "yes" : "no"],
+        ["Authenticated", label],
         ["Context", rt.res.contextName || "—"],
         ["API key", rt.res.apiKey ? `${maskKey(rt.res.apiKey)} (${rt.res.apiKeySource})` : "—"],
-        ["Space ID", rt.res.spaceId ? `${rt.res.spaceId} (${rt.res.spaceIdSource})` : "—"],
+        ["Space ID", spaceId ? `${spaceId} (${rt.res.spaceIdSource})` : "—"],
         ["Base URL", rt.res.baseUrl],
         ["Config", configPath()],
       ]);
+      if (detail) process.stdout.write(`\n${detail}\n`);
+
+      // Exit non-zero only when the credentials are KNOWN to be unusable, so
+      // scripts and CI can gate on `krova auth status` (matches
+      // `gh auth status`). An unreachable or too-old API says nothing about
+      // the key, so those stay 0 rather than failing a build over a blip.
+      if (!hasKey || probe.state === "rejected") process.exitCode = 1;
     });
 
   return auth;
