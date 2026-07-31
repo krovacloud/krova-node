@@ -48,7 +48,7 @@ test('exposes all resources', () => {
 
 test('Cube resource has the expected operations', () => {
 	const ops = operationsForResource('cube').sort();
-	assert.deepEqual(ops, ['create', 'delete', 'get', 'list', 'power-off', 'wake']);
+	assert.deepEqual(ops, ['create', 'delete', 'get', 'list', 'power-off', 'restart', 'wake']);
 });
 
 test('Catalog resource has the expected operations', () => {
@@ -106,6 +106,32 @@ test('Cube operations route to the correct space-scoped endpoints', () => {
 	assert.match(routes['power-off'].url, /\/power-off$/);
 	assert.equal(routes.wake.method, 'POST');
 	assert.match(routes.wake.url, /\/wake$/);
+	assert.equal(routes.restart.method, 'POST');
+	assert.match(routes.restart.url, /\/restart$/);
+});
+
+// Restart is the only way a Cube picks up a refreshed guest kernel, and it acts
+// on a RUNNING Cube — so it needs the Cube ID field, which renders only for the
+// operations listed in that field's displayOptions. Omit it there and the
+// operation still appears in the dropdown and is then unusable, with nothing in
+// the node to say why.
+test('Restart renders the Cube ID field and is not confusable with Start', () => {
+	const cubeId = desc.properties.find(
+		(p) => p.name === 'cubeId' && p.displayOptions?.show?.resource?.includes('cube'),
+	);
+	assert.ok(
+		cubeId.displayOptions.show.operation.includes('restart'),
+		'restart must be in the Cube ID field displayOptions or the field never renders',
+	);
+
+	const opProp = desc.properties.find(
+		(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes('cube'),
+	);
+	const restart = opProp.options.find((o) => o.value === 'restart');
+	// The description is the only thing distinguishing this from Start in the UI.
+	assert.match(restart.description, /cold-restart/i);
+	assert.match(restart.description, /kernel/i);
+	assert.match(restart.description, /running/i);
 });
 
 test('path params (spaceId/cubeId) are URL-encoded to prevent path-segment injection', () => {
