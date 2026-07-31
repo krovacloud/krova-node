@@ -94,6 +94,7 @@ describe("tool registry", () => {
       "create_cube",
       "power_off_cube",
       "wake_cube",
+      "restart_cube",
       "delete_cube",
       "list_regions",
       "list_images",
@@ -158,6 +159,7 @@ describe("tool registry", () => {
     for (const name of [
       "power_off_cube",
       "wake_cube",
+      "restart_cube",
       "create_domain",
       "create_snapshot",
       "create_tcp_mapping",
@@ -363,5 +365,27 @@ describe("resource tools (domains, snapshots, tcp)", () => {
     assert.equal(result.isError, undefined);
     assert.equal(mock.requests[0]!.url, "/spaces/space_abc/cubes/cube_1/restore");
     assert.equal((mock.requests[0]!.body as { snapshotId: string }).snapshotId, "snap_9");
+  });
+});
+
+describe("restart_cube", () => {
+  it("is described as a COLD restart that changes the kernel", () => {
+    // An in-Cube `reboot` looks equivalent to an agent but cannot change the
+    // kernel — Firecracker treats a guest reboot as a shutdown and the kernel
+    // is host-supplied. If this description stops saying so, an agent asked to
+    // "pick up the new kernel" may run `reboot` over SSH instead and silently
+    // leave the Cube on the old one, with no error to notice.
+    const tool = findTool("restart_cube");
+    assert.match(tool.description, /cold/i, "must say COLD restart");
+    assert.match(tool.description, /kernel/i, "must mention the kernel");
+    assert.match(tool.description, /preserved/i, "must say disk state is preserved");
+  });
+
+  it("is NOT marked idempotent — each call is a real stop+relaunch", () => {
+    // Unlike power_off/wake (where a repeat is a no-op), every restart is an
+    // actual interruption, and the API 409s a concurrent one rather than
+    // coalescing. Marking it idempotent would invite an agent to retry freely.
+    const tool = findTool("restart_cube");
+    assert.equal(tool.annotations.idempotentHint, false);
   });
 });
