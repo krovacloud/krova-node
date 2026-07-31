@@ -282,10 +282,15 @@ export class KrovaClient {
     },
 
     /**
-     * Update a Cube's SSH port.
+     * Update the IN-CUBE port that SSH is forwarded to.
+     *
+     * `cubePort` is the port **inside** the Cube that sshd listens on — NOT the
+     * host port you connect to. The host port is allocated by Krova and is not
+     * changed by this call. Pointing this at a port nothing is listening on
+     * inside the Cube will silently make SSH unreachable; the default is 22.
      *
      * The Krova Cloud API exposes no general Cube-mutation endpoint; the only
-     * mutable Cube field over the API is its SSH port, via
+     * mutable Cube field over the API is this port, via
      * `PUT /spaces/{spaceId}/cubes/{cubeId}/ssh-port`. This helper maps to that
      * endpoint. (Compute resize / rename are not part of the public API.)
      */
