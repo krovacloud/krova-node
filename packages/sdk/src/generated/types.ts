@@ -515,7 +515,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Start a stopped Cube */
+        /** Start a stopped Cube (cold boot) */
         post: {
             parameters: {
                 query?: never;
@@ -545,6 +545,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/spaces/{spaceId}/cubes/{cubeId}/restart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restart a running Cube
+         * @description Cold-restarts the Cube: the hypervisor process is stopped and relaunched, so the Cube boots against the host's current kernel. This is how a Cube picks up a refreshed guest kernel after a platform image update — a `reboot` issued inside the Cube cannot do it, because the kernel is supplied externally by the host. Disk state is preserved; only the kernel changes. The Cube must be `running` (a stopped Cube already picks up the latest kernel when started). Concurrent restarts of the same Cube are rejected with 409 rather than queued twice.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    cubeId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Restart enqueued */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                404: components["responses"]["NotFound"];
+                /** @description Cube is not running, or a restart is already in progress */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                429: components["responses"]["RateLimited"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/spaces/{spaceId}/cubes/{cubeId}/ssh-port": {
         parameters: {
             query?: never;
@@ -555,7 +604,7 @@ export interface paths {
         get?: never;
         /**
          * Change a Cube's SSH port
-         * @description Sets the host port the Cube's SSH is reachable on. The change is applied atomically (the old port mapping is replaced).
+         * @description Sets the port INSIDE the Cube that SSH is forwarded to — NOT the host port you connect to. The host port is allocated by Krova and is unchanged by this call. Pointing this at a port nothing is listening on inside the Cube will make SSH unreachable; the default is 22. The change is applied atomically (the old port mapping is replaced).
          */
         put: {
             parameters: {
@@ -570,7 +619,7 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        /** @description The new SSH port. */
+                        /** @description The port inside the Cube that sshd listens on (default 22). This is the Cube side of the mapping, not the host port. */
                         cubePort: number;
                     };
                 };
@@ -1525,7 +1574,7 @@ export interface paths {
                     "application/json": {
                         /** Format: uri */
                         url: string;
-                        events: ("cube.running" | "cube.stopped" | "cube.error" | "cube.deleted")[];
+                        events: ("cube.created" | "cube.running" | "cube.stopped" | "cube.error" | "cube.deleted" | "cube.cold_restarted" | "cube.transfer.started" | "cube.transfer.completed" | "cube.transfer.failed" | "cube.resize.started" | "cube.resize.completed" | "cube.resize.failed" | "resource.alert.memory" | "resource.alert.cpu" | "resource.alert.disk" | "domain.alert.error_4xx" | "domain.alert.error_5xx" | "snapshot.created" | "snapshot.restored" | "snapshot.deleted" | "snapshot.pinned" | "snapshot.promoted_to_backup" | "snapshot.exported" | "backup.created" | "backup.deleted" | "backup.redeployed" | "domain.added" | "domain.active" | "domain.removed" | "tcp_mapping.added" | "tcp_mapping.removed" | "tcp_mapping.updated" | "hosting.provisioned" | "hosting.suspended" | "hosting.unsuspended" | "hosting.deleted" | "hosting.plan_changed" | "hosting.renewed" | "hosting.cancellation_scheduled" | "hosting.suspended_for_non_payment" | "hosting.deleted_after_recovery" | "member.invited" | "member.joined" | "member.removed" | "member.role_changed")[];
                     };
                 };
             };

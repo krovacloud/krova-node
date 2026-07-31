@@ -211,3 +211,24 @@ test("cubes ssh-port describes the IN-CUBE port, never the host port", () => {
     "--port help must not call it a host port",
   );
 });
+
+test("cubes restart exists and is described as a COLD restart", () => {
+  // A `reboot` from inside a Cube looks equivalent but cannot change the
+  // kernel: Firecracker treats a guest reboot as a shutdown and the kernel is
+  // supplied by the host. If this command stops saying "cold", users will
+  // reach for in-Cube reboot after an image update and silently keep the old
+  // kernel — the failure is invisible, which is what makes the wording matter.
+  const cubes = cubesCommand();
+  const restart = cubes.commands.find((c) => c.name() === "restart");
+  assert.ok(restart, "restart subcommand should exist");
+  assert.match(
+    restart.description(),
+    /cold/i,
+    "description must say this is a cold restart",
+  );
+  assert.match(
+    restart.description(),
+    /kernel/i,
+    "description must say it picks up a refreshed kernel",
+  );
+});

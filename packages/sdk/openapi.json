@@ -105,7 +105,7 @@
               "pending",
               "booting",
               "running",
-              "sleeping",
+              "stopped",
               "stopping",
               "error",
               "deleted"
@@ -1179,9 +1179,9 @@
         }
       }
     },
-    "/spaces/{spaceId}/cubes/{cubeId}/sleep": {
+    "/spaces/{spaceId}/cubes/{cubeId}/power-off": {
       "post": {
-        "summary": "Sleep a running Cube",
+        "summary": "Power off a running Cube",
         "tags": [
           "Cubes"
         ],
@@ -1205,7 +1205,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Sleep enqueued"
+            "description": "Power off enqueued"
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -1218,7 +1218,7 @@
     },
     "/spaces/{spaceId}/cubes/{cubeId}/wake": {
       "post": {
-        "summary": "Wake a sleeping Cube",
+        "summary": "Start a stopped Cube (cold boot)",
         "tags": [
           "Cubes"
         ],
@@ -1242,7 +1242,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Wake enqueued"
+            "description": "Start enqueued"
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -1253,10 +1253,51 @@
         }
       }
     },
+    "/spaces/{spaceId}/cubes/{cubeId}/restart": {
+      "post": {
+        "summary": "Restart a running Cube",
+        "description": "Cold-restarts the Cube: the hypervisor process is stopped and relaunched, so the Cube boots against the host's current kernel. This is how a Cube picks up a refreshed guest kernel after a platform image update — a `reboot` issued inside the Cube cannot do it, because the kernel is supplied externally by the host. Disk state is preserved; only the kernel changes. The Cube must be `running` (a stopped Cube already picks up the latest kernel when started). Concurrent restarts of the same Cube are rejected with 409 rather than queued twice.",
+        "tags": [
+          "Cubes"
+        ],
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cubeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restart enqueued"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Cube is not running, or a restart is already in progress"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
     "/spaces/{spaceId}/cubes/{cubeId}/ssh-port": {
       "put": {
         "summary": "Change a Cube's SSH port",
-        "description": "Sets the host port the Cube's SSH is reachable on. The change is applied atomically (the old port mapping is replaced).",
+        "description": "Sets the port INSIDE the Cube that SSH is forwarded to — NOT the host port you connect to. The host port is allocated by Krova and is unchanged by this call. Pointing this at a port nothing is listening on inside the Cube will make SSH unreachable; the default is 22. The change is applied atomically (the old port mapping is replaced).",
         "tags": [
           "Cubes"
         ],
@@ -1292,7 +1333,7 @@
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 65535,
-                    "description": "The new SSH port."
+                    "description": "The port inside the Cube that sshd listens on (default 22). This is the Cube side of the mapping, not the host port."
                   }
                 }
               }
@@ -2761,10 +2802,51 @@
                     "items": {
                       "type": "string",
                       "enum": [
+                        "cube.created",
                         "cube.running",
-                        "cube.sleeping",
+                        "cube.stopped",
                         "cube.error",
-                        "cube.deleted"
+                        "cube.deleted",
+                        "cube.cold_restarted",
+                        "cube.transfer.started",
+                        "cube.transfer.completed",
+                        "cube.transfer.failed",
+                        "cube.resize.started",
+                        "cube.resize.completed",
+                        "cube.resize.failed",
+                        "resource.alert.memory",
+                        "resource.alert.cpu",
+                        "resource.alert.disk",
+                        "domain.alert.error_4xx",
+                        "domain.alert.error_5xx",
+                        "snapshot.created",
+                        "snapshot.restored",
+                        "snapshot.deleted",
+                        "snapshot.pinned",
+                        "snapshot.promoted_to_backup",
+                        "snapshot.exported",
+                        "backup.created",
+                        "backup.deleted",
+                        "backup.redeployed",
+                        "domain.added",
+                        "domain.active",
+                        "domain.removed",
+                        "tcp_mapping.added",
+                        "tcp_mapping.removed",
+                        "tcp_mapping.updated",
+                        "hosting.provisioned",
+                        "hosting.suspended",
+                        "hosting.unsuspended",
+                        "hosting.deleted",
+                        "hosting.plan_changed",
+                        "hosting.renewed",
+                        "hosting.cancellation_scheduled",
+                        "hosting.suspended_for_non_payment",
+                        "hosting.deleted_after_recovery",
+                        "member.invited",
+                        "member.joined",
+                        "member.removed",
+                        "member.role_changed"
                       ]
                     }
                   }
