@@ -52,6 +52,7 @@ console.log(`  ${cube.resources.vcpu} vCPU / ${cube.resources.ramGb} GB RAM, ima
 // Sleep it, then wake it
 await krova.cubes.powerOff("space_123", cube.id);
 await krova.cubes.wake("space_123", cube.id);
+await krova.cubes.restart("space_123", cube.id); // cold restart
 ```
 
 ## Authentication
@@ -135,6 +136,11 @@ await krova.cubes.update("space_123", cube.id, { cubePort: 2222 });
 // lifecycle — sleep, wake, delete are asynchronous (enqueued)
 await krova.cubes.powerOff("space_123", cube.id);
 await krova.cubes.wake("space_123", cube.id);
+// Cold restart: reboots against the host's current kernel, preserving the disk.
+// The only way to pick up a refreshed guest kernel — a `reboot` run INSIDE the
+// Cube cannot, because the kernel is supplied by the host, and it reports no
+// error. Requires the Cube to be `running`; a concurrent restart 409s.
+await krova.cubes.restart("space_123", cube.id);
 await krova.cubes.delete("space_123", cube.id);
 ```
 
