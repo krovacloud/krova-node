@@ -121,6 +121,26 @@ function actionCmd(
     });
 }
 
+function restartCmd(): Command {
+  return new Command("restart")
+    .argument("<cube>", "cube name or ID")
+    .description("restart a Cube (cold restart — picks up a refreshed kernel)")
+    .action(async (cubeRef: string, _opts, cmd: Command) => {
+      const rt = getRuntime(cmd);
+      const client = makeClient(rt.res);
+      const space = await resolveSpace(rt);
+      const id = await resolveCube(client, space, cubeRef);
+      await client.cubes.restart(space, id);
+      if (rt.json) return printJSON({ id, result: "Restarting" });
+      // Say COLD explicitly. A `reboot` from inside the Cube looks equivalent
+      // but cannot change the kernel — Firecracker treats a guest reboot as a
+      // shutdown and the kernel comes from the host.
+      process.stdout.write(
+        `Restarting cube ${id} (cold restart — disk state is preserved)\n`,
+      );
+    });
+}
+
 function sshPortCmd(): Command {
   return new Command("ssh-port")
     .argument("<cube>", "cube name or ID")
@@ -163,6 +183,7 @@ export function cubesCommand(): Command {
   );
   cubes.addCommand(actionCmd("wake", "Starting", (c, s, id) => c.wake(s, id)));
   cubes.addCommand(actionCmd("delete", "Deleting", (c, s, id) => c.delete(s, id)));
+  cubes.addCommand(restartCmd());
   cubes.addCommand(sshPortCmd());
   return cubes;
 }

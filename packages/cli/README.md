@@ -44,6 +44,7 @@ krova cubes create \
   --ssh-key "$(cat ~/.ssh/id_ed25519.pub)"
 krova cubes power-off <cube>
 krova cubes wake <cube>
+krova cubes restart <cube>   # cold restart — the only way to pick up a new kernel
 krova cubes ssh-port <cube> --port 2222   # in-Cube sshd port, NOT the host port
 krova cubes delete <cube>
 ```

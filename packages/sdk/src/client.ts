@@ -333,6 +333,28 @@ export class KrovaClient {
     },
 
     /** Start a stopped Cube — a cold boot (asynchronous — start is enqueued). */
+    /**
+     * Restart a Cube (COLD restart).
+     *
+     * The hypervisor process is stopped and relaunched, so the Cube boots
+     * against the host's current kernel. This is the only way a Cube picks up a
+     * refreshed guest kernel after a platform image update — a `reboot` issued
+     * INSIDE the Cube cannot do it, because Firecracker treats a guest reboot as
+     * a shutdown and the kernel is supplied externally by the host.
+     *
+     * Disk state is preserved; only the kernel changes. The Cube must be
+     * `running`. Concurrent restarts of the same Cube are rejected (409) rather
+     * than queued twice.
+     */
+    restart: async (spaceId: string, cubeId: string): Promise<unknown> => {
+      const { data, error, response } = await this.raw.POST(
+        "/spaces/{spaceId}/cubes/{cubeId}/restart",
+        { params: { path: { spaceId, cubeId } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data;
+    },
+
     wake: async (spaceId: string, cubeId: string): Promise<unknown> => {
       const { data, error, response } = await this.raw.POST(
         "/spaces/{spaceId}/cubes/{cubeId}/wake",
