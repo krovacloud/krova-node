@@ -124,8 +124,11 @@ function actionCmd(
 function sshPortCmd(): Command {
   return new Command("ssh-port")
     .argument("<cube>", "cube name or ID")
-    .requiredOption("--port <n>", "the host port to expose SSH on")
-    .description("change the host port a Cube's SSH is reachable on")
+    .requiredOption(
+      "--port <n>",
+      "the port INSIDE the Cube that sshd listens on (default 22)",
+    )
+    .description("change the in-Cube port that SSH is forwarded to (not the host port)")
     .action(async (cubeRef: string, opts, cmd: Command) => {
       const rt = getRuntime(cmd);
       const client = makeClient(rt.res);
@@ -137,7 +140,16 @@ function sshPortCmd(): Command {
       }
       await client.cubes.update(space, id, { cubePort } as never);
       if (rt.json) return printJSON({ id, cubePort });
-      process.stdout.write(`SSH port for cube ${id} set to ${cubePort}\n`);
+      // Be explicit about WHICH side changed. The host port is assigned by
+      // Krova and is not affected by this call, so pointing this at a port
+      // nothing is listening on inside the Cube silently breaks SSH access.
+      process.stdout.write(
+        `Cube ${id}: SSH now forwarded to in-Cube port ${cubePort}.\n` +
+          (cubePort === 22
+            ? ""
+            : `Warning: sshd inside the Cube must be listening on ${cubePort}, ` +
+              "or SSH will stop working. The default is 22.\n"),
+      );
     });
 }
 

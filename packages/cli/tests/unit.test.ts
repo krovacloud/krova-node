@@ -20,6 +20,7 @@ import {
   validateSSHUser,
 } from "../src/lib/ssh.js";
 import { flattenRows } from "../src/commands/catalog.js";
+import { cubesCommand } from "../src/commands/cubes.js";
 import { parseListenAddr } from "../src/commands/webhooks.js";
 
 test("parseListenAddr handles host:port, bare host, bare port, and IPv6", () => {
@@ -177,4 +178,36 @@ test("legacy single-key config migrates to a default context", () => {
     if (prev === undefined) delete process.env.XDG_CONFIG_HOME;
     else process.env.XDG_CONFIG_HOME = prev;
   }
+});
+
+test("cubes ssh-port describes the IN-CUBE port, never the host port", () => {
+  // Regression: the option was documented as "the host port to expose SSH on"
+  // while the value is sent to the API as `cubePort` — the port INSIDE the
+  // Cube. Following the help text set the in-Cube port to a host-style value
+  // (e.g. 30201), sshd was still on 22, and SSH silently became unreachable.
+  // The host port is allocated by Krova and this command does not change it.
+  const cubes = cubesCommand();
+  const sshPort = cubes.commands.find((c) => c.name() === "ssh-port");
+  assert.ok(sshPort, "ssh-port subcommand should exist");
+
+  const desc = sshPort.description();
+  assert.match(desc, /in-Cube|inside the Cube/i, "description must say in-Cube");
+  assert.doesNotMatch(
+    desc.replace(/not the host port/i, ""),
+    /host port/i,
+    "description must not describe --port as a host port",
+  );
+
+  const portOpt = sshPort.options.find((o) => o.long === "--port");
+  assert.ok(portOpt, "--port option should exist");
+  assert.match(
+    portOpt.description,
+    /INSIDE the Cube|in-Cube/i,
+    "--port help must say the port is inside the Cube",
+  );
+  assert.doesNotMatch(
+    portOpt.description,
+    /host port/i,
+    "--port help must not call it a host port",
+  );
 });
