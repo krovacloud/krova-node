@@ -121,7 +121,7 @@ All 19 tools, their parameters, and what they do. Every tool's `spaceId` is opti
 | `get_cube` | `spaceId?`, `cubeId` | Get details for a single Cube by id. |
 | `create_cube` | `spaceId?`, `name`, `image`, `vcpu`, `ramGb`, `diskGb`, `sshPublicKey`, `region?`, `userData?` | Provision a new Cube. Asynchronous — the returned Cube starts in a pending state. **Billable. Destructive.** |
 | `power_off_cube` | `spaceId?`, `cubeId` | Power off a running Cube (releases compute + host RAM, keeps disk). Asynchronous. |
-| `wake_cube` | `spaceId?`, `cubeId` | Start a stopped Cube (cold boot). Asynchronous. |
+| `wake_cube`, `restart_cube` | `spaceId?`, `cubeId` | Start a stopped Cube (cold boot). Asynchronous. |
 | `delete_cube` | `spaceId?`, `cubeId` | Delete a Cube. Asynchronous — deletion is enqueued. **Destructive.** |
 | `list_regions` | — | List regions with available capacity. |
 | `list_images` | — | List available OS images for new Cubes. |

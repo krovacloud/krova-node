@@ -215,6 +215,20 @@ export const TOOLS: ToolDef[] = [
       client.cubes.wake(resolveSpaceId(args.spaceId, ctx), args.cubeId),
   }),
   defineTool({
+    name: "restart_cube",
+    title: "Restart Cube",
+    description:
+      "Restart a running Cube — a COLD restart (asynchronous). The hypervisor process is stopped and relaunched, so the Cube boots against the host's current kernel. This is the only way a Cube picks up a refreshed guest kernel after a platform image update: a `reboot` issued INSIDE the Cube cannot do it, because the kernel is supplied externally by the host. Disk state is preserved; only the kernel changes. The Cube must be running.",
+    // Mutates state and briefly interrupts service, but preserves data — not
+    // destructive. NOT idempotent in the useful sense: each call is a real
+    // stop+relaunch, and the API rejects a concurrent restart of the same Cube
+    // with 409 rather than coalescing, so repeat calls are not free no-ops.
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+    inputSchema: { ...spaceIdField, ...cubeIdField },
+    handler: (client, args, ctx) =>
+      client.cubes.restart(resolveSpaceId(args.spaceId, ctx), args.cubeId),
+  }),
+  defineTool({
     name: "delete_cube",
     title: "Delete Cube",
     description:
