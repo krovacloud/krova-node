@@ -48,6 +48,7 @@ Cubes are scoped to a **Space**, so every Cube operation takes a **Space ID**.
 | **Get** | Space ID, Cube ID | Retrieve a single Cube by ID | `GET /spaces/{spaceId}/cubes/{cubeId}` |
 | **Create** | Space ID, Name, Image, SSH Public Key, vCPU, RAM (GB), Disk (GB); optional Region, User Data | Create a new Cube in a Space | `POST /spaces/{spaceId}/cubes` |
 | **Power Off** | Space ID, Cube ID | Power off a running Cube — preserves data, stops compute billing, frees host RAM | `POST /spaces/{spaceId}/cubes/{cubeId}/power-off` |
+| **Restart** | Space ID, Cube ID | Cold-restart a **running** Cube — boots against the host's current kernel, preserving the disk. The only way to pick up a refreshed guest kernel: a `reboot` issued inside the Cube cannot change it, and reports no error | `POST /spaces/{spaceId}/cubes/{cubeId}/restart` |
 | **Start** | Space ID, Cube ID | Start a stopped Cube (cold boot) | `POST /spaces/{spaceId}/cubes/{cubeId}/wake` |
 | **Delete** | Space ID, Cube ID | Delete a Cube (asynchronous) | `DELETE /spaces/{spaceId}/cubes/{cubeId}` |
 
