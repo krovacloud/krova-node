@@ -144,6 +144,19 @@ export class Krova implements INodeType {
 						},
 					},
 					{
+						name: 'Restart',
+						value: 'restart',
+						action: 'Restart a cube',
+						description:
+							'Cold-restart a running Cube. Boots against the host current kernel, preserving the disk. The only way to pick up a refreshed guest kernel, as a reboot issued inside the Cube cannot change it. Requires the Cube to be running.',
+						routing: {
+							request: {
+								method: 'POST',
+								url: '=/spaces/{{ encodeURIComponent($parameter["spaceId"]) }}/cubes/{{ encodeURIComponent($parameter["cubeId"]) }}/restart',
+							},
+						},
+					},
+					{
 						name: 'Start',
 						value: 'wake',
 						action: 'Start a cube',
@@ -185,7 +198,7 @@ export class Krova implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['cube'],
-						operation: ['get', 'delete', 'power-off', 'wake'],
+						operation: ['get', 'delete', 'power-off', 'restart', 'wake'],
 					},
 				},
 			},
