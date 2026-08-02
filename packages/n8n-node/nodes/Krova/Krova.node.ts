@@ -160,7 +160,7 @@ export class Krova implements INodeType {
 						name: 'Start',
 						value: 'wake',
 						action: 'Start a cube',
-						description: 'Start a stopped Cube (cold boot)',
+						description: 'Start a stopped Cube',
 						routing: {
 							request: {
 								method: 'POST',

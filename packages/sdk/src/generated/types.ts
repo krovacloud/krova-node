@@ -515,7 +515,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Start a stopped Cube (cold boot) */
+        /** Start a stopped Cube */
         post: {
             parameters: {
                 query?: never;

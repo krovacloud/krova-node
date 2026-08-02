@@ -49,7 +49,7 @@ const cube = await krova.cubes.create("space_123", {
 console.log(`Created cube ${cube.id} (${cube.state})`);
 console.log(`  ${cube.resources.vcpu} vCPU / ${cube.resources.ramGb} GB RAM, image ${cube.image}`);
 
-// Sleep it, then wake it
+// Power it off, then start it again
 await krova.cubes.powerOff("space_123", cube.id);
 await krova.cubes.wake("space_123", cube.id);
 await krova.cubes.restart("space_123", cube.id); // cold restart
@@ -105,8 +105,8 @@ Ergonomic helpers for the Cube lifecycle. Each unwraps the response body and thr
 | `get` | `(spaceId, cubeId)` | the Cube body |
 | `update` | `(spaceId, cubeId, body)` | updates the Cube's SSH port |
 | `delete` | `(spaceId, cubeId)` | enqueues deletion |
-| `sleep` | `(spaceId, cubeId)` | enqueues sleep |
-| `wake` | `(spaceId, cubeId)` | enqueues wake |
+| `powerOff` | `(spaceId, cubeId)` | enqueues a power-off |
+| `wake` | `(spaceId, cubeId)` | enqueues a start |
 | `ssh` | `(spaceId, cubeId)` | the Cube's SSH connection info (`host`, `port`, `user`, `hostKeys`) |
 | `restore` | `(spaceId, cubeId, snapshotId)` | enqueues a restore — replaces the Cube's disk from a snapshot |
 
@@ -133,7 +133,7 @@ const all = await krova.cubes.list("space_123");
 // update — the only mutable Cube field over the public API is the SSH port
 await krova.cubes.update("space_123", cube.id, { cubePort: 2222 });
 
-// lifecycle — sleep, wake, delete are asynchronous (enqueued)
+// lifecycle — powerOff, wake, delete are asynchronous (enqueued)
 await krova.cubes.powerOff("space_123", cube.id);
 await krova.cubes.wake("space_123", cube.id);
 // Cold restart: reboots against the host's current kernel, preserving the disk.

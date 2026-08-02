@@ -1218,7 +1218,7 @@
     },
     "/spaces/{spaceId}/cubes/{cubeId}/wake": {
       "post": {
-        "summary": "Start a stopped Cube (cold boot)",
+        "summary": "Start a stopped Cube",
         "tags": [
           "Cubes"
         ],

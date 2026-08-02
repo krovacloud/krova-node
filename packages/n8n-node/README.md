@@ -6,7 +6,7 @@
 
 Provision and manage **Krova Cloud** Cubes — and read the platform catalog — straight from your [n8n](https://n8n.io) workflows.
 
-[Krova Cloud](https://krova.cloud) is a self-service cloud platform for running lightweight **Cubes** (Firecracker microVMs). This community node wraps the Krova Cloud REST API so you can create, sleep, wake, list, and delete Cubes and query regions, images, and pricing — no glue code, no HTTP Request nodes.
+[Krova Cloud](https://krova.cloud) is a self-service cloud platform for running lightweight **Cubes** (Firecracker microVMs). This community node wraps the Krova Cloud REST API so you can create, power off, start, list, and delete Cubes and query regions, images, and pricing — no glue code, no HTTP Request nodes.
 
 [Installation](#installation) · [Credential setup](#credential-setup) · [Operations](#operations) · [Example workflow](#example-workflow) · [Compatibility](#compatibility) · [Related packages](#related-packages) · [Resources](#resources)
 
@@ -49,7 +49,7 @@ Cubes are scoped to a **Space**, so every Cube operation takes a **Space ID**.
 | **Create** | Space ID, Name, Image, SSH Public Key, vCPU, RAM (GB), Disk (GB); optional Region, User Data | Create a new Cube in a Space | `POST /spaces/{spaceId}/cubes` |
 | **Power Off** | Space ID, Cube ID | Power off a running Cube — preserves data, stops compute billing, frees host RAM | `POST /spaces/{spaceId}/cubes/{cubeId}/power-off` |
 | **Restart** | Space ID, Cube ID | Cold-restart a **running** Cube — boots against the host's current kernel, preserving the disk. The only way to pick up a refreshed guest kernel: a `reboot` issued inside the Cube cannot change it, and reports no error | `POST /spaces/{spaceId}/cubes/{cubeId}/restart` |
-| **Start** | Space ID, Cube ID | Start a stopped Cube (cold boot) | `POST /spaces/{spaceId}/cubes/{cubeId}/wake` |
+| **Start** | Space ID, Cube ID | Start a stopped Cube | `POST /spaces/{spaceId}/cubes/{cubeId}/wake` |
 | **Delete** | Space ID, Cube ID | Delete a Cube (asynchronous) | `DELETE /spaces/{spaceId}/cubes/{cubeId}` |
 
 #### Create field notes
@@ -105,11 +105,11 @@ Each operation returns the raw Krova Cloud API response, ready to reference down
 
 ## Example workflow
 
-**Provision a Cube every morning, sleep it every night — pay only for the hours you use.**
+**Provision a Cube every morning, power it off every night — pay only for the hours you use.**
 
 1. **Schedule Trigger** (`0 8 * * *`) → **Krova Cloud** — Resource *Catalog*, Operation *Get Images* — to resolve the image slug you want to boot.
 2. **Krova Cloud** — Resource *Cube*, Operation *Create*. Set the Space ID, a Name, the Image slug from step 1, your SSH Public Key, and `vCPU` / `RAM (GB)` / `Disk (GB)`. The response contains the new Cube's ID.
-3. A second **Schedule Trigger** (`0 20 * * *`) → **Krova Cloud** — Resource *Cube*, Operation *List* → **Filter** for the Cubes you want idle → **Krova Cloud** — Operation *Sleep* on each Cube ID.
+3. A second **Schedule Trigger** (`0 20 * * *`) → **Krova Cloud** — Resource *Cube*, Operation *List* → **Filter** for the Cubes you want idle → **Krova Cloud** — Operation *Power Off* on each Cube ID.
 
 Because a stopped Cube keeps its disk but stops compute billing, this pattern gives you an ephemeral-by-day, zero-compute-by-night box driven entirely from n8n. Swap *Power Off* for *Delete* if you want it torn down instead of parked.
 

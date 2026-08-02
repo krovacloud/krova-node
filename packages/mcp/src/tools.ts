@@ -206,7 +206,7 @@ export const TOOLS: ToolDef[] = [
   defineTool({
     name: "wake_cube",
     title: "Start Cube",
-    description: "Start a stopped Cube — a cold boot (asynchronous).",
+    description: "Start a stopped Cube (asynchronous).",
     // Mutates state, restores compute (resumes billing) but preserves data —
     // not destructive; idempotent (starting a running Cube is a no-op).
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
