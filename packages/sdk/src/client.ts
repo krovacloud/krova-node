@@ -332,7 +332,7 @@ export class KrovaClient {
       return data;
     },
 
-    /** Start a stopped Cube — a cold boot (asynchronous — start is enqueued). */
+    /** Start a stopped Cube (asynchronous — start is enqueued). */
     /**
      * Restart a Cube (COLD restart).
      *

@@ -7,7 +7,7 @@
 
 > **MCP server for [Krova Cloud](https://krova.cloud) — let Claude, Cursor, and any MCP client provision and manage Cubes (Firecracker microVMs) in natural language.**
 
-A [Model Context Protocol](https://modelcontextprotocol.io) server that exposes Krova Cloud as a set of tools an AI agent can call. Ask Claude to "spin up a 2-vCPU Ubuntu cube in us-east", "list my running cubes", or "sleep the idle ones", and it drives the [Krova Cloud API](https://krova.cloud) for you.
+A [Model Context Protocol](https://modelcontextprotocol.io) server that exposes Krova Cloud as a set of tools an AI agent can call. Ask Claude to "spin up a 2-vCPU Ubuntu cube in us-east", "list my running cubes", or "power off the idle ones", and it drives the [Krova Cloud API](https://krova.cloud) for you.
 
 It's a thin, fully typed bridge over the official [`@krovacloud/sdk`](https://www.npmjs.com/package/@krovacloud/sdk): each Krova Cloud operation is an MCP tool with a validated input schema, authenticated with your API key.
 
@@ -121,7 +121,7 @@ All 20 tools, their parameters, and what they do. Every tool's `spaceId` is opti
 | `get_cube` | `spaceId?`, `cubeId` | Get details for a single Cube by id. |
 | `create_cube` | `spaceId?`, `name`, `image`, `vcpu`, `ramGb`, `diskGb`, `sshPublicKey`, `region?`, `userData?` | Provision a new Cube. Asynchronous — the returned Cube starts in a pending state. **Billable. Destructive.** |
 | `power_off_cube` | `spaceId?`, `cubeId` | Power off a running Cube (releases compute + host RAM, keeps disk). Asynchronous. |
-| `wake_cube` | `spaceId?`, `cubeId` | Start a stopped Cube (cold boot). Asynchronous. |
+| `wake_cube` | `spaceId?`, `cubeId` | Start a stopped Cube. Asynchronous. |
 | `restart_cube` | `spaceId?`, `cubeId` | Restart a **running** Cube. This is a COLD restart — the Cube boots against the host's current kernel, so it is the only way to pick up a refreshed guest kernel (a `reboot` issued inside the Cube cannot, and reports no error). Disk state is preserved. Asynchronous; a concurrent restart is rejected, not queued. |
 | `delete_cube` | `spaceId?`, `cubeId` | Delete a Cube. Asynchronous — deletion is enqueued. **Destructive.** |
 | `list_regions` | — | List regions with available capacity. |
