@@ -101,6 +101,7 @@ describe("tool registry", () => {
       "get_pricing",
       "list_domains",
       "create_domain",
+      "update_domain",
       "delete_domain",
       "list_snapshots",
       "create_snapshot",
@@ -387,5 +388,42 @@ describe("restart_cube", () => {
     // coalescing. Marking it idempotent would invite an agent to retry freely.
     const tool = findTool("restart_cube");
     assert.equal(tool.annotations.idempotentHint, false);
+  });
+});
+
+describe("origin scheme", () => {
+  // The origin scheme is why `update_domain` exists: a Cube that terminates TLS
+  // itself (a control panel holding its own certificate) answers plain HTTP with
+  // a redirect, so an already-attached domain has to be switchable after the
+  // fact — create-only would not serve the real case.
+  it("is settable on create and on update, and only accepts http or https", () => {
+    for (const name of ["create_domain", "update_domain"]) {
+      const tool = TOOLS.find((t) => t.name === name);
+      assert.ok(tool, `${name} exists`);
+      const field = (tool.inputSchema as Record<string, unknown>).originScheme;
+      assert.ok(field, `${name} exposes originScheme`);
+
+      const parsed = (field as { safeParse: (v: unknown) => { success: boolean } });
+      assert.equal(parsed.safeParse("https").success, true, `${name} accepts https`);
+      assert.equal(parsed.safeParse("http").success, true, `${name} accepts http`);
+      assert.equal(
+        parsed.safeParse("ftp").success,
+        false,
+        `${name} must reject a scheme the API does not accept`
+      );
+    }
+  });
+
+  it("is optional on create and required on update", () => {
+    // Create without it keeps today's cleartext default; an update naming no
+    // field at all would be a no-op request.
+    const create = TOOLS.find((t) => t.name === "create_domain");
+    const update = TOOLS.find((t) => t.name === "update_domain");
+    const createField = (create?.inputSchema as Record<string, { isOptional?: () => boolean }>)
+      .originScheme;
+    const updateField = (update?.inputSchema as Record<string, { isOptional?: () => boolean }>)
+      .originScheme;
+    assert.equal(createField.isOptional?.(), true, "optional on create");
+    assert.equal(updateField.isOptional?.(), false, "required on update");
   });
 });

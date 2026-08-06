@@ -556,7 +556,7 @@ export interface paths {
         put?: never;
         /**
          * Restart a running Cube
-         * @description Cold-restarts the Cube: the hypervisor process is stopped and relaunched, so the Cube boots against the host's current kernel. This is how a Cube picks up a refreshed guest kernel after a platform image update — a `reboot` issued inside the Cube cannot do it, because the kernel is supplied externally by the host. Disk state is preserved; only the kernel changes. The Cube must be `running` (a stopped Cube already picks up the latest kernel when started). Concurrent restarts of the same Cube are rejected with 409 rather than queued twice.
+         * @description Cold-restarts the Cube: the hypervisor process is stopped and relaunched, so the Cube boots against the host's current kernel. This is how a Cube picks up a refreshed guest kernel after a platform image update — a `reboot` issued inside the Cube cannot do it, because the kernel is supplied externally by the host. Disk state is preserved; only the kernel changes. Cube must be `running` (a stopped Cube already picks up the latest kernel when started). Concurrent restarts of the same Cube are rejected with 409 rather than queued twice.
          */
         post: {
             parameters: {
@@ -743,7 +743,7 @@ export interface paths {
                     "application/json": {
                         /** @description The hostname to attach, e.g. app.example.com */
                         domain: string;
-                        /** @description The Cube port the domain proxies to. */
+                        /** @description Cube port the domain proxies to. */
                         port: number;
                         /**
                          * @description enforced = proxy sets platform security headers (HSTS, X-Frame-Options, …); app_managed = the app's own headers pass through. Default enforced.
@@ -768,6 +768,26 @@ export interface paths {
                         } | null;
                         /** @description Max request body size (MB). Null = unlimited (default). */
                         maxRequestBodyMb?: number | null;
+                        /** @description Per-domain CORS policy, applied at the edge. Null (default) = CORS disabled and no Access-Control-* header is emitted anywhere. When set, the proxy answers OPTIONS preflight itself (204, the cube is never involved) and adds the headers to normal AND error responses, so a cross-origin request to a failing or sleeping cube is never CORS-masked. */
+                        corsConfig?: {
+                            /** @description Exact scheme://host[:port] origins (no path, query or trailing slash), or the single-element wildcard ["*"]. "*" and allowCredentials are mutually exclusive. */
+                            allowedOrigins: string[];
+                            /** @description Allowed methods. Omitted = GET, POST, PUT, PATCH, DELETE, OPTIONS. */
+                            allowedMethods?: string[];
+                            /** @description Allowed request headers. Omitted/empty = echo the preflight's Access-Control-Request-Headers. */
+                            allowedHeaders?: string[];
+                            /** @description Response headers exposed to JS. Omitted/empty = none. */
+                            exposedHeaders?: string[];
+                            /** @description Send Access-Control-Allow-Credentials: true. Rejected together with the "*" origin. */
+                            allowCredentials?: boolean;
+                            /** @description Preflight cache TTL. Default 600; 86400 is Chromium's hard cap. */
+                            maxAgeSeconds?: number;
+                        } | null;
+                        /**
+                         * @description Scheme the edge speaks to the CUBE on the backend hop. http (default) = cleartext. https = the cube terminates TLS itself (a control panel holding its own certificate, or an app listening on HTTPS) and answers plain HTTP with a redirect, so it cannot be reached over cleartext at all. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443; a deliberate custom port is honoured exactly. Verified against the cube before it is applied — if the domain does not serve, the route is left on http.
+                         * @enum {string}
+                         */
+                        originScheme?: "http" | "https";
                         /** @description Edge gzip/zstd compression. Default false (domains behind a CDN are already compressed there). */
                         responseCompression?: boolean;
                         /** @description Visitor IP/CIDR allow-list (v4+v6). Non-empty ⇒ only these reach the app. Null/empty = open. */
@@ -884,6 +904,26 @@ export interface paths {
                         } | null;
                         /** @description Max request body size (MB). Null = unlimited (default). */
                         maxRequestBodyMb?: number | null;
+                        /** @description Per-domain CORS policy, applied at the edge. Null (default) = CORS disabled and no Access-Control-* header is emitted anywhere. When set, the proxy answers OPTIONS preflight itself (204, the cube is never involved) and adds the headers to normal AND error responses, so a cross-origin request to a failing or sleeping cube is never CORS-masked. */
+                        corsConfig?: {
+                            /** @description Exact scheme://host[:port] origins (no path, query or trailing slash), or the single-element wildcard ["*"]. "*" and allowCredentials are mutually exclusive. */
+                            allowedOrigins: string[];
+                            /** @description Allowed methods. Omitted = GET, POST, PUT, PATCH, DELETE, OPTIONS. */
+                            allowedMethods?: string[];
+                            /** @description Allowed request headers. Omitted/empty = echo the preflight's Access-Control-Request-Headers. */
+                            allowedHeaders?: string[];
+                            /** @description Response headers exposed to JS. Omitted/empty = none. */
+                            exposedHeaders?: string[];
+                            /** @description Send Access-Control-Allow-Credentials: true. Rejected together with the "*" origin. */
+                            allowCredentials?: boolean;
+                            /** @description Preflight cache TTL. Default 600; 86400 is Chromium's hard cap. */
+                            maxAgeSeconds?: number;
+                        } | null;
+                        /**
+                         * @description Scheme the edge speaks to the CUBE on the backend hop. http (default) = cleartext. https = the cube terminates TLS itself (a control panel holding its own certificate, or an app listening on HTTPS) and answers plain HTTP with a redirect, so it cannot be reached over cleartext at all. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443; a deliberate custom port is honoured exactly. Verified against the cube before it is applied — if the domain does not serve, the route is left on http.
+                         * @enum {string}
+                         */
+                        originScheme?: "http" | "https";
                         /** @description Edge gzip/zstd compression. Default false (domains behind a CDN are already compressed there). */
                         responseCompression?: boolean;
                         /** @description Visitor IP/CIDR allow-list (v4+v6). Non-empty ⇒ only these reach the app. Null/empty = open. */

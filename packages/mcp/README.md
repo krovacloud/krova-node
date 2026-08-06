@@ -128,7 +128,8 @@ All 20 tools, their parameters, and what they do. Every tool's `spaceId` is opti
 | `list_images` | — | List available OS images for new Cubes. |
 | `get_pricing` | — | Get per-resource hourly rates and volume pricing tiers. |
 | `list_domains` | `spaceId?`, `cubeId` | List the custom domains attached to a Cube. |
-| `create_domain` | `spaceId?`, `cubeId`, `domain`, `port` | Attach a custom domain to a Cube. |
+| `create_domain` | `spaceId?`, `cubeId`, `domain`, `port`, `originScheme?` | Attach a custom domain to a Cube. |
+| `update_domain` | `spaceId?`, `cubeId`, `mappingId`, `originScheme` | Change a domain's proxy settings. |
 | `delete_domain` | `spaceId?`, `cubeId`, `mappingId` | Detach a custom domain. **Destructive.** |
 | `list_snapshots` | `spaceId?`, `cubeId` | List a Cube's disk snapshots. |
 | `create_snapshot` | `spaceId?`, `cubeId`, `name?` | Snapshot a Cube's disk. Asynchronous. |
@@ -138,7 +139,7 @@ All 20 tools, their parameters, and what they do. Every tool's `spaceId` is opti
 | `create_tcp_mapping` | `spaceId?`, `cubeId`, `cubePort`, `whitelistIps?` | Expose a Cube TCP port on the host. |
 | `delete_tcp_mapping` | `spaceId?`, `cubeId`, `mappingId` | Remove a TCP port mapping. **Destructive.** |
 
-Every tool advertises MCP **annotations** so your client can treat them appropriately: the **eight** read tools (`list_cubes`, `get_cube`, `list_regions`, `list_images`, `get_pricing`, `list_domains`, `list_snapshots`, `list_tcp_mappings`) are marked read-only, while the **six** mutating tools (`create_cube`, `delete_cube`, `delete_domain`, `delete_snapshot`, `restore_cube`, `delete_tcp_mapping`) are marked **destructive**. Most MCP clients surface a confirmation prompt before running a destructive tool — keep that confirmation on, since an LLM driven by untrusted content could be induced to call one.
+Every tool advertises MCP **annotations** so your client can treat them appropriately: the **eight** read tools (`list_cubes`, `get_cube`, `list_regions`, `list_images`, `get_pricing`, `list_domains`, `list_snapshots`, `list_tcp_mappings`) are marked read-only, while the **six** destructive tools (`create_cube`, `delete_cube`, `delete_domain`, `delete_snapshot`, `restore_cube`, `delete_tcp_mapping`) are marked **destructive**. `update_domain` mutates but is idempotent and reversible, so it is not. Most MCP clients surface a confirmation prompt before running a destructive tool — keep that confirmation on, since an LLM driven by untrusted content could be induced to call one.
 
 ### `create_cube` parameters
 

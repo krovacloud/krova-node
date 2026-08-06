@@ -18,6 +18,19 @@ function operationsForResource(resource) {
 	return blocks.flatMap((b) => b.options.map((o) => o.value));
 }
 
+/** The `routing.request` for one operation on one resource. */
+function operationRouting(resource, operation) {
+	const block = desc.properties.find(
+		(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes(resource),
+	);
+	return block.options.find((o) => o.value === operation).routing.request;
+}
+
+/** A single property definition by its `name`. */
+function propertyByName(name) {
+	return desc.properties.find((p) => p.name === name);
+}
+
 test('node description is well-formed', () => {
 	assert.equal(desc.name, 'krova');
 	assert.equal(desc.displayName, 'Krova Cloud');
@@ -56,8 +69,38 @@ test('Catalog resource has the expected operations', () => {
 	assert.deepEqual(ops, ['getImages', 'getPricing', 'getRegions']);
 });
 
-test('Domain resource has list/create/delete operations', () => {
-	assert.deepEqual(operationsForResource('domain').sort(), ['create', 'delete', 'list']);
+test('Domain resource has list/create/update/delete operations', () => {
+	assert.deepEqual(operationsForResource('domain').sort(), [
+		'create',
+		'delete',
+		'list',
+		'update',
+	]);
+});
+
+test('Update routes to PATCH on the mapping, and carries the origin scheme', () => {
+	// The origin scheme is the only setting the node exposes today, and it is the
+	// reason Update exists: a Cube that terminates TLS itself (a control panel
+	// holding its own certificate) cannot be reached over cleartext, so an
+	// already-attached domain has to be switchable after the fact.
+	const update = operationRouting('domain', 'update');
+	assert.equal(update.method, 'PATCH');
+	assert.match(update.url, /\/domains\/.+$/);
+
+	const field = propertyByName('originScheme');
+	assert.equal(field.type, 'options');
+	assert.deepEqual(
+		field.options.map((o) => o.value).sort(),
+		['http', 'https'],
+		'only the two schemes the API accepts may be offered',
+	);
+	assert.equal(field.default, 'http', 'cleartext stays the default');
+	assert.deepEqual(
+		field.displayOptions.show.operation.sort(),
+		['create', 'update'],
+		'settable when attaching a domain and changeable afterwards',
+	);
+	assert.equal(field.routing.send.property, 'originScheme');
 });
 
 test('Snapshot resource has list/create/delete/restore operations', () => {

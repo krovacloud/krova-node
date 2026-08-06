@@ -301,6 +301,34 @@ The package ships its own type declarations — no `@types/*` install needed. `C
 
 See [CONTRIBUTING.md](https://github.com/krovacloud/krova-node/blob/main/CONTRIBUTING.md). Report security issues privately per [SECURITY.md](https://github.com/krovacloud/krova-node/blob/main/SECURITY.md).
 
+
+## Custom domains: HTTPS to the Cube
+
+By default the edge reaches your Cube over cleartext HTTP — visitors are on
+HTTPS either way, since TLS terminates at the edge. Set `originScheme: "https"`
+when the Cube terminates TLS *itself*: a control panel holding its own
+certificate, or an app listening on HTTPS, answers plain HTTP with a redirect
+and cannot be served over cleartext at all.
+
+```ts
+// When attaching the domain…
+await krova.domains.create(spaceId, cubeId, {
+  domain: "panel.example.com",
+  port: 443,
+  originScheme: "https",
+});
+
+// …or switch an already-attached domain over.
+await krova.domains.update(spaceId, cubeId, mappingId, {
+  originScheme: "https",
+});
+```
+
+The dial port is derived: `https` on the default port 80 connects on 443, and a
+deliberate custom port is honoured exactly. The setting is verified against the
+Cube before it is applied — if the domain does not serve, the route is left on
+`http`.
+
 ## License
 
 [MIT](./LICENSE) © 2026 Krova Inc.

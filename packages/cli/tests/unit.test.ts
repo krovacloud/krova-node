@@ -22,6 +22,7 @@ import {
 import { flattenRows } from "../src/commands/catalog.js";
 import { cubesCommand } from "../src/commands/cubes.js";
 import { parseListenAddr } from "../src/commands/webhooks.js";
+import { domainsCommand, parseOriginScheme } from "../src/commands/domains.js";
 
 test("parseListenAddr handles host:port, bare host, bare port, and IPv6", () => {
   assert.deepEqual(parseListenAddr("127.0.0.1:4666"), { host: "127.0.0.1", port: 4666 });
@@ -230,5 +231,41 @@ test("cubes restart exists and is described as a COLD restart", () => {
     restart.description(),
     /kernel/i,
     "description must say it picks up a refreshed kernel",
+  );
+});
+
+test("parseOriginScheme accepts only the two schemes the API accepts", () => {
+  assert.equal(parseOriginScheme("http"), "http");
+  assert.equal(parseOriginScheme("https"), "https");
+
+  // Omitted means "leave the field off the request" — NOT "send http". Sending
+  // an explicit default would overwrite whatever the domain is already set to
+  // on `set-origin`-adjacent paths, and reads as an intentional choice server-side.
+  assert.equal(parseOriginScheme(undefined), undefined);
+  assert.equal(parseOriginScheme(""), undefined);
+  assert.equal(parseOriginScheme(null), undefined);
+
+  // Anything else must fail loudly here rather than travel to the API and come
+  // back as a generic 400 the user has to decode.
+  for (const bad of ["ftp", "HTTPS", "https://", "tls", 443]) {
+    assert.throws(() => parseOriginScheme(bad), /must be "http" or "https"/, `rejects ${String(bad)}`);
+  }
+});
+
+test("domains exposes set-origin so an attached domain can be switched to HTTPS", () => {
+  // The reason this command exists: a Cube that terminates TLS itself (a control
+  // panel holding its own certificate) redirects cleartext, so a domain attached
+  // before anyone noticed has to be fixable without detaching and re-adding it.
+  const domains = domainsCommand();
+  const names = domains.commands.map((c) => c.name()).sort();
+  assert.deepEqual(names, ["add", "list", "rm", "set-origin"]);
+
+  const setOrigin = domains.commands.find((c) => c.name() === "set-origin");
+  assert.equal(setOrigin.registeredArguments.length, 3, "cube, mapping id, scheme");
+
+  const add = domains.commands.find((c) => c.name() === "add");
+  assert.ok(
+    add.options.some((o) => o.long === "--origin-scheme"),
+    "add must take the scheme too, so a TLS-terminating Cube works on first attach",
   );
 });
