@@ -286,12 +286,43 @@ export const TOOLS: ToolDef[] = [
       ...cubeIdField,
       domain: z.string().min(1).describe("The domain name to attach (e.g. app.example.com)."),
       port: z.number().int().positive().max(65535).describe("The in-Cube port to route to."),
+      originScheme: z
+        .enum(["http", "https"])
+        .optional()
+        .describe(
+          "Scheme the edge speaks to the Cube on. \"http\" (default) is cleartext. Use \"https\" only when the Cube terminates TLS itself — a control panel holding its own certificate, or an app listening on HTTPS — because such an app answers plain HTTP with a redirect and cannot be reached over cleartext. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443. Verified against the Cube before it is applied; if the domain does not serve, the route is left on http."
+        ),
     },
     handler: (client, args, ctx) =>
       client.domains.create(resolveSpaceId(args.spaceId, ctx), args.cubeId, {
         domain: args.domain,
         port: args.port,
+        ...(args.originScheme ? { originScheme: args.originScheme } : {}),
       }),
+  }),
+  defineTool({
+    name: "update_domain",
+    title: "Update Domain Settings",
+    description:
+      "Change a custom domain's proxy settings. Currently exposes the origin scheme — the transport the edge uses to reach the Cube.",
+    annotations: { readOnlyHint: false, idempotentHint: true, openWorldHint: true },
+    inputSchema: {
+      ...spaceIdField,
+      ...cubeIdField,
+      mappingId: z.string().min(1).describe("The domain mapping id (see list_domains)."),
+      originScheme: z
+        .enum(["http", "https"])
+        .describe(
+          "Scheme the edge speaks to the Cube on. \"http\" (default) is cleartext. Use \"https\" only when the Cube terminates TLS itself — a control panel holding its own certificate, or an app listening on HTTPS — because such an app answers plain HTTP with a redirect and cannot be reached over cleartext. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443. Verified against the Cube before it is applied; if the domain does not serve, the route is left on http."
+        ),
+    },
+    handler: (client, args, ctx) =>
+      client.domains.update(
+        resolveSpaceId(args.spaceId, ctx),
+        args.cubeId,
+        args.mappingId,
+        { originScheme: args.originScheme }
+      ),
   }),
   defineTool({
     name: "delete_domain",
