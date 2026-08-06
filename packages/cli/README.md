@@ -76,6 +76,12 @@ krova domains list <cube>
 krova domains add <cube> --domain app.example.com --port 8080
 krova domains rm <cube> <domain-id>
 
+# Reach the Cube over HTTPS instead of cleartext — only for a Cube that
+# terminates TLS itself (a control panel with its own certificate). Visitors
+# are on HTTPS either way.
+krova domains add <cube> --domain panel.example.com --port 443 --origin-scheme https
+krova domains set-origin <cube> <domain-id> https
+
 # Snapshots + restore
 krova snapshots list <cube>
 krova snapshots create <cube> --name nightly

@@ -463,6 +463,18 @@ export class Krova implements INodeType {
 						},
 					},
 					{
+						name: 'Update',
+						value: 'update',
+						action: 'Update domain settings',
+						description: "Change a domain's proxy settings, such as the origin scheme",
+						routing: {
+							request: {
+								method: 'PATCH',
+								url: '=/spaces/{{ encodeURIComponent($parameter["spaceId"]) }}/cubes/{{ encodeURIComponent($parameter["cubeId"]) }}/domains/{{ encodeURIComponent($parameter["mappingId"]) }}',
+							},
+						},
+					},
+					{
 						name: 'Delete',
 						value: 'delete',
 						action: 'Detach domain',
@@ -534,13 +546,28 @@ export class Krova implements INodeType {
 			},
 
 			{
+				displayName: 'Origin Scheme',
+				name: 'originScheme',
+				type: 'options',
+				default: 'http',
+				description:
+					'The transport the edge uses to reach the Cube. Leave as HTTP unless the Cube terminates TLS itself — a control panel holding its own certificate, or an app listening on HTTPS. Visitors are on HTTPS either way.',
+				options: [
+					{ name: 'HTTP', value: 'http', description: 'Cleartext to the Cube (default)' },
+					{ name: 'HTTPS', value: 'https', description: 'The Cube terminates TLS itself' },
+				],
+				displayOptions: { show: { resource: ['domain'], operation: ['create', 'update'] } },
+				routing: { send: { type: 'body', property: 'originScheme' } },
+			},
+
+			{
 				displayName: 'Domain Mapping ID',
 				name: 'mappingId',
 				type: 'string',
 				required: true,
 				default: '',
 				description: 'The domain mapping ID from the List operation',
-				displayOptions: { show: { resource: ['domain'], operation: ['delete'] } },
+				displayOptions: { show: { resource: ['domain'], operation: ['delete', 'update'] } },
 			},
 
 			{

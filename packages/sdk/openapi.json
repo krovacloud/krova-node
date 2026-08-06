@@ -10,7 +10,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:3000/api/v1"
+      "url": "https://krova.cloud/api/v1"
     }
   ],
   "security": [
@@ -1256,7 +1256,7 @@
     "/spaces/{spaceId}/cubes/{cubeId}/restart": {
       "post": {
         "summary": "Restart a running Cube",
-        "description": "Cold-restarts the Cube: the hypervisor process is stopped and relaunched, so the Cube boots against the host's current kernel. This is how a Cube picks up a refreshed guest kernel after a platform image update — a `reboot` issued inside the Cube cannot do it, because the kernel is supplied externally by the host. Disk state is preserved; only the kernel changes. The Cube must be `running` (a stopped Cube already picks up the latest kernel when started). Concurrent restarts of the same Cube are rejected with 409 rather than queued twice.",
+        "description": "Cold-restarts the Cube: the hypervisor process is stopped and relaunched, so the Cube boots against the host's current kernel. This is how a Cube picks up a refreshed guest kernel after a platform image update — a `reboot` issued inside the Cube cannot do it, because the kernel is supplied externally by the host. Disk state is preserved; only the kernel changes. Cube must be `running` (a stopped Cube already picks up the latest kernel when started). Concurrent restarts of the same Cube are rejected with 409 rather than queued twice.",
         "tags": [
           "Cubes"
         ],
@@ -1499,7 +1499,7 @@
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 65535,
-                    "description": "The Cube port the domain proxies to."
+                    "description": "Cube port the domain proxies to."
                   },
                   "securityHeadersMode": {
                     "type": "string",
@@ -1559,6 +1559,66 @@
                     "minimum": 1,
                     "maximum": 10240,
                     "description": "Max request body size (MB). Null = unlimited (default)."
+                  },
+                  "corsConfig": {
+                    "type": "object",
+                    "nullable": true,
+                    "description": "Per-domain CORS policy, applied at the edge. Null (default) = CORS disabled and no Access-Control-* header is emitted anywhere. When set, the proxy answers OPTIONS preflight itself (204, the cube is never involved) and adds the headers to normal AND error responses, so a cross-origin request to a failing or sleeping cube is never CORS-masked.",
+                    "required": [
+                      "allowedOrigins"
+                    ],
+                    "properties": {
+                      "allowedOrigins": {
+                        "type": "array",
+                        "maxItems": 20,
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Exact scheme://host[:port] origins (no path, query or trailing slash), or the single-element wildcard [\"*\"]. \"*\" and allowCredentials are mutually exclusive."
+                      },
+                      "allowedMethods": {
+                        "type": "array",
+                        "maxItems": 30,
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Allowed methods. Omitted = GET, POST, PUT, PATCH, DELETE, OPTIONS."
+                      },
+                      "allowedHeaders": {
+                        "type": "array",
+                        "maxItems": 30,
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Allowed request headers. Omitted/empty = echo the preflight's Access-Control-Request-Headers."
+                      },
+                      "exposedHeaders": {
+                        "type": "array",
+                        "maxItems": 30,
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Response headers exposed to JS. Omitted/empty = none."
+                      },
+                      "allowCredentials": {
+                        "type": "boolean",
+                        "description": "Send Access-Control-Allow-Credentials: true. Rejected together with the \"*\" origin."
+                      },
+                      "maxAgeSeconds": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 86400,
+                        "description": "Preflight cache TTL. Default 600; 86400 is Chromium's hard cap."
+                      }
+                    }
+                  },
+                  "originScheme": {
+                    "type": "string",
+                    "enum": [
+                      "http",
+                      "https"
+                    ],
+                    "description": "Scheme the edge speaks to the CUBE on the backend hop. http (default) = cleartext. https = the cube terminates TLS itself (a control panel holding its own certificate, or an app listening on HTTPS) and answers plain HTTP with a redirect, so it cannot be reached over cleartext at all. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443; a deliberate custom port is honoured exactly. Verified against the cube before it is applied — if the domain does not serve, the route is left on http."
                   },
                   "responseCompression": {
                     "type": "boolean",
@@ -1723,6 +1783,66 @@
                     "minimum": 1,
                     "maximum": 10240,
                     "description": "Max request body size (MB). Null = unlimited (default)."
+                  },
+                  "corsConfig": {
+                    "type": "object",
+                    "nullable": true,
+                    "description": "Per-domain CORS policy, applied at the edge. Null (default) = CORS disabled and no Access-Control-* header is emitted anywhere. When set, the proxy answers OPTIONS preflight itself (204, the cube is never involved) and adds the headers to normal AND error responses, so a cross-origin request to a failing or sleeping cube is never CORS-masked.",
+                    "required": [
+                      "allowedOrigins"
+                    ],
+                    "properties": {
+                      "allowedOrigins": {
+                        "type": "array",
+                        "maxItems": 20,
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Exact scheme://host[:port] origins (no path, query or trailing slash), or the single-element wildcard [\"*\"]. \"*\" and allowCredentials are mutually exclusive."
+                      },
+                      "allowedMethods": {
+                        "type": "array",
+                        "maxItems": 30,
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Allowed methods. Omitted = GET, POST, PUT, PATCH, DELETE, OPTIONS."
+                      },
+                      "allowedHeaders": {
+                        "type": "array",
+                        "maxItems": 30,
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Allowed request headers. Omitted/empty = echo the preflight's Access-Control-Request-Headers."
+                      },
+                      "exposedHeaders": {
+                        "type": "array",
+                        "maxItems": 30,
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Response headers exposed to JS. Omitted/empty = none."
+                      },
+                      "allowCredentials": {
+                        "type": "boolean",
+                        "description": "Send Access-Control-Allow-Credentials: true. Rejected together with the \"*\" origin."
+                      },
+                      "maxAgeSeconds": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 86400,
+                        "description": "Preflight cache TTL. Default 600; 86400 is Chromium's hard cap."
+                      }
+                    }
+                  },
+                  "originScheme": {
+                    "type": "string",
+                    "enum": [
+                      "http",
+                      "https"
+                    ],
+                    "description": "Scheme the edge speaks to the CUBE on the backend hop. http (default) = cleartext. https = the cube terminates TLS itself (a control panel holding its own certificate, or an app listening on HTTPS) and answers plain HTTP with a redirect, so it cannot be reached over cleartext at all. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443; a deliberate custom port is honoured exactly. Verified against the cube before it is applied — if the domain does not serve, the route is left on http."
                   },
                   "responseCompression": {
                     "type": "boolean",

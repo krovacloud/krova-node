@@ -77,8 +77,18 @@ Custom domains attached to a Cube. Every operation takes a **Space ID** and **Cu
 | Operation | Fields | Description | Endpoint |
 | --- | --- | --- | --- |
 | **List** | Space ID, Cube ID | List the custom domains attached to a Cube | `GET /spaces/{spaceId}/cubes/{cubeId}/domains` |
-| **Create** | Space ID, Cube ID, Domain, Port | Attach a custom domain | `POST /spaces/{spaceId}/cubes/{cubeId}/domains` |
+| **Create** | Space ID, Cube ID, Domain, Port; optional Origin Scheme | Attach a custom domain | `POST /spaces/{spaceId}/cubes/{cubeId}/domains` |
+| **Update** | Space ID, Cube ID, Domain Mapping ID, Origin Scheme | Change a domain's proxy settings | `PATCH /spaces/{spaceId}/cubes/{cubeId}/domains/{mappingId}` |
 | **Delete** | Space ID, Cube ID, Domain Mapping ID | Detach a custom domain | `DELETE /spaces/{spaceId}/cubes/{cubeId}/domains/{mappingId}` |
+
+**Origin Scheme** (Create and Update) — the transport the edge uses to reach the
+Cube. Leave as **HTTP** unless the Cube terminates TLS itself: a control panel
+holding its own certificate, or an app listening on HTTPS, answers plain HTTP
+with a redirect and cannot be served over cleartext at all. Visitors are on
+HTTPS either way. The dial port is derived — `https` on the default port 80
+connects on 443 — and the setting is verified against the Cube before it is
+applied, so a domain that does not serve is left on `http`.
+
 
 ### Snapshot
 
