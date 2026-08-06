@@ -7,7 +7,7 @@
 
 > **MCP server for [Krova Cloud](https://krova.cloud) — let Claude, Cursor, and any MCP client provision and manage Cubes (Firecracker microVMs) in natural language.**
 
-A [Model Context Protocol](https://modelcontextprotocol.io) server that exposes Krova Cloud as a set of tools an AI agent can call. Ask Claude to "spin up a 2-vCPU Ubuntu cube in us-east", "list my running cubes", or "power off the idle ones", and it drives the [Krova Cloud API](https://krova.cloud) for you.
+A [Model Context Protocol](https://modelcontextprotocol.io) server that exposes Krova Cloud as a set of tools an AI agent can call. Ask Claude to "spin up a 2-vCPU Ubuntu cube in us", "list my running cubes", or "power off the idle ones", and it drives the [Krova Cloud API](https://krova.cloud) for you.
 
 It's a thin, fully typed bridge over the official [`@krovacloud/sdk`](https://www.npmjs.com/package/@krovacloud/sdk): each Krova Cloud operation is an MCP tool with a validated input schema, authenticated with your API key.
 

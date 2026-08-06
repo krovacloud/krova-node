@@ -120,7 +120,7 @@ const cube = await krova.cubes.create(
     image: "ubuntu-24.04",
     resources: { vcpu: 2, ramGb: 4, diskGb: 40 },
     sshPublicKey: "ssh-ed25519 AAAA... you@host",
-    region: "us-east",           // optional — slug from catalog.regions()
+    region: "us",                // optional — slug from catalog.regions()
     userData: "#cloud-config\n",  // optional — cloud-init (max 16 KB)
   },
   { idempotencyKey: "deploy-2026-07-01" },
