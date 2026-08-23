@@ -91,6 +91,7 @@ describe("tool registry", () => {
     const expected = [
       "list_cubes",
       "get_cube",
+      "get_cube_ssh",
       "create_cube",
       "power_off_cube",
       "wake_cube",

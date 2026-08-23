@@ -59,9 +59,16 @@ krova ssh <cube> -- uname -a        # run a command non-interactively
 krova ssh <cube> -i ~/.ssh/id_ed25519 -L 8080:localhost:80
 ```
 
-The CLI fetches the Cube's SSH endpoint and, when the server provides them,
-**pins the host keys** to `~/.config/krova/known_hosts` with strict host-key
-checking (no trust-on-first-use window). The destination is always passed after
+The CLI fetches the Cube's SSH endpoint — including **which user to log in as**
+— so you never have to remember it. That is `ubuntu` on Ubuntu images and
+`debian` on Debian images, both with passwordless `sudo` (`sudo su` for a root
+shell); Cubes created before August 2026 log in as `root`. Direct root SSH is
+disabled on the newer images, which is why the CLI reads the user from the API
+rather than assuming one.
+
+When the server provides them the CLI also **pins the host keys** to
+`~/.config/krova/known_hosts` with strict host-key checking (no
+trust-on-first-use window). The destination is always passed after
 a `--` separator, with host/user validated against option-injection — a hostile
 value aborts before `ssh` ever runs.
 
