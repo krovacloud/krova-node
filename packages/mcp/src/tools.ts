@@ -113,6 +113,16 @@ export const TOOLS: ToolDef[] = [
       client.cubes.get(resolveSpaceId(args.spaceId, ctx), args.cubeId),
   }),
   defineTool({
+    name: "get_cube_ssh",
+    title: "Get Cube SSH Info",
+    description:
+      "Everything needed to SSH into a Cube: host, port, the login USER, and any pinned host keys. Call this rather than guessing a username — it is `ubuntu` or `debian` on Cubes created from images that ship a default user, and `root` on older Cubes, so it cannot be derived from the image id. The returned user has passwordless sudo; `sudo su` reaches root.",
+    annotations: { readOnlyHint: true, openWorldHint: true },
+    inputSchema: { ...spaceIdField, ...cubeIdField },
+    handler: (client, args, ctx) =>
+      client.cubes.ssh(resolveSpaceId(args.spaceId, ctx), args.cubeId),
+  }),
+  defineTool({
     name: "create_cube",
     title: "Create Cube",
     description:
@@ -171,7 +181,7 @@ export const TOOLS: ToolDef[] = [
         .min(1)
         .max(16384)
         .describe(
-          "SSH public key written to /root/.ssh/authorized_keys at boot (ssh-ed25519, ssh-rsa, ecdsa-sha2-*, ...). Required by the Krova Cloud API.",
+          "SSH public key written to the Cube login user's authorized_keys at boot — ~/.ssh/authorized_keys for the ubuntu or debian user, /root/.ssh/authorized_keys on Cubes created before the default-user change. Use get_cube_ssh to learn which user a given Cube logs in as. Must start with ssh-ed25519, ssh-rsa, ecdsa-sha2-*, ssh-dss, or sk-*@openssh.com.",
         ),
       userData: z
         .string()

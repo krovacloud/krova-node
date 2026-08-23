@@ -365,7 +365,7 @@ export interface paths {
                             ramGb: number;
                             diskGb: number;
                         };
-                        /** @description SSH public key written to /root/.ssh/authorized_keys at boot. Must start with ssh-ed25519, ssh-rsa, ecdsa-sha2-*, ssh-dss, or sk-*@openssh.com. */
+                        /** @description SSH public key written to the Cube login user's authorized_keys at boot (~/.ssh/authorized_keys for the ubuntu or debian user; /root/.ssh/authorized_keys on Cubes created before the default-user change). GET /cubes/{cubeId}/ssh reports the login user for a given Cube. Must start with ssh-ed25519, ssh-rsa, ecdsa-sha2-*, ssh-dss, or sk-*@openssh.com. */
                         sshPublicKey: string;
                         /** @description Region slug from /v1/regions (optional). */
                         region?: string;
@@ -653,7 +653,7 @@ export interface paths {
         };
         /**
          * Get a Cube's SSH connection info
-         * @description Host (server public IPv4), host SSH port, login user, and any captured SSH host public keys. `hostKeys` is empty until Krova captures cube host keys — clients fall back to trust-on-first-use until then.
+         * @description Host (server public IPv4), host SSH port, login user, and the Cube's captured SSH host public keys. **Use `user` rather than assuming a username** — it is `ubuntu` or `debian` on Cubes created from images that ship a default user, and `root` on Cubes created before that change or imported from a rootfs without one. `hostKeys` is empty only until the reachability cron makes its first capture; clients fall back to trust-on-first-use until then, and pin strictly afterwards.
          */
         get: {
             parameters: {
@@ -1322,10 +1322,12 @@ export interface paths {
                         name: string;
                         fileSizeBytes: number;
                         /**
+                         * @description What to do with SSH access on the imported rootfs. `replace` (default) writes `sshPublicKey` to the login user's authorized_keys and requires `sshPublicKey` to be set. `keep` leaves the image's own authorized_keys and sshd configuration completely untouched — nothing is written — so you must already hold a private key that the image accepts, or you will not be able to log in.
                          * @default replace
                          * @enum {string}
                          */
                         sshKeyMode?: "replace" | "keep";
+                        /** @description Public key to install when `sshKeyMode` is `replace`. Written to the login user's `~/.ssh/authorized_keys` — which user that is comes from the imported rootfs itself, so an image without a Krova default user keeps logging in as root. Ignored when `sshKeyMode` is `keep`. */
                         sshPublicKey?: string | null;
                         region?: string | null;
                         vcpusOverride?: number | null;
@@ -1766,6 +1768,7 @@ export interface components {
                 diskGb: number;
             };
             image: string;
+            sshUser: string;
             costPerHour: number;
             /** Format: date-time */
             createdAt: string;
@@ -1788,6 +1791,7 @@ export interface components {
             name: string;
             version: string;
             description: string;
+            defaultUser: string;
         };
         PricingTier: {
             minVcpus: number;

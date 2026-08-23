@@ -119,6 +119,7 @@ All 20 tools, their parameters, and what they do. Every tool's `spaceId` is opti
 | --- | --- | --- |
 | `list_cubes` | `spaceId?` | List all Cubes (Firecracker microVMs) in a Space. |
 | `get_cube` | `spaceId?`, `cubeId` | Get details for a single Cube by id. |
+| `get_cube_ssh` | `spaceId?`, `cubeId` | Host, port, **login user** and pinned host keys for SSH. Call this rather than guessing a username — it is `ubuntu`/`debian` on newer Cubes and `root` on older ones, and cannot be derived from the image id. |
 | `create_cube` | `spaceId?`, `name`, `image`, `vcpu`, `ramGb`, `diskGb`, `sshPublicKey`, `region?`, `userData?` | Provision a new Cube. Asynchronous — the returned Cube starts in a pending state. **Billable. Destructive.** |
 | `power_off_cube` | `spaceId?`, `cubeId` | Power off a running Cube (releases compute + host RAM, keeps disk). Asynchronous. |
 | `wake_cube` | `spaceId?`, `cubeId` | Start a stopped Cube. Asynchronous. |
@@ -139,14 +140,14 @@ All 20 tools, their parameters, and what they do. Every tool's `spaceId` is opti
 | `create_tcp_mapping` | `spaceId?`, `cubeId`, `cubePort`, `whitelistIps?` | Expose a Cube TCP port on the host. |
 | `delete_tcp_mapping` | `spaceId?`, `cubeId`, `mappingId` | Remove a TCP port mapping. **Destructive.** |
 
-Every tool advertises MCP **annotations** so your client can treat them appropriately: the **eight** read tools (`list_cubes`, `get_cube`, `list_regions`, `list_images`, `get_pricing`, `list_domains`, `list_snapshots`, `list_tcp_mappings`) are marked read-only, while the **six** destructive tools (`create_cube`, `delete_cube`, `delete_domain`, `delete_snapshot`, `restore_cube`, `delete_tcp_mapping`) are marked **destructive**. `update_domain` mutates but is idempotent and reversible, so it is not. Most MCP clients surface a confirmation prompt before running a destructive tool — keep that confirmation on, since an LLM driven by untrusted content could be induced to call one.
+Every tool advertises MCP **annotations** so your client can treat them appropriately: the **nine** read tools (`list_cubes`, `get_cube`, `get_cube_ssh`, `list_regions`, `list_images`, `get_pricing`, `list_domains`, `list_snapshots`, `list_tcp_mappings`) are marked read-only, while the **six** destructive tools (`create_cube`, `delete_cube`, `delete_domain`, `delete_snapshot`, `restore_cube`, `delete_tcp_mapping`) are marked **destructive**. `update_domain` mutates but is idempotent and reversible, so it is not. Most MCP clients surface a confirmation prompt before running a destructive tool — keep that confirmation on, since an LLM driven by untrusted content could be induced to call one.
 
 ### `create_cube` parameters
 
 | Param | Type | Notes |
 | --- | --- | --- |
 | `name` | string | Human-readable Cube name. |
-| `image` | string | OS image slug — see `list_images`. |
+| `image` | string | OS image slug — see `list_images`. `ubuntu-24.04`, `ubuntu-24.04-docker`, `debian-13` or `debian-13-docker`. |
 | `region` | string? | Optional region slug — see `list_regions`. Omit to let Krova Cloud auto-select a region with capacity. |
 | `vcpu` | integer | Number of virtual CPUs. Default per-space cap 16 (can be raised for your space). |
 | `ramGb` | integer | RAM in whole GiB. Default per-space cap 32 GB (raisable for your space). |

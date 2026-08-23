@@ -49,6 +49,14 @@ const cube = await krova.cubes.create("space_123", {
 console.log(`Created cube ${cube.id} (${cube.state})`);
 console.log(`  ${cube.resources.vcpu} vCPU / ${cube.resources.ramGb} GB RAM, image ${cube.image}`);
 
+// Everything needed to SSH in — including WHICH USER to log in as.
+// Read `user`; do not derive it from `image`. It is "ubuntu" or "debian" on
+// Cubes from images that ship a default user (both with passwordless sudo)
+// and "root" on Cubes created before that change, so the image id cannot
+// tell you. `cube.sshUser` on the Cube object carries the same value.
+const ssh = await krova.cubes.ssh("space_123", cube.id);
+console.log(`ssh ${ssh.user}@${ssh.host} -p ${ssh.port}`);
+
 // Power it off, then start it again
 await krova.cubes.powerOff("space_123", cube.id);
 await krova.cubes.wake("space_123", cube.id);

@@ -137,6 +137,9 @@
           "image": {
             "type": "string"
           },
+          "sshUser": {
+            "type": "string"
+          },
           "costPerHour": {
             "type": "number"
           },
@@ -156,6 +159,7 @@
           "publicIpv4",
           "resources",
           "image",
+          "sshUser",
           "costPerHour",
           "createdAt",
           "updatedAt"
@@ -217,13 +221,17 @@
           },
           "description": {
             "type": "string"
+          },
+          "defaultUser": {
+            "type": "string"
           }
         },
         "required": [
           "id",
           "name",
           "version",
-          "description"
+          "description",
+          "defaultUser"
         ]
       },
       "PricingTier": {
@@ -1034,7 +1042,7 @@
                   },
                   "sshPublicKey": {
                     "type": "string",
-                    "description": "SSH public key written to /root/.ssh/authorized_keys at boot. Must start with ssh-ed25519, ssh-rsa, ecdsa-sha2-*, ssh-dss, or sk-*@openssh.com."
+                    "description": "SSH public key written to the Cube login user's authorized_keys at boot (~/.ssh/authorized_keys for the ubuntu or debian user; /root/.ssh/authorized_keys on Cubes created before the default-user change). GET /cubes/{cubeId}/ssh reports the login user for a given Cube. Must start with ssh-ed25519, ssh-rsa, ecdsa-sha2-*, ssh-dss, or sk-*@openssh.com."
                   },
                   "region": {
                     "type": "string",
@@ -1359,7 +1367,7 @@
     "/spaces/{spaceId}/cubes/{cubeId}/ssh": {
       "get": {
         "summary": "Get a Cube's SSH connection info",
-        "description": "Host (server public IPv4), host SSH port, login user, and any captured SSH host public keys. `hostKeys` is empty until Krova captures cube host keys — clients fall back to trust-on-first-use until then.",
+        "description": "Host (server public IPv4), host SSH port, login user, and the Cube's captured SSH host public keys. **Use `user` rather than assuming a username** — it is `ubuntu` or `debian` on Cubes created from images that ship a default user, and `root` on Cubes created before that change or imported from a rootfs without one. `hostKeys` is empty only until the reachability cron makes its first capture; clients fall back to trust-on-first-use until then, and pin strictly afterwards.",
         "tags": [
           "Cubes"
         ],
@@ -2503,11 +2511,13 @@
                       "replace",
                       "keep"
                     ],
-                    "default": "replace"
+                    "default": "replace",
+                    "description": "What to do with SSH access on the imported rootfs. `replace` (default) writes `sshPublicKey` to the login user's authorized_keys and requires `sshPublicKey` to be set. `keep` leaves the image's own authorized_keys and sshd configuration completely untouched — nothing is written — so you must already hold a private key that the image accepts, or you will not be able to log in."
                   },
                   "sshPublicKey": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "description": "Public key to install when `sshKeyMode` is `replace`. Written to the login user's `~/.ssh/authorized_keys` — which user that is comes from the imported rootfs itself, so an image without a Krova default user keeps logging in as root. Ignored when `sshKeyMode` is `keep`."
                   },
                   "region": {
                     "type": "string",

@@ -55,7 +55,7 @@ Cubes are scoped to a **Space**, so every Cube operation takes a **Space ID**.
 #### Create field notes
 
 - **Image** — an OS image slug or ID. Fetch valid values from **Catalog → Get Images**.
-- **SSH Public Key** — written to `/root/.ssh/authorized_keys` at boot. Must start with `ssh-ed25519`, `ssh-rsa`, `ecdsa-sha2-*`, `ssh-dss`, or `sk-*@openssh.com`.
+- **SSH Public Key** — written to the Cube login user's `~/.ssh/authorized_keys` at boot. That user is `ubuntu` on Ubuntu images and `debian` on Debian images (both with passwordless `sudo`); Cubes created before August 2026 log in as `root`. Must start with `ssh-ed25519`, `ssh-rsa`, `ecdsa-sha2-*`, `ssh-dss`, or `sk-*@openssh.com`.
 - **vCPU / RAM (GB) / Disk (GB)** — sent as nested `resources.{vcpu,ramGb,diskGb}`. Every Space gets the same per-Cube ceiling (16 vCPU / 32 GB RAM / 100 GB disk) — **size is not tiered**. Ceilings depend on a per-Space override and on host capacity, not on which tier you are on.
 - **Region** (optional) — a region slug from **Catalog → Get Regions**. Leave empty to auto-select.
 - **User Data** (optional) — a cloud-init script run at first boot (max 16 KB).

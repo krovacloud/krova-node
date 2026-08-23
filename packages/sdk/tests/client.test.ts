@@ -318,6 +318,7 @@ test("list/get/catalog responses are typed (not unknown)", async () => {
     publicIpv4: "1.2.3.4",
     resources: { vcpu: 1, ramGb: 1, diskGb: 10 },
     image: "ubuntu-24.04",
+    sshUser: "ubuntu",
     costPerHour: 0.01,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
