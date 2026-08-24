@@ -59,11 +59,11 @@
     ]
   },
   "devDependencies": {
-    "@typescript-eslint/parser": "8.65.0",
-    "@typescript-eslint/utils": "8.65.0",
+    "@typescript-eslint/parser": "8.67.0",
+    "@typescript-eslint/utils": "8.67.0",
     "eslint": "8.57.1",
     "eslint-plugin-n8n-nodes-base": "1.16.7",
-    "jsonc-eslint-parser": "3.1.0",
+    "jsonc-eslint-parser": "3.3.0",
     "n8n-core": "2.16.1",
     "n8n-workflow": "2.16.0",
     "prettier": "3.9.6",
