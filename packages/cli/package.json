@@ -1,7 +1,7 @@
 {
   "name": "@krovacloud/cli",
   "version": "0.5.0",
-  "description": "Krova Cloud CLI (krova) \u2014 manage Cubes (Firecracker microVMs), browse the catalog, and log in, from your terminal.",
+  "description": "Krova Cloud CLI (krova) — manage Cubes (Firecracker microVMs), browse the catalog, and log in, from your terminal.",
   "license": "MIT",
   "author": "Krova Inc.",
   "type": "module",
@@ -51,9 +51,9 @@
     "@krovacloud/webhook": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^26.1.2",
+    "@types/node": "^26.3.0",
     "tsup": "^8.5.1",
-    "tsx": "^4.23.1",
+    "tsx": "^4.23.12",
     "typescript": "^6.0.3"
   }
 }
