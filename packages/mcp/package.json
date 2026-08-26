@@ -1,7 +1,7 @@
 {
   "name": "@krovacloud/mcp",
   "version": "0.2.0",
-  "description": "MCP server for Krova Cloud \u2014 let Claude, Cursor, and any MCP client provision and manage Cubes (Firecracker microVMs).",
+  "description": "MCP server for Krova Cloud — let Claude, Cursor, and any MCP client provision and manage Cubes (Firecracker microVMs).",
   "license": "MIT",
   "author": "Krova Inc.",
   "type": "module",
@@ -70,9 +70,9 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^26.1.2",
+    "@types/node": "^26.3.0",
     "tsup": "^8.5.1",
-    "tsx": "^4.23.1",
+    "tsx": "^4.23.12",
     "typescript": "^6.0.3"
   }
 }
