@@ -4,7 +4,7 @@
   "private": true,
   "description": "Monorepo for the Krova Cloud JavaScript/TypeScript packages — SDK, CLI, MCP server, webhook verifier, and n8n node.",
   "type": "module",
-  "packageManager": "pnpm@10.18.0",
+  "packageManager": "pnpm@11.24.0",
   "engines": {
     "node": ">=20"
   },

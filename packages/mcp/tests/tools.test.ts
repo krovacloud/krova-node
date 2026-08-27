@@ -424,10 +424,19 @@ describe("origin scheme", () => {
     // field at all would be a no-op request.
     const create = TOOLS.find((t) => t.name === "create_domain");
     const update = TOOLS.find((t) => t.name === "update_domain");
-    const createField = (create?.inputSchema as Record<string, { isOptional?: () => boolean }>)
+    // ⛔ Assert the tools exist BEFORE indexing their schema. This used to read
+    // `(create?.inputSchema as Record<…>).originScheme` — the cast satisfied
+    // the compiler while the `?.` guaranteed a TypeError the moment either
+    // tool was renamed or removed, which is exactly when you want a legible
+    // failure. Flagged by `no-unsafe-optional-chaining`.
+    assert.ok(create, "create_domain tool must exist");
+    assert.ok(update, "update_domain tool must exist");
+    const createField = (create.inputSchema as Record<string, { isOptional?: () => boolean }>)
       .originScheme;
-    const updateField = (update?.inputSchema as Record<string, { isOptional?: () => boolean }>)
+    const updateField = (update.inputSchema as Record<string, { isOptional?: () => boolean }>)
       .originScheme;
+    assert.ok(createField, "create_domain must expose originScheme");
+    assert.ok(updateField, "update_domain must expose originScheme");
     assert.equal(createField.isOptional?.(), true, "optional on create");
     assert.equal(updateField.isOptional?.(), false, "required on update");
   });
