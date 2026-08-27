@@ -135,7 +135,8 @@ export class Krova implements INodeType {
 						name: 'Power Off',
 						value: 'power-off',
 						action: 'Power off a cube',
-						description: 'Power off a running Cube (preserves data, stops compute billing, frees host RAM)',
+						description:
+							'Power off a running Cube (preserves data, stops compute billing, frees host RAM)',
 						routing: {
 							request: {
 								method: 'POST',

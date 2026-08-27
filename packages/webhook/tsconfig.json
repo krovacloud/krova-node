@@ -18,13 +18,7 @@
     "rootDir": ".",
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
-    "resolveJsonModule": true,
-    // Required by the tsup DTS build, not our own options: rollup-plugin-dts
-    // injects a `baseUrl` into the compiler options, which TypeScript 6 reports
-    // as the TS5101 deprecation *error*. `tsc --noEmit` passes without this
-    // (we set no deprecated options ourselves), but `pnpm build` fails without
-    // it. Revisit when tsup stops injecting `baseUrl` or on the TS 7 migration.
-    "ignoreDeprecations": "6.0"
+    "resolveJsonModule": true
   },
   "include": ["src/**/*.ts", "test/**/*.ts"],
   "exclude": ["node_modules", "dist"]

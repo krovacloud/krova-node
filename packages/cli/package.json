@@ -39,7 +39,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsdown",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "dev": "tsx src/index.ts",
@@ -47,12 +47,12 @@
   },
   "dependencies": {
     "@krovacloud/sdk": "workspace:*",
-    "commander": "^15.0.0",
-    "@krovacloud/webhook": "workspace:*"
+    "@krovacloud/webhook": "workspace:*",
+    "commander": "^15.0.0"
   },
   "devDependencies": {
     "@types/node": "^26.3.0",
-    "tsup": "^8.5.1",
+    "tsdown": "0.22.14",
     "tsx": "^4.23.12",
     "typescript": "^6.0.3"
   }
