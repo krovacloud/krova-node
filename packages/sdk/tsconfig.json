@@ -17,12 +17,7 @@
     "rootDir": ".",
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
-    "resolveJsonModule": true,
-    // Required by the tsup DTS build, not our own options: it injects a
-    // `baseUrl` into the compiler options, which TypeScript 6 reports as the
-    // TS5101 deprecation *error*. `tsc --noEmit` passes without this; only
-    // `pnpm build` needs it. Revisit on the TS 7 migration.
-    "ignoreDeprecations": "6.0"
+    "resolveJsonModule": true
   },
   "include": ["src/**/*.ts", "tests/**/*.ts"],
   "exclude": ["node_modules", "dist"]

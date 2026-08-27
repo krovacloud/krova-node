@@ -1,4 +1,4 @@
-import { defineConfig } from "tsup";
+import { defineConfig } from "tsdown";
 
 export default defineConfig({
   entry: ["src/index.ts"],
@@ -12,4 +12,7 @@ export default defineConfig({
   banner: {
     js: "#!/usr/bin/env node",
   },
+  // `bin.krova-mcp`, `main`, `types` and the `exports` map all point at
+  // ./dist/index.js and ./dist/index.d.ts; keep tsdown emitting those names.
+  fixedExtension: false,
 });

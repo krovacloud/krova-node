@@ -1,7 +1,7 @@
 {
   "name": "n8n-nodes-krova",
   "version": "0.2.0",
-  "description": "n8n community node for Krova Cloud \u2014 create, start, power off, restart, list, and delete Cubes (Firecracker microVMs), manage domains, snapshots and TCP mappings, and read regions, images and pricing via the Krova Cloud API.",
+  "description": "n8n community node for Krova Cloud — create, start, power off, restart, list, and delete Cubes (Firecracker microVMs), manage domains, snapshots and TCP mappings, and read regions, images and pricing via the Krova Cloud API.",
   "keywords": [
     "n8n-community-node-package",
     "n8n",
@@ -40,7 +40,7 @@
   "scripts": {
     "build": "tsc && node scripts/copy-icons.mjs",
     "dev": "tsc --watch",
-    "format": "prettier nodes credentials --write",
+    "format": "oxfmt nodes credentials",
     "lint": "eslint nodes credentials package.json",
     "lint:fix": "eslint nodes credentials package.json --fix",
     "test": "node --test",
@@ -66,7 +66,7 @@
     "jsonc-eslint-parser": "3.3.0",
     "n8n-core": "2.16.1",
     "n8n-workflow": "2.16.0",
-    "prettier": "3.9.6",
+    "oxfmt": "0.65.0",
     "typescript": "^6.0.3"
   },
   "peerDependencies": {

@@ -13,7 +13,6 @@ module.exports = {
 	},
 	ignorePatterns: [
 		'.eslintrc.js',
-		'.prettierrc.js',
 		'**/*.js',
 		'**/*.mjs',
 		'**/node_modules/**',

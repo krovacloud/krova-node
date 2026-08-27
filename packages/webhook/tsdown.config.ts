@@ -1,4 +1,4 @@
-import { defineConfig } from "tsup";
+import { defineConfig } from "tsdown";
 
 export default defineConfig({
   entry: ["src/index.ts"],
@@ -10,4 +10,7 @@ export default defineConfig({
   minify: false,
   target: "node18",
   outDir: "dist",
+  // See the note in packages/sdk/tsdown.config.ts — this keeps the artefact
+  // names the published `exports` map already points at.
+  fixedExtension: false,
 });

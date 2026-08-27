@@ -16,10 +16,7 @@
     "rootDir": ".",
     "resolveJsonModule": true,
     "verbatimModuleSyntax": true,
-    "noEmit": true,
-    // The tsup DTS build injects a `baseUrl`, which TypeScript 6 reports as the
-    // TS5101 deprecation error; permit it until the TS 7 migration.
-    "ignoreDeprecations": "6.0"
+    "noEmit": true
   },
   "include": ["src/**/*.ts", "tests/**/*.ts"],
   "exclude": ["node_modules", "dist"]
