@@ -265,12 +265,15 @@ test("domains exposes set-origin so an attached domain can be switched to HTTPS"
   // discoverable from anything the CLI printed. It takes the cube and the
   // mapping id, like every other per-domain command.
   const records = domains.commands.find((c) => c.name() === "records");
+  assert.ok(records, "domains must expose `records`");
   assert.equal(records.registeredArguments.length, 2, "cube, mapping id");
 
   const setOrigin = domains.commands.find((c) => c.name() === "set-origin");
+  assert.ok(setOrigin, "domains must expose `set-origin`");
   assert.equal(setOrigin.registeredArguments.length, 3, "cube, mapping id, scheme");
 
   const add = domains.commands.find((c) => c.name() === "add");
+  assert.ok(add, "domains must expose `add`");
   assert.ok(
     add.options.some((o) => o.long === "--origin-scheme"),
     "add must take the scheme too, so a TLS-terminating Cube works on first attach",

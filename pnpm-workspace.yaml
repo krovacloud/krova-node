@@ -1,2 +1,34 @@
 packages:
   - packages/*
+
+# ⛔ pnpm 11 REQUIRES an explicit decision on every dependency that ships an
+# install script, and ERRORS every command until it gets one — pnpm 10 only
+# warned. So this block is not a behaviour change: all seven were already
+# unbuilt, and this writes down that we want them to stay that way.
+#
+#   ssh2, cpu-features, isolated-vm,
+#   @sentry/node-cpu-profiler,
+#   @sentry/node-native-stacktrace   native addons pulled in transitively by
+#                                    `n8n-core`, which this repo uses for TYPES
+#                                    ONLY — the n8n node compiles against them
+#                                    and never runs them here.
+#
+#   esbuild                          also transitive via n8n-core. Our own
+#                                    bundling is tsdown/rolldown; nothing in
+#                                    this repo invokes esbuild.
+#
+#   eslint-plugin-n8n-nodes-base     we DO run this — it is n8n-node's lint
+#                                    gate — and it works unbuilt. Verified by
+#                                    running that lint with the script denied.
+#
+# Flipping any of these to `true` is a security decision: an install script
+# runs with full user privileges at install time, on every machine and in CI.
+# Written by `pnpm approve-builds`; edit through that command, not by hand.
+allowBuilds:
+  '@sentry/node-cpu-profiler': false
+  '@sentry/node-native-stacktrace': false
+  cpu-features: false
+  esbuild: false
+  eslint-plugin-n8n-nodes-base: false
+  isolated-vm: false
+  ssh2: false

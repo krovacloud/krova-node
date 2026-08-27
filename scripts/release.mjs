@@ -129,7 +129,7 @@ const changedSince = (dir, name, tagVersion) => {
 const npmLatest = (name) => {
   try {
     return (
-      out(`npm view ${name} version`, { stdio: ["ignore", "pipe", "ignore"] }) || "0.0.0"
+      out(`pnpm view ${name} version`, { stdio: ["ignore", "pipe", "ignore"] }) || "0.0.0"
     );
   } catch {
     return "0.0.0";

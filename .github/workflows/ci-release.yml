@@ -25,22 +25,33 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history + tags for per-package change detection
-      # Trusted publishing needs npm CLI >= 11.5.1 (Node 22 bundles npm 10,
-      # which can't mint OIDC credentials — publishes die with ENEEDAUTH).
-      # pnpm delegates the final registry call to npm, so npm is what matters.
+      # ⛔ No npm anywhere in this job, and that is load-bearing rather than
+      # tidy. It used to `npm install -g npm@latest`, because pnpm 10 has NO
+      # OIDC support at all (grep its bundle: zero occurrences of "oidc") and
+      # shelled the registry call out to npm, which needs >= 11.5.1 to mint an
+      # OIDC credential — without it publishes died with ENEEDAUTH.
+      #
+      # pnpm 11 does the OIDC exchange itself, so npm is no longer in the
+      # publish path and the global install is dead weight. If this repo is
+      # ever pinned back below pnpm 11, that npm upgrade has to come back or
+      # releases break — the pin in package.json#packageManager is what keeps
+      # this honest.
       - uses: pnpm/action-setup@v6
-      # NOTE: no `registry-url:` here — that option writes an .npmrc wired to
-      # NODE_AUTH_TOKEN and exports a placeholder value when the secret is
-      # absent, which BLOCKS OIDC trusted publishing (the client sends the
-      # placeholder instead of minting an OIDC credential). With no token in
-      # the environment, pnpm 10.13+ performs the OIDC exchange itself.
+      # NOTE: still no `registry-url:` — that option writes an .npmrc wired to
+      # NODE_AUTH_TOKEN and exports a placeholder when the secret is absent,
+      # which sends the literal placeholder as a bearer token instead of
+      # minting an OIDC credential.
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
-      - run: npm install -g npm@latest
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
+      # ⛔ Typecheck runs in CI. It did not until now, which is exactly how 26
+      # type errors accumulated unnoticed across sdk, cli and mcp in a repo
+      # that AUTO-PUBLISHES to npm on every push to main — a fully green PR
+      # could ship a package that does not compile.
+      - run: pnpm -r typecheck
       - run: pnpm -r test
       - name: Release changed packages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

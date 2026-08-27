@@ -4,6 +4,14 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "lib": ["ES2022", "DOM"],
+    // ⛔ Without this the whole `tests/` tree fails to compile. `@types/node`
+    // is installed and symlinked, but nothing pulls it into the program, so
+    // TypeScript treats `node:test` / `node:assert` as an unresolvable URI
+    // scheme ("Skipping module that looks like an absolute URI") and every
+    // downstream inference collapses to `any` or `possibly undefined` — 21
+    // errors from one missing line. cli, mcp and webhook already had it;
+    // sdk was the only package that did not.
+    "types": ["node"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
