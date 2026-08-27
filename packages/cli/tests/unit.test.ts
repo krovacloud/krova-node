@@ -258,7 +258,14 @@ test("domains exposes set-origin so an attached domain can be switched to HTTPS"
   // before anyone noticed has to be fixable without detaching and re-adding it.
   const domains = domainsCommand();
   const names = domains.commands.map((c) => c.name()).sort();
-  assert.deepEqual(names, ["add", "list", "rm", "set-origin"]);
+  assert.deepEqual(names, ["add", "list", "records", "rm", "set-origin"]);
+
+  // `records` exists because attaching a domain does nothing until its DNS
+  // records are published, and for a wildcard two of the three were not
+  // discoverable from anything the CLI printed. It takes the cube and the
+  // mapping id, like every other per-domain command.
+  const records = domains.commands.find((c) => c.name() === "records");
+  assert.equal(records.registeredArguments.length, 2, "cube, mapping id");
 
   const setOrigin = domains.commands.find((c) => c.name() === "set-origin");
   assert.equal(setOrigin.registeredArguments.length, 3, "cube, mapping id, scheme");

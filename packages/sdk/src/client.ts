@@ -26,6 +26,30 @@ export type CubeSshInfo = components["schemas"]["CubeSshInfo"];
 /** A custom domain attached to a Cube. */
 export type Domain = components["schemas"]["Domain"];
 
+/**
+ * One DNS record you must publish for a domain to work.
+ *
+ * An ordinary subdomain needs one CNAME. A wildcard needs three: an ownership
+ * TXT, the routing CNAME, and an `_acme-challenge` CNAME that lets Krova issue
+ * and renew its certificate.
+ *
+ * ⛔ `mustBeGrey` and `proxyOk` are deliberate OPPOSITES, and automation needs
+ * both. The routing record may sit behind Cloudflare's proxy (orange); the
+ * `_acme-challenge` record must not, because a proxied one answers with
+ * Cloudflare's addresses and the certificate authority finds nothing there.
+ */
+export type DnsRecord = components["schemas"]["DnsRecord"];
+
+/**
+ * A {@link DnsRecord} plus what Krova can currently see in public DNS.
+ *
+ * ⛔ `state: "missing"` means NOT PUBLISHED YET — the expected state before you
+ * create the record, never an error. `state: "unknown"` means Krova could not
+ * complete the lookup, which is never a statement about your DNS. Surfacing
+ * either to your own users as a failure would be wrong.
+ */
+export type DnsRecordStatus = components["schemas"]["DnsRecordStatus"];
+
 /** A snapshot of a Cube's disk. */
 export type Snapshot = components["schemas"]["Snapshot"];
 
@@ -426,12 +450,24 @@ export class KrovaClient {
       return data?.domains ?? [];
     },
 
-    /** Attach a custom domain to a Cube. `domain` + `port` are required. */
+    /**
+     * Attach a custom domain to a Cube. `domain` + `port` are required.
+     *
+     * Returns the domain AND the DNS records you must publish for it to work —
+     * so you can create them in the same run, without a second call and without
+     * hard-coding record shapes. A wildcard needs three; an exact host needs one.
+     *
+     * ⛔ BREAKING in 0.4.0: this used to resolve to `Domain`. It now resolves to
+     * `{ domain, records }`, because for a wildcard two of the three records
+     * (the ownership TXT and the `_acme-challenge` delegation) were not
+     * derivable from anything the SDK returned — an integration had to read
+     * them out of the docs and hope they still matched the server.
+     */
     create: async (
       spaceId: string,
       cubeId: string,
       body: CreateDomainInput,
-    ): Promise<Domain> => {
+    ): Promise<{ domain: Domain; records: DnsRecord[] }> => {
       const { data, error, response } = await this.raw.POST(
         "/spaces/{spaceId}/cubes/{cubeId}/domains",
         { params: { path: { spaceId, cubeId } }, body },
@@ -439,7 +475,35 @@ export class KrovaClient {
       if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
       if (!data?.domain)
         throw krovaErrorFrom(response, { error: "Create domain response had no `domain`." });
-      return data.domain;
+      return { domain: data.domain, records: data.records ?? [] };
+    },
+
+    /**
+     * The DNS records a domain needs, each checked against live DNS.
+     *
+     * Poll this after publishing them: `summary.complete` turns true only once
+     * every record is `found`. Each call performs real DNS lookups and is rate
+     * limited, so poll on an interval rather than in a tight loop.
+     */
+    records: async (
+      spaceId: string,
+      cubeId: string,
+      mappingId: string,
+    ): Promise<{
+      domain: string;
+      isWildcard: boolean;
+      records: DnsRecordStatus[];
+      summary: { found: number; total: number; complete: boolean };
+      checkedAt: string;
+    }> => {
+      const { data, error, response } = await this.raw.GET(
+        "/spaces/{spaceId}/cubes/{cubeId}/domains/{mappingId}/records",
+        { params: { path: { spaceId, cubeId, mappingId } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      if (!data)
+        throw krovaErrorFrom(response, { error: "Domain records response was empty." });
+      return data;
     },
 
     /** Update a domain's per-domain proxy settings. */

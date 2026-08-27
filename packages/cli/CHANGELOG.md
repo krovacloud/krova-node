@@ -4,6 +4,16 @@ All notable changes to `@krovacloud/cli` are documented here.
 
 
 
+## 0.6.0
+
+### Added
+
+- `krova domains records <cube> <domain-id>` — the DNS records a domain needs
+  and whether each one resolves yet.
+- `krova domains add` now prints the records to publish. Attaching a domain does
+  nothing until they exist, and for a wildcard two of the three were not
+  discoverable from anything the CLI printed.
+
 ## 0.5.1
 
 ### Changed

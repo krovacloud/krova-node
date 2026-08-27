@@ -101,6 +101,7 @@ describe("tool registry", () => {
       "list_images",
       "get_pricing",
       "list_domains",
+      "get_domain_records",
       "create_domain",
       "update_domain",
       "delete_domain",
@@ -130,6 +131,9 @@ describe("tool registry", () => {
       "list_images",
       "get_pricing",
       "list_domains",
+      // Reads live DNS and mutates nothing — an agent may call it freely while
+      // walking a user through publishing their records.
+      "get_domain_records",
       "list_snapshots",
       "list_tcp_mappings",
     ];

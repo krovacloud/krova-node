@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
 
+## 0.3.0
+
+### Added
+
+- `get_domain_records` — the DNS records a domain needs, each with its live
+  state, so an agent can answer "what DNS do I add?" and check progress.
+- `create_domain` now returns the records alongside the domain, and its
+  description tells the agent to relay them verbatim.
+
 ## 0.2.2
 
 ### Changed
