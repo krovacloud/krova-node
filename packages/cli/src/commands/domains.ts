@@ -15,6 +15,50 @@ export function parseOriginScheme(value: unknown): "http" | "https" | undefined 
   throw new Error(`--origin-scheme must be "http" or "https" (got "${String(value)}").`);
 }
 
+type PrintableRecord = {
+  type: string;
+  host: string;
+  value: string;
+  note?: string | null;
+  mustBeGrey?: boolean;
+  state?: string;
+  detail?: string;
+};
+
+/** How each live state reads on a terminal. */
+const STATE_LABEL: Record<string, string> = {
+  found: "found",
+  // ⛔ NOT "failed". Before you publish a record, absent is the expected state.
+  missing: "not added yet",
+  mismatch: "needs a change",
+  // ⛔ OUR lookup failed. Never phrased as the user's mistake.
+  unknown: "couldn't check",
+};
+
+/**
+ * Print the DNS records a domain needs.
+ *
+ * Both the host AND the value, because a record cannot be created from the
+ * value alone — which is what made the old guidance impossible to act on.
+ */
+function printRecords(records: PrintableRecord[], withState = false): void {
+  if (records.length === 0) return;
+  process.stdout.write("\nDNS records to publish:\n");
+  for (const r of records) {
+    const state = withState && r.state ? `  [${STATE_LABEL[r.state] ?? r.state}]` : "";
+    process.stdout.write(`\n  ${r.type.padEnd(5)} ${r.host}${state}\n`);
+    process.stdout.write(`        -> ${r.value}\n`);
+    if (r.mustBeGrey) {
+      // The single most common wildcard failure: proxied, so the CA sees
+      // Cloudflare's addresses instead of the record.
+      process.stdout.write("        On Cloudflare: DNS only (grey cloud)\n");
+    }
+    if (withState && r.detail && r.state !== "found") {
+      process.stdout.write(`        ${r.detail}\n`);
+    }
+  }
+}
+
 /** `krova domains` — manage a Cube's custom domains. */
 export function domainsCommand(): Command {
   const cmd = new Command("domains").description("manage a Cube's custom domains");
@@ -53,13 +97,42 @@ export function domainsCommand(): Command {
         throw new Error(`--port must be a valid port (got "${opts.port}").`);
       }
       const originScheme = parseOriginScheme(opts.originScheme);
-      const domain = await client.domains.create(space, id, {
+      const { domain, records } = await client.domains.create(space, id, {
         domain: opts.domain,
         port,
         ...(originScheme ? { originScheme } : {}),
       });
-      if (rt.json) return printJSON(domain);
+      if (rt.json) return printJSON({ domain, records });
       process.stdout.write(`Attached ${domain.domain} (${domain.id}) — status ${domain.status}\n`);
+      // ⛔ Print the records. Attaching a domain does nothing until they exist,
+      // and before this the CLI sent people away to find out what to publish —
+      // for a wildcard, two of the three records were not discoverable from
+      // anything the CLI printed.
+      printRecords(records);
+      process.stdout.write(
+        `\nAfter publishing them: krova domains records ${cubeRef} ${domain.id}\n`,
+      );
+    });
+
+  cmd
+    .command("records")
+    .argument("<cube>", "cube name or ID")
+    .argument("<domain-id>", "the domain mapping ID (see `krova domains list`)")
+    .description("show the DNS records a domain needs, and whether they resolve yet")
+    .action(async (cubeRef: string, mappingId: string, _opts, c: Command) => {
+      const rt = getRuntime(c);
+      const client = makeClient(rt.res);
+      const space = await resolveSpace(rt);
+      const id = await resolveCube(client, space, cubeRef);
+      const out = await client.domains.records(space, id, mappingId);
+      if (rt.json) return printJSON(out);
+      process.stdout.write(
+        `${out.domain} — ${out.summary.found} of ${out.summary.total} records found\n`,
+      );
+      printRecords(out.records, true);
+      if (!out.summary.complete) {
+        process.stdout.write("\nDNS changes can take a few minutes to spread.\n");
+      }
     });
 
   cmd

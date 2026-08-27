@@ -409,21 +409,84 @@ test("cubes.ssh returns a Cube's SSH connection info", async () => {
   assert.equal(ssh.user, "root");
 });
 
-test("domains.list unwraps { domains } and create unwraps { domain }", async () => {
+test("domains.list unwraps { domains }; create returns the domain AND its records", async () => {
   handler = (req, res) => {
     if (req.method === "GET") {
       assert.equal(req.url, "/api/v1/spaces/s1/cubes/c1/domains");
       json(res, 200, { domains: [{ id: "dom_1", domain: "app.example.com" }] });
     } else {
       assert.equal(req.url, "/api/v1/spaces/s1/cubes/c1/domains");
-      json(res, 201, { domain: { id: "dom_2", domain: "api.example.com" } });
+      json(res, 201, {
+        domain: { id: "dom_2", domain: "api.example.com" },
+        records: [
+          {
+            id: "routing",
+            type: "CNAME",
+            host: "api.example.com",
+            value: "dns.krova.cloud",
+            purpose: "routing",
+            mustBeGrey: false,
+            proxyOk: true,
+          },
+        ],
+      });
     }
   };
   const client = new KrovaClient({ apiKey: "kro_x", baseUrl });
   const list = await client.domains.list("s1", "c1");
   assert.equal(list[0]?.id, "dom_1");
   const created = await client.domains.create("s1", "c1", { domain: "api.example.com", port: 8080 });
-  assert.equal(created.id, "dom_2");
+  assert.equal(created.domain.id, "dom_2");
+  // The whole point of the 0.4.0 change: the caller can publish DNS straight
+  // away instead of making a second call or hard-coding record shapes.
+  assert.equal(created.records[0]?.host, "api.example.com");
+  assert.equal(created.records[0]?.value, "dns.krova.cloud");
+});
+
+test("domains.create tolerates a server that sends no records", async () => {
+  // Defensive: an older control plane, or a response shape that changes again,
+  // must not make `create` throw — the domain was still created.
+  handler = (_req, res) => {
+    json(res, 201, { domain: { id: "dom_3", domain: "x.example.com" } });
+  };
+  const client = new KrovaClient({ apiKey: "kro_x", baseUrl });
+  const created = await client.domains.create("s1", "c1", { domain: "x.example.com", port: 80 });
+  assert.equal(created.domain.id, "dom_3");
+  assert.deepEqual(created.records, []);
+});
+
+test("domains.records returns each record with its live state", async () => {
+  handler = (req, res) => {
+    assert.equal(req.url, "/api/v1/spaces/s1/cubes/c1/domains/dom_9/records");
+    json(res, 200, {
+      domain: "*.example.com",
+      isWildcard: true,
+      records: [
+        {
+          id: "certificate",
+          type: "CNAME",
+          host: "_acme-challenge.example.com",
+          value: "tok.acme.krova.cloud",
+          purpose: "certificate",
+          mustBeGrey: true,
+          proxyOk: false,
+          state: "missing",
+          detail: "Not found yet. Add this record, then check again.",
+        },
+      ],
+      summary: { found: 0, total: 1, complete: false },
+      checkedAt: "2026-08-27T00:00:00.000Z",
+    });
+  };
+  const client = new KrovaClient({ apiKey: "kro_x", baseUrl });
+  const out = await client.domains.records("s1", "c1", "dom_9");
+  assert.equal(out.summary.complete, false);
+  assert.equal(out.records[0]?.state, "missing");
+  // ⛔ Both Cloudflare flags reach the caller. They are opposites, and an
+  // integration that saw only one could orange-cloud the record that must
+  // stay grey.
+  assert.equal(out.records[0]?.mustBeGrey, true);
+  assert.equal(out.records[0]?.proxyOk, false);
 });
 
 test("snapshots.create unwraps { snapshot } and list unwraps { snapshots }", async () => {

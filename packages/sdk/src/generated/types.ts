@@ -810,6 +810,7 @@ export interface paths {
                     content: {
                         "application/json": {
                             domain: components["schemas"]["Domain"];
+                            records: components["schemas"]["DnsRecord"][];
                         };
                     };
                 };
@@ -817,6 +818,66 @@ export interface paths {
                 429: components["responses"]["RateLimited"];
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceId}/cubes/{cubeId}/domains/{mappingId}/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * DNS records this domain needs, with their live status
+         * @description Every record required for the domain to work, each checked against live DNS. Poll this after publishing them.
+         *
+         *     `state` is per record: `found`, `missing` (not published yet — the expected state before you add it, never an error), `mismatch` (something else is there), or `unknown` (we could not check — never a statement about your DNS). `summary.complete` is true only when every record is `found`.
+         *
+         *     A wildcard needs three records; an exact host needs one. Each call performs live DNS lookups and is rate limited.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    cubeId: string;
+                    mappingId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Required records with live status */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            domain: string;
+                            isWildcard: boolean;
+                            records: components["schemas"]["DnsRecordStatus"][];
+                            summary: {
+                                found: number;
+                                total: number;
+                                complete: boolean;
+                            };
+                            /** Format: date-time */
+                            checkedAt: string;
+                        };
+                    };
+                };
+                404: components["responses"]["NotFound"];
+                429: components["responses"]["RateLimited"];
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1799,6 +1860,34 @@ export interface components {
             multiplier: number;
             label: string;
         };
+        DnsRecord: {
+            /** @enum {string} */
+            id: "ownership" | "routing" | "certificate";
+            /** @enum {string} */
+            type: "CNAME" | "TXT" | "A";
+            host: string;
+            value: string;
+            /** @enum {string} */
+            purpose: "ownership" | "routing" | "certificate";
+            note?: string | null;
+            mustBeGrey: boolean;
+            proxyOk: boolean;
+        };
+        DnsRecordStatus: {
+            id: string;
+            /** @enum {string} */
+            type: "CNAME" | "TXT" | "A";
+            host: string;
+            value: string;
+            purpose: string;
+            note?: string | null;
+            mustBeGrey?: boolean;
+            proxyOk?: boolean;
+            /** @enum {string} */
+            state: "found" | "missing" | "mismatch" | "unknown";
+            detail: string;
+            observed?: string[] | null;
+        };
         Domain: {
             id: string;
             cubeId: string;
@@ -1830,6 +1919,10 @@ export interface components {
             basicAuthUser: string | null;
             basicAuthEnabled: boolean;
             corsConfig: Record<string, never> | null;
+            isWildcard: boolean;
+            /** @enum {string|null} */
+            wildcardCertState: "pending_delegation" | "issuing" | "ready" | "failed" | null;
+            acmeDelegationTarget: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */

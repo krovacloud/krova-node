@@ -5,6 +5,42 @@ All notable changes to `@krovacloud/sdk` are documented here. This project adher
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
 
 
+## 0.4.0
+
+### Changed
+
+- **BREAKING** — `domains.create()` now resolves to `{ domain, records }`
+  instead of `Domain`. The records are the DNS entries you must publish for the
+  domain to work, so you can create them in the same run.
+
+  Why it changed rather than being added alongside: for a wildcard, two of the
+  three records (the ownership `TXT` and the `_acme-challenge` delegation) were
+  not derivable from anything the SDK returned. An integration had to read the
+  record shapes out of the docs and hope they still matched the server, which is
+  the arrangement that eventually breaks quietly.
+
+  ```diff
+  - const domain = await client.domains.create(spaceId, cubeId, { domain, port });
+  + const { domain, records } = await client.domains.create(spaceId, cubeId, { domain, port });
+  ```
+
+### Added
+
+- `domains.records(spaceId, cubeId, mappingId)` — the same records, each checked
+  against live DNS. Poll it after publishing them; `summary.complete` turns true
+  only once every record is `found`. Rate limited, because it performs real
+  lookups.
+- `DnsRecord` and `DnsRecordStatus` types.
+
+  Each record carries `mustBeGrey` and `proxyOk`, which are deliberate
+  opposites: the routing record may sit behind Cloudflare's proxy, the
+  `_acme-challenge` record must not. Automation needs both — one alone would let
+  you confidently orange-cloud the single record that has to stay grey.
+
+  `state: "missing"` means NOT PUBLISHED YET — the expected state before you
+  create the record, never an error. `state: "unknown"` means the lookup could
+  not be completed, which is never a statement about your DNS.
+
 ## 0.3.2
 
 ### Changed

@@ -287,9 +287,30 @@ export const TOOLS: ToolDef[] = [
       client.domains.list(resolveSpaceId(args.spaceId, ctx), args.cubeId),
   }),
   defineTool({
+    name: "get_domain_records",
+    title: "Domain DNS Records",
+    description:
+      "The DNS records a domain needs, each checked against live DNS. Use this to answer \"what DNS do I add?\" and to check progress after the user publishes them. Every record carries its own state: found; missing, which means NOT PUBLISHED YET and is the expected state before the user creates it — never report it as an error; mismatch, meaning something else is there; and unknown, meaning KROVA could not complete the lookup, which is never a statement about the user's DNS. summary.complete is true only once every record is found. Each call performs real DNS lookups and is rate limited, so do not poll it in a tight loop.",
+    annotations: { readOnlyHint: true, openWorldHint: true },
+    inputSchema: {
+      ...spaceIdField,
+      ...cubeIdField,
+      mappingId: z
+        .string()
+        .describe("The domain mapping ID, as returned by list_domains."),
+    },
+    handler: (client, args, ctx) =>
+      client.domains.records(
+        resolveSpaceId(args.spaceId, ctx),
+        args.cubeId,
+        args.mappingId
+      ),
+  }),
+  defineTool({
     name: "create_domain",
     title: "Attach Domain",
-    description: "Attach a custom domain to a Cube, routing it to an in-Cube port.",
+    description:
+      "Attach a custom domain to a Cube, routing it to an in-Cube port. Returns the domain AND the DNS records the user must publish — tell them the records verbatim, host and value, because the domain does nothing until those exist. An ordinary subdomain needs one CNAME; a wildcard needs three. Any record with mustBeGrey must be DNS-only (grey cloud) on Cloudflare; a proxied one hides the record and certificate issuance fails.",
     annotations: { readOnlyHint: false, idempotentHint: false, openWorldHint: true },
     inputSchema: {
       ...spaceIdField,
