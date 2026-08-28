@@ -30,7 +30,7 @@ On every delivery, Krova Cloud sends these headers alongside the raw JSON body:
 | Header              | Example                                   | Meaning                          |
 | ------------------- | ----------------------------------------- | -------------------------------- |
 | `X-Krova-Signature` | `t=1700000000,v1=3f8a…`                   | signed timestamp + HMAC-SHA256   |
-| `X-Krova-Event`     | `cube.provisioned`                        | the event name                   |
+| `X-Krova-Event`     | `cube.created`                            | the event name                   |
 | `X-Krova-Delivery`  | `dlv_abc123`                              | unique id for this delivery      |
 
 ### The signature scheme

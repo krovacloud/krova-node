@@ -6,6 +6,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
 
+## 0.3.2
+
+### Changed
+
+- Docs-only republish: README tool count corrected to 23, `get_domain_records`
+  added to the tool table and the read-only list. No code change.
+
+## 0.3.1
+
+### Changed
+
+- Automated patch republish (2026-08-27, PR #46): the package is now built with
+  **tsdown** (replacing the unmaintained tsup) and formatted with **oxfmt**
+  (replacing Prettier). No tool or behavior change.
+
 ## 0.3.0
 
 ### Added

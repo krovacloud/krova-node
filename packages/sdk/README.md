@@ -181,12 +181,15 @@ const pricing = await krova.catalog.pricing(); // per-resource hourly rates + vo
 Typed helpers for a Cube's attached resources — each unwraps the response and throws `KrovaError` on failure.
 
 ```ts
-// Custom domains
+// Custom domains — create() resolves to { domain, records } (BREAKING in 0.4.0).
+// The records are the DNS entries you must publish for the domain to work, so
+// you can create them in the same run: a wildcard needs three, an exact host one.
 const domains = await krova.domains.list("space_123", "cube_123");
-const domain = await krova.domains.create("space_123", "cube_123", {
+const { domain, records } = await krova.domains.create("space_123", "cube_123", {
   domain: "app.example.com",
   port: 8080,
 });
+for (const r of records) console.log(`${r.type} ${r.host} → ${r.value}`);
 await krova.domains.update("space_123", "cube_123", domain.id, { responseCompression: true });
 await krova.domains.delete("space_123", "cube_123", domain.id);
 
@@ -206,6 +209,31 @@ await krova.tcpMappings.delete("space_123", "cube_123", mapping.id);
 ```
 
 `Domain`, `Snapshot`, and `TcpMapping` are exported for your own signatures.
+
+### `domains.records` — the DNS records a domain needs
+
+The same records `domains.create()` returns, but each one **checked against live
+DNS**. Poll it after publishing them — `summary.complete` turns true only once
+every record is `found`. Each call performs real DNS lookups and is rate
+limited, so poll on an interval rather than in a tight loop.
+
+```ts
+const status = await krova.domains.records("space_123", "cube_123", domain.id);
+// { domain, isWildcard, records: DnsRecordStatus[], summary: { found, total, complete }, checkedAt }
+for (const r of status.records) console.log(`${r.host}: ${r.state}`); // found | missing | mismatch | unknown
+if (status.summary.complete) console.log("all records resolve — the domain can go live");
+```
+
+Two record states are worth knowing before you alert on them: `missing` means
+NOT PUBLISHED YET — the expected state before the records are created, never an
+error — and `unknown` means the lookup itself could not complete, which says
+nothing about your DNS. Each record also carries `mustBeGrey` and `proxyOk`:
+the routing record may sit behind Cloudflare's proxy, the `_acme-challenge`
+record must not — automation needs both flags, one alone would let you
+orange-cloud the single record that has to stay grey.
+
+`DnsRecord` (what `create` returns) and `DnsRecordStatus` (the checked variant,
+adding `state`, `detail`, `observed`) are exported for your own signatures.
 
 ### Imports & backups
 

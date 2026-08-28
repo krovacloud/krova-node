@@ -113,7 +113,7 @@ The server is configured entirely through environment variables:
 
 ## Tools
 
-All 20 tools, their parameters, and what they do. Every tool's `spaceId` is optional when `KROVA_SPACE_ID` is set.
+All 23 tools, their parameters, and what they do. Every tool's `spaceId` is optional when `KROVA_SPACE_ID` is set.
 
 | Tool | Parameters | Description |
 | --- | --- | --- |
@@ -129,7 +129,8 @@ All 20 tools, their parameters, and what they do. Every tool's `spaceId` is opti
 | `list_images` | — | List available OS images for new Cubes. |
 | `get_pricing` | — | Get per-resource hourly rates and volume pricing tiers. |
 | `list_domains` | `spaceId?`, `cubeId` | List the custom domains attached to a Cube. |
-| `create_domain` | `spaceId?`, `cubeId`, `domain`, `port`, `originScheme?` | Attach a custom domain to a Cube. |
+| `get_domain_records` | `spaceId?`, `cubeId`, `mappingId` | The DNS records a domain needs, each checked against live DNS — `missing` means not published yet (expected before the user creates them, never an error), and `summary.complete` turns true once every record is found. Performs real DNS lookups; rate limited. |
+| `create_domain` | `spaceId?`, `cubeId`, `domain`, `port`, `originScheme?` | Attach a custom domain to a Cube. Returns the domain **and** the DNS records to publish — relay them verbatim. |
 | `update_domain` | `spaceId?`, `cubeId`, `mappingId`, `originScheme` | Change a domain's proxy settings. |
 | `delete_domain` | `spaceId?`, `cubeId`, `mappingId` | Detach a custom domain. **Destructive.** |
 | `list_snapshots` | `spaceId?`, `cubeId` | List a Cube's disk snapshots. |
@@ -140,7 +141,7 @@ All 20 tools, their parameters, and what they do. Every tool's `spaceId` is opti
 | `create_tcp_mapping` | `spaceId?`, `cubeId`, `cubePort`, `whitelistIps?` | Expose a Cube TCP port on the host. |
 | `delete_tcp_mapping` | `spaceId?`, `cubeId`, `mappingId` | Remove a TCP port mapping. **Destructive.** |
 
-Every tool advertises MCP **annotations** so your client can treat them appropriately: the **nine** read tools (`list_cubes`, `get_cube`, `get_cube_ssh`, `list_regions`, `list_images`, `get_pricing`, `list_domains`, `list_snapshots`, `list_tcp_mappings`) are marked read-only, while the **six** destructive tools (`create_cube`, `delete_cube`, `delete_domain`, `delete_snapshot`, `restore_cube`, `delete_tcp_mapping`) are marked **destructive**. `update_domain` mutates but is idempotent and reversible, so it is not. Most MCP clients surface a confirmation prompt before running a destructive tool — keep that confirmation on, since an LLM driven by untrusted content could be induced to call one.
+Every tool advertises MCP **annotations** so your client can treat them appropriately: the **ten** read tools (`list_cubes`, `get_cube`, `get_cube_ssh`, `list_regions`, `list_images`, `get_pricing`, `list_domains`, `get_domain_records`, `list_snapshots`, `list_tcp_mappings`) are marked read-only, while the **six** destructive tools (`create_cube`, `delete_cube`, `delete_domain`, `delete_snapshot`, `restore_cube`, `delete_tcp_mapping`) are marked **destructive**. `update_domain` mutates but is idempotent and reversible, so it is not. Most MCP clients surface a confirmation prompt before running a destructive tool — keep that confirmation on, since an LLM driven by untrusted content could be induced to call one.
 
 ### `create_cube` parameters
 

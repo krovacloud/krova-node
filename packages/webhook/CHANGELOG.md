@@ -5,6 +5,37 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and the
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
 
 
+## 0.1.10
+
+### Changed
+
+- Docs-only republish: the README example now uses a real catalog event
+  (`cube.created`); missing changelog entries for 0.1.7-0.1.9 backfilled. No
+  code change.
+
+## 0.1.9
+
+### Changed
+
+- Automated patch republish (2026-08-27, PR #46): the package is now built with
+  **tsdown** (replacing the unmaintained tsup) and formatted with **oxfmt**
+  (replacing Prettier). No API change.
+
+## 0.1.8
+
+### Changed
+
+- Automated republish from a docs-only change (2026-07-18): one README
+  correction. No code change.
+
+## 0.1.7
+
+### Changed
+
+- Automated republish (2026-07-13): package homepage now points at
+  `krova.cloud/developers`, and the README links the developer site. No code
+  change.
+
 ## 0.1.6
 
 ### Changed

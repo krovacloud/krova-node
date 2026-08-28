@@ -81,6 +81,8 @@ Manage a Cube's attached resources. All take a `<cube>` name or ID and support
 # Custom domains
 krova domains list <cube>
 krova domains add <cube> --domain app.example.com --port 8080
+krova domains records <cube> <domain-id>   # the DNS records the domain needs,
+                                           # and whether each one resolves yet
 krova domains rm <cube> <domain-id>
 
 # Reach the Cube over HTTPS instead of cleartext — only for a Cube that
