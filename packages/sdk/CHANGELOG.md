@@ -5,6 +5,23 @@ All notable changes to `@krovacloud/sdk` are documented here. This project adher
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
 
 
+## 0.4.2
+
+### Changed
+
+- Docs-only republish: the `domains.create()` example now destructures the
+  `{ domain, records }` result (the 0.4.0 shape), and `domains.records()` plus
+  the `DnsRecord`/`DnsRecordStatus` types are documented in the README. No code
+  change.
+
+## 0.4.1
+
+### Changed
+
+- Automated patch republish (2026-08-27, PR #46): the package is now built with
+  **tsdown** (replacing the unmaintained tsup) and formatted with **oxfmt**
+  (replacing Prettier). No API change.
+
 ## 0.4.0
 
 ### Changed

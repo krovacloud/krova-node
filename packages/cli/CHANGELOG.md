@@ -4,6 +4,21 @@ All notable changes to `@krovacloud/cli` are documented here.
 
 
 
+## 0.6.2
+
+### Changed
+
+- Docs-only republish: `krova domains records <cube> <domain-id>` (the 0.6.0
+  feature) is now documented in the README. No code change.
+
+## 0.6.1
+
+### Changed
+
+- Automated patch republish (2026-08-27, PR #46): the package is now built with
+  **tsdown** (replacing the unmaintained tsup) and formatted with **oxfmt**
+  (replacing Prettier). No behavior change.
+
 ## 0.6.0
 
 ### Added

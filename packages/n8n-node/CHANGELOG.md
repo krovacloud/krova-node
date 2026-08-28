@@ -8,6 +8,86 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
 
+## 0.2.13
+
+### Changed
+
+- Docs-only republish: changelog entries for 0.2.4-0.2.12 backfilled from the
+  release tags. No code change.
+
+## 0.2.12
+
+### Changed
+
+- Automated release (2026-08-27, PR #47): repo tooling — ESLint moved to a flat
+  config (`eslint.config.mjs` replaces `.eslintrc.js`), pnpm 11 across the repo,
+  typecheck gated in CI. No node behavior change.
+
+## 0.2.11
+
+### Changed
+
+- Automated release (2026-08-27, PR #46): Prettier replaced with **oxfmt**; a
+  formatting-only touch in `Krova.node.ts`. No behavior change.
+
+## 0.2.10
+
+### Changed
+
+- Docs (2026-08-23, PR #43): the SSH Public Key field note now describes the
+  per-image login user — `ubuntu` on Ubuntu images, `debian` on Debian images
+  (both with passwordless `sudo`); Cubes created before August 2026 log in as
+  `root`.
+
+## 0.2.9
+
+### Changed
+
+- Docs (2026-08-22): the Create field notes now state that per-Cube size is
+  **not** tiered — every Space gets the same 16 vCPU / 32 GB RAM / 100 GB disk
+  ceiling.
+
+## 0.2.8
+
+### Added
+
+- **Origin Scheme** on Domain Create and Update (2026-08-06) — reach the Cube
+  over HTTPS instead of cleartext, for Cubes that terminate TLS themselves.
+
+## 0.2.7
+
+### Changed
+
+- Docs (2026-08-02): corrected stale sleep/wake copy — the platform powers
+  Cubes off and cold-boots them; there is no paused-VM sleep.
+
+## 0.2.6
+
+### Added
+
+- **Cube → Restart** (2026-07-31) — cold-restart a running Cube against the
+  host's current kernel, the only way to pick up a refreshed guest kernel.
+
+### Removed
+
+- The stale vendored `openapi.json` (unused by the node at runtime).
+
+## 0.2.5
+
+### Changed
+
+- **Power Off replaces Sleep** (2026-07-18, clean break): the operation is now
+  **Power Off** (`power-off`, hitting `/power-off`) and **Wake** is renamed
+  **Start** ("start a stopped Cube (cold boot)") — matching the platform, which
+  powers Cubes off rather than pausing them.
+
+## 0.2.4
+
+### Changed
+
+- Automated release (2026-07-13): package homepage now points at
+  `krova.cloud/developers`. No code change.
+
 ## 0.2.3
 
 ### Changed
