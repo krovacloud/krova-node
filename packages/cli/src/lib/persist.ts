@@ -1,5 +1,5 @@
 import { DEFAULT_CONTEXT_NAME, load, sanitizeContextName, save, upsert } from "./config.js";
-import { fetchSpace } from "./runtime.js";
+import { probeAuth } from "./runtime.js";
 
 /** Save + switch to a context after a login. Best-effort space lookup fills in
  *  spaceId/spaceName and a nicer context name. Mirrors the Go persistLogin. */
@@ -15,7 +15,8 @@ export async function persistLogin(input: {
   let spaceName = "";
   let derivedName = "";
 
-  const sp = await fetchSpace(input.baseUrl, input.apiKey, input.timeoutMs);
+  const probe = await probeAuth(input.baseUrl, input.apiKey, input.timeoutMs);
+  const sp = probe.state === "valid" ? probe.space : null;
   if (sp) {
     // Prefer an explicitly-provided --space over the fetched id; only fall back
     // to the resolved space when the caller didn't pin one.

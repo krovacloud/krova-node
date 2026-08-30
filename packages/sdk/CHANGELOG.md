@@ -5,6 +5,18 @@ All notable changes to `@krovacloud/sdk` are documented here. This project adher
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
 
 
+## Unreleased
+
+### Changed
+
+- **BREAKING** — `KrovaErrorBody` no longer has an open `[key: string]: unknown`
+  index signature; only `error?: string` is part of the public shape. The
+  documented API contract (`components.schemas.Error` in the bundled OpenAPI
+  spec) is the strict `{ error: string }`, and no internal consumer reads any
+  field other than `body?.error`. Callers that were treating the body as an
+  arbitrary record should narrow to `body?.error` (or cast the body to a
+  concrete shape they actually expect).
+
 ## 0.4.2
 
 ### Changed

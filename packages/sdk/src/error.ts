@@ -2,12 +2,10 @@
  * The error body shape returned by the Krova Cloud API.
  *
  * Per the OpenAPI spec (`components.schemas.Error`), every non-2xx response
- * body is `{ "error": string }`. Additional fields may appear over time, so
- * we keep the type open.
+ * body is `{ "error": string }`.
  */
 export interface KrovaErrorBody {
   error?: string;
-  [key: string]: unknown;
 }
 
 /**

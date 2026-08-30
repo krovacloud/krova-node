@@ -1,4 +1,3 @@
-import { KrovaWebhookError } from "./errors.js";
 import {
   verifyKrovaWebhook,
   type VerifyFailure,
@@ -37,11 +36,6 @@ export interface KrovaWebhookContext {
 }
 
 type HeaderValue = string | string[] | undefined;
-
-function firstHeader(value: HeaderValue): string | undefined {
-  if (Array.isArray(value)) return value[0];
-  return value ?? undefined;
-}
 
 /**
  * Framework-agnostic core. Verifies a raw body against the provided headers
@@ -97,7 +91,11 @@ function makeHeaderGetter(
   for (const key of Object.keys(record)) {
     lower.set(key.toLowerCase(), record[key]);
   }
-  return (name) => firstHeader(lower.get(name.toLowerCase()));
+  return (name) => {
+    const value = lower.get(name.toLowerCase());
+    if (Array.isArray(value)) return value[0];
+    return value ?? undefined;
+  };
 }
 
 // --- Express ---------------------------------------------------------------
@@ -192,5 +190,3 @@ export function krovaWebhook(options: FrameworkOptions) {
     next();
   };
 }
-
-export { KrovaWebhookError };

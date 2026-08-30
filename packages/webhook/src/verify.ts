@@ -60,12 +60,6 @@ export interface VerifyFailure {
  */
 export type VerifyResult = VerifySuccess | VerifyFailure;
 
-function toBuffer(payload: WebhookPayload): Buffer {
-  if (typeof payload === "string") return Buffer.from(payload, "utf8");
-  if (Buffer.isBuffer(payload)) return payload;
-  return Buffer.from(payload);
-}
-
 /**
  * Parse an `X-Krova-Signature` header into its `t` (timestamp) and `v1`
  * (signature) parts.
@@ -126,9 +120,15 @@ export function computeSignature(
   timestamp: number,
   payload: WebhookPayload,
 ): string {
+  const body =
+    typeof payload === "string"
+      ? Buffer.from(payload, "utf8")
+      : Buffer.isBuffer(payload)
+        ? payload
+        : Buffer.from(payload);
   const hmac = createHmac("sha256", secret);
   hmac.update(`${timestamp}.`);
-  hmac.update(toBuffer(payload));
+  hmac.update(body);
   return hmac.digest("hex");
 }
 
