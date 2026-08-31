@@ -1,7 +1,7 @@
 import { Command } from "commander";
 
 import { load, maskKey, remove, save } from "../lib/config.js";
-import { printJSON, printKeyValue, printTable } from "../lib/output.js";
+import { printJSON, printTable } from "../lib/output.js";
 import { getRuntime } from "../lib/runtime.js";
 
 export function contextCommand(): Command {
@@ -95,8 +95,4 @@ export function contextCommand(): Command {
     });
 
   return ctx;
-}
-
-export function whoamiKeyValue(pairs: Array<[string, string]>): void {
-  printKeyValue(pairs);
 }

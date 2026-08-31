@@ -115,17 +115,6 @@ export async function probeAuth(
   }
 }
 
-/** GET /space with the given key; null on 404 / error (non-fatal). Thin
- *  wrapper over `probeAuth` for callers that only need the space. */
-export async function fetchSpace(
-  baseUrl: string,
-  apiKey: string,
-  timeoutMs: number
-): Promise<SpaceInfo | null> {
-  const probe = await probeAuth(baseUrl, apiKey, timeoutMs);
-  return probe.state === "valid" ? probe.space : null;
-}
-
 /** Resolve the active space id: explicit value wins, else auto-detect via
  *  GET /space (and cache it into the current context). */
 export async function resolveSpace(rt: Runtime): Promise<string> {

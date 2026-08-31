@@ -13,22 +13,6 @@ import { CLI_VERSION, versionCommand } from "./commands/version.js";
 import { webhooksCommand } from "./commands/webhooks.js";
 import { whoamiCommand } from "./commands/whoami.js";
 
-/** cobra-style persistent flags: usable on any command, before or after it.
- *  Skips a flag a command already defines locally (e.g. login's own --context). */
-function addGlobalOptions(cmd: Command): void {
-  const have = new Set(cmd.options.map((o) => o.long));
-  const add = (flags: string, desc: string, def?: string) => {
-    const long = flags.split(/[ ,<[]/).find((f) => f.startsWith("--"));
-    if (long && !have.has(long)) cmd.option(flags, desc, def);
-  };
-  add("--api-key <key>", "Krova Cloud API key (overrides env and context)");
-  add("--space <id>", "Space ID (overrides KROVA_SPACE_ID and context)");
-  add("--base-url <url>", "override the API base URL");
-  add("--context <name>", "use a named context (overrides KROVA_CONTEXT)");
-  add("--json", "output machine-readable JSON instead of a table");
-  add("--timeout <duration>", "per-request timeout", "30s");
-}
-
 const program = new Command();
 program
   .name("krova")
@@ -55,12 +39,23 @@ program.addCommand(pricingCommand());
 program.addCommand(webhooksCommand());
 program.addCommand(versionCommand());
 
-// Apply the global flags to the root and every (sub)command.
-const applyAll = (cmd: Command): void => {
-  addGlobalOptions(cmd);
-  for (const c of cmd.commands) applyAll(c);
+// cobra-style persistent flags: usable on any command, before or after it.
+// Skips a flag a command already defines locally (e.g. login's own --context).
+const applyGlobals = (cmd: Command): void => {
+  const have = new Set(cmd.options.map((o) => o.long));
+  const add = (flags: string, desc: string, def?: string) => {
+    const long = flags.split(/[ ,<[]/).find((f) => f.startsWith("--"));
+    if (long && !have.has(long)) cmd.option(flags, desc, def);
+  };
+  add("--api-key <key>", "Krova Cloud API key (overrides env and context)");
+  add("--space <id>", "Space ID (overrides KROVA_SPACE_ID and context)");
+  add("--base-url <url>", "override the API base URL");
+  add("--context <name>", "use a named context (overrides KROVA_CONTEXT)");
+  add("--json", "output machine-readable JSON instead of a table");
+  add("--timeout <duration>", "per-request timeout", "30s");
+  for (const c of cmd.commands) applyGlobals(c);
 };
-applyAll(program);
+applyGlobals(program);
 
 async function main(): Promise<void> {
   try {
