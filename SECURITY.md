@@ -6,7 +6,7 @@ This policy covers every package published from this repository:
 - [`@krovacloud/cli`](https://www.npmjs.com/package/@krovacloud/cli)
 - [`@krovacloud/mcp`](https://www.npmjs.com/package/@krovacloud/mcp)
 - [`@krovacloud/webhook`](https://www.npmjs.com/package/@krovacloud/webhook)
-- [`n8n-nodes-krova`](https://www.npmjs.com/package/n8n-nodes-krova)
+- [`@krovacloud/n8n-nodes-krova`](https://www.npmjs.com/package/@krovacloud/n8n-nodes-krova)
 
 ## Supported versions
 

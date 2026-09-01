@@ -28,7 +28,7 @@ package lives under `packages/*`:
 | `packages/cli` | `@krovacloud/cli` | The `krova` command-line tool (pure TypeScript). |
 | `packages/mcp` | `@krovacloud/mcp` | Model Context Protocol server for Krova. |
 | `packages/webhook` | `@krovacloud/webhook` | Webhook signature verification + types. |
-| `packages/n8n-node` | `n8n-nodes-krova` | The Krova node for n8n. |
+| `packages/n8n-node` | `@krovacloud/n8n-nodes-krova` | The Krova node for n8n. |
 
 Supporting files:
 

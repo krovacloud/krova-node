@@ -8,6 +8,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
 
+## 0.3.0
+
+### Changed
+
+- **The package moved to `@krovacloud/n8n-nodes-krova`.** The unscoped
+  `n8n-nodes-krova` name is stranded: its sole npm owner account was deleted on
+  2026-08-31, which left the name unadministrable and deprecated every published
+  version. This package is the same node, published under the `krovacloud` npm
+  org alongside the SDK, CLI, MCP and webhook packages.
+
+  Existing installs of `n8n-nodes-krova` keep working but will not receive
+  updates. To move: uninstall `n8n-nodes-krova` in **Settings → Community
+  Nodes**, then install `@krovacloud/n8n-nodes-krova`. Credentials and existing
+  workflow nodes are unaffected — the node type, its operations and the
+  **Krova Cloud API** credential are unchanged.
+
+  Starts at 0.3.0 rather than continuing 0.2.x: a short-lived scoped mirror of
+  this package existed under the same name in July 2026, and npm permanently
+  burns any version number once used.
+
 ## 0.2.13
 
 ### Changed

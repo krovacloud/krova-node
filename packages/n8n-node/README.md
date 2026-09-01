@@ -1,8 +1,8 @@
-# n8n-nodes-krova
+# @krovacloud/n8n-nodes-krova
 
-[![npm version](https://img.shields.io/npm/v/n8n-nodes-krova)](https://www.npmjs.com/package/n8n-nodes-krova)
-[![npm downloads](https://img.shields.io/npm/dm/n8n-nodes-krova)](https://www.npmjs.com/package/n8n-nodes-krova)
-[![license](https://img.shields.io/npm/l/n8n-nodes-krova)](./LICENSE)
+[![npm version](https://img.shields.io/npm/v/@krovacloud/n8n-nodes-krova)](https://www.npmjs.com/package/@krovacloud/n8n-nodes-krova)
+[![npm downloads](https://img.shields.io/npm/dm/@krovacloud/n8n-nodes-krova)](https://www.npmjs.com/package/@krovacloud/n8n-nodes-krova)
+[![license](https://img.shields.io/npm/l/@krovacloud/n8n-nodes-krova)](./LICENSE)
 
 Provision and manage **Krova Cloud** Cubes — and read the platform catalog — straight from your [n8n](https://n8n.io) workflows.
 
@@ -16,8 +16,12 @@ Install this node from within n8n — no CLI, no server restart:
 
 1. Open **Settings → Community Nodes**.
 2. Select **Install**.
-3. Enter the package name **`n8n-nodes-krova`**.
+3. Enter the package name **`@krovacloud/n8n-nodes-krova`**.
 4. Acknowledge the community-node risk prompt and select **Install**.
+
+> **Moving from `n8n-nodes-krova`?** That unscoped package is no longer
+> maintained — uninstall it first, then install this one. Your credentials
+> and existing workflow nodes carry over unchanged.
 
 The **Krova Cloud** node appears in the node panel immediately after install. For self-hosted / manual setups, see the official [community-nodes installation guide](https://docs.n8n.io/integrations/community-nodes/installation/).
 
