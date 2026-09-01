@@ -8,6 +8,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
 
+## 0.2.14
+
+### Changed
+
+- Republish to clear the deprecation notice. On 2026-08-31 the npm account that
+  solely owned this package was deleted, and npm's automated tooling deprecated
+  **every published version** with "Package no longer supported" — the package
+  was never actually abandoned. Deprecation is per-version, so this release
+  restores a clean `latest`. Recovering ownership of the name itself is a
+  separate, in-flight npm Support request. No code change.
+
 ## 0.2.13
 
 ### Changed
