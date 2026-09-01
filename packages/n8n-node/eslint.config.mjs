@@ -1,5 +1,5 @@
 /**
- * ESLint config for the n8n-nodes-krova community node package.
+ * ESLint config for the @krovacloud/n8n-nodes-krova community node package.
  *
  * Uses the official community-node linter, eslint-plugin-n8n-nodes-base, which
  * enforces the rules the n8n marketplace requires for community nodes.

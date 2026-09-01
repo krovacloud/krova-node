@@ -14,7 +14,7 @@ assignees: ""
 - [ ] `@krovacloud/cli`
 - [ ] `@krovacloud/mcp`
 - [ ] `@krovacloud/webhook`
-- [ ] `n8n-nodes-krova`
+- [ ] `@krovacloud/n8n-nodes-krova`
 
 ## Describe the bug
 

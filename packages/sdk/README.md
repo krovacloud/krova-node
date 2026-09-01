@@ -326,7 +326,7 @@ The package ships its own type declarations — no `@types/*` install needed. `C
 | [`@krovacloud/cli`](https://www.npmjs.com/package/@krovacloud/cli) | Command-line interface for Krova Cloud |
 | [`@krovacloud/webhook`](https://www.npmjs.com/package/@krovacloud/webhook) | Verify and parse Krova Cloud webhook events |
 | [`@krovacloud/mcp`](https://www.npmjs.com/package/@krovacloud/mcp) | Model Context Protocol server for Krova Cloud |
-| [`n8n-nodes-krova`](https://www.npmjs.com/package/n8n-nodes-krova) | n8n community nodes for Krova Cloud |
+| [`@krovacloud/n8n-nodes-krova`](https://www.npmjs.com/package/@krovacloud/n8n-nodes-krova) | n8n community nodes for Krova Cloud |
 
 ## Requirements
 

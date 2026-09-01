@@ -11,7 +11,7 @@ cross-package change is one PR.
 | [`packages/cli`](packages/cli) | [`@krovacloud/cli`](https://www.npmjs.com/package/@krovacloud/cli) | The `krova` CLI (pure Node — built on the SDK) |
 | [`packages/mcp`](packages/mcp) | [`@krovacloud/mcp`](https://www.npmjs.com/package/@krovacloud/mcp) | MCP server for Claude/Cursor/etc. |
 | [`packages/webhook`](packages/webhook) | [`@krovacloud/webhook`](https://www.npmjs.com/package/@krovacloud/webhook) | Outbound-webhook signature verification |
-| [`packages/n8n-node`](packages/n8n-node) | [`n8n-nodes-krova`](https://www.npmjs.com/package/n8n-nodes-krova) | n8n community node |
+| [`packages/n8n-node`](packages/n8n-node) | [`@krovacloud/n8n-nodes-krova`](https://www.npmjs.com/package/@krovacloud/n8n-nodes-krova) | n8n community node |
 
 ## Develop
 

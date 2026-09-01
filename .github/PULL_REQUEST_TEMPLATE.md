@@ -18,7 +18,7 @@
 - [ ] `@krovacloud/cli`
 - [ ] `@krovacloud/mcp`
 - [ ] `@krovacloud/webhook`
-- [ ] `n8n-nodes-krova`
+- [ ] `@krovacloud/n8n-nodes-krova`
 - [ ] None (workspace tooling / CI / docs only)
 
 ## Checklist

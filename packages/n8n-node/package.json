@@ -1,7 +1,7 @@
 {
-  "name": "n8n-nodes-krova",
-  "version": "0.2.0",
-  "description": "n8n community node for Krova Cloud — create, start, power off, restart, list, and delete Cubes (Firecracker microVMs), manage domains, snapshots and TCP mappings, and read regions, images and pricing via the Krova Cloud API.",
+  "name": "@krovacloud/n8n-nodes-krova",
+  "version": "0.3.0",
+  "description": "n8n community node for Krova Cloud \u2014 create, start, power off, restart, list, and delete Cubes (Firecracker microVMs), manage domains, snapshots and TCP mappings, and read regions, images and pricing via the Krova Cloud API.",
   "keywords": [
     "n8n-community-node-package",
     "n8n",
