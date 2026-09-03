@@ -1069,6 +1069,12 @@ export interface paths {
                 content: {
                     "application/json": {
                         cubePort: number;
+                        /** @description Optional human label for the mapping. */
+                        label?: string;
+                        /** @description IPs/CIDRs allowed to reach the published port. Omit or send an empty array to leave the port open to the internet. */
+                        whitelistedIps?: string[];
+                        /** @deprecated
+                         *     @description DEPRECATED alias for `whitelistedIps`, accepted for backwards compatibility. `whitelistedIps` wins if both are sent. Use `whitelistedIps` in new code. */
                         whitelistIps?: string[];
                     };
                 };

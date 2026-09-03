@@ -531,3 +531,62 @@ test("backups.download returns the signed URL body", async () => {
   const dl = await client.backups.download("s1", "bak_1");
   assert.equal(dl?.filename, "cube.cube");
 });
+
+/**
+ * ⛔ Regression lock for the allow-list field name.
+ *
+ * The published OpenAPI spec named this request field `whitelistIps` while the
+ * server has always read `whitelistedIps`. Every IP-restricted mapping created
+ * through this SDK — and through the CLI and MCP server that wrap it — was
+ * therefore created **publicly reachable**: the server saw no allow-list,
+ * skipped the CIDR block entirely, and still answered 201.
+ *
+ * Reproduced live on production 2026-09-02: a mapping added with
+ * `--whitelist 203.0.113.0/24` served content to an address outside that CIDR.
+ *
+ * This asserts the WIRE body, not the TypeScript type. A type-level check
+ * would have passed throughout the entire period the bug existed — the types
+ * were generated from the same wrong spec, so they agreed with it perfectly.
+ */
+test("⛔ createTcpMapping sends `whitelistedIps` on the wire", async () => {
+  let seenBody: Record<string, unknown> = {};
+  handler = (_req, res, body) => {
+    seenBody = JSON.parse(body || "{}") as Record<string, unknown>;
+    json(res, 201, { tcpMapping: { id: "map_1", cubePort: 8443, hostPort: 30001 } });
+  };
+
+  const client = new KrovaClient({ apiKey: "kro_test", baseUrl });
+  await client.tcpMappings.create("space_abc", "cube_abc", {
+    cubePort: 8443,
+    whitelistedIps: ["203.0.113.0/24"],
+  });
+
+  assert.deepEqual(
+    seenBody.whitelistedIps,
+    ["203.0.113.0/24"],
+    "the allow-list must go out as `whitelistedIps` — the name the server reads",
+  );
+  assert.equal(
+    seenBody.whitelistIps,
+    undefined,
+    "the deprecated `whitelistIps` name must not be emitted",
+  );
+});
+
+test("an omitted allow-list sends no allow-list key at all", async () => {
+  // Publishing a port with no allow-list is legitimate and documented — it is
+  // open to the internet. What must never happen is the SDK inventing an empty
+  // array, which would read as "restrict to nobody" if the server ever changed
+  // its handling of `[]`.
+  let seenBody: Record<string, unknown> = {};
+  handler = (_req, res, body) => {
+    seenBody = JSON.parse(body || "{}") as Record<string, unknown>;
+    json(res, 201, { tcpMapping: { id: "map_2", cubePort: 80, hostPort: 30002 } });
+  };
+
+  const client = new KrovaClient({ apiKey: "kro_test", baseUrl });
+  await client.tcpMappings.create("space_abc", "cube_abc", { cubePort: 80 });
+
+  assert.ok(!("whitelistedIps" in seenBody));
+  assert.ok(!("whitelistIps" in seenBody));
+});
