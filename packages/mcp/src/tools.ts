@@ -443,16 +443,35 @@ export const TOOLS: ToolDef[] = [
       ...spaceIdField,
       ...cubeIdField,
       cubePort: z.number().int().positive().max(65535).describe("The in-Cube port to expose."),
-      whitelistIps: z
+      whitelistedIps: z
         .array(z.string())
         .optional()
         .describe("Optional IP/CIDR allow-list restricting who can reach the mapping."),
+      whitelistIps: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Deprecated alias for whitelistedIps. Accepted so existing agent prompts keep working; prefer whitelistedIps.",
+        ),
     },
-    handler: (client, args, ctx) =>
-      client.tcpMappings.create(resolveSpaceId(args.spaceId, ctx), args.cubeId, {
-        cubePort: args.cubePort,
-        ...(args.whitelistIps ? { whitelistIps: args.whitelistIps } : {}),
-      }),
+    handler: (client, args, ctx) => {
+      // ⛔ The wire field is `whitelistedIps`. The published spec named it
+      // `whitelistIps` while the server has always read `whitelistedIps`, so
+      // every allow-listed mapping this tool created was silently published
+      // WORLD-OPEN, with a 201 and no error (reproduced on production
+      // 2026-09-02). The old ARGUMENT name is still accepted here — agents
+      // have saved prompts using it — but it is mapped onto the correct
+      // field before it goes out.
+      const allow = args.whitelistedIps ?? args.whitelistIps;
+      return client.tcpMappings.create(
+        resolveSpaceId(args.spaceId, ctx),
+        args.cubeId,
+        {
+          cubePort: args.cubePort,
+          ...(allow ? { whitelistedIps: allow } : {}),
+        },
+      );
+    },
   }),
   defineTool({
     name: "delete_tcp_mapping",

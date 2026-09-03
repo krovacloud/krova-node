@@ -138,7 +138,7 @@ All 23 tools, their parameters, and what they do. Every tool's `spaceId` is opti
 | `delete_snapshot` | `spaceId?`, `cubeId`, `snapshotId` | Delete a snapshot. **Destructive.** |
 | `restore_cube` | `spaceId?`, `cubeId`, `snapshotId` | Restore a Cube's disk from a snapshot — **replaces the disk. Destructive.** |
 | `list_tcp_mappings` | `spaceId?`, `cubeId` | List a Cube's TCP port mappings. |
-| `create_tcp_mapping` | `spaceId?`, `cubeId`, `cubePort`, `whitelistIps?` | Expose a Cube TCP port on the host. |
+| `create_tcp_mapping` | `spaceId?`, `cubeId`, `cubePort`, `whitelistedIps?` | Expose a Cube TCP port on the host. `whitelistIps` is still accepted as a deprecated alias. |
 | `delete_tcp_mapping` | `spaceId?`, `cubeId`, `mappingId` | Remove a TCP port mapping. **Destructive.** |
 
 Every tool advertises MCP **annotations** so your client can treat them appropriately: the **ten** read tools (`list_cubes`, `get_cube`, `get_cube_ssh`, `list_regions`, `list_images`, `get_pricing`, `list_domains`, `get_domain_records`, `list_snapshots`, `list_tcp_mappings`) are marked read-only, while the **six** destructive tools (`create_cube`, `delete_cube`, `delete_domain`, `delete_snapshot`, `restore_cube`, `delete_tcp_mapping`) are marked **destructive**. `update_domain` mutates but is idempotent and reversible, so it is not. Most MCP clients surface a confirmation prompt before running a destructive tool — keep that confirmation on, since an LLM driven by untrusted content could be induced to call one.

@@ -56,9 +56,18 @@ export function tcpCommand(): Command {
         throw new Error(`--port must be a valid port (got "${opts.port}").`);
       }
       const whitelist = opts.whitelist as string[];
+      // ⛔ `whitelistedIps` — NOT `whitelistIps`. The published spec named the
+      // field `whitelistIps` while the server has always read
+      // `whitelistedIps`, so every `--whitelist` mapping this CLI created was
+      // silently published WORLD-OPEN, with a 201 and no error. Reproduced on
+      // production 2026-09-02: a mapping added with `--whitelist
+      // 203.0.113.0/24` served content to an off-list address.
+      //
+      // The server now accepts both names, so an older CLI keeps working; this
+      // sends the canonical one.
       const mapping = await client.tcpMappings.create(space, id, {
         cubePort,
-        ...(whitelist.length ? { whitelistIps: whitelist } : {}),
+        ...(whitelist.length ? { whitelistedIps: whitelist } : {}),
       });
       if (rt.json) return printJSON(mapping);
       process.stdout.write(

@@ -202,7 +202,7 @@ await krova.snapshots.delete("space_123", "cube_123", snap.id);
 // TCP port mappings (expose a Cube port on the host)
 const mapping = await krova.tcpMappings.create("space_123", "cube_123", {
   cubePort: 5432,
-  whitelistIps: ["203.0.113.4/32"],
+  whitelistedIps: ["203.0.113.4/32"],
 });
 await krova.tcpMappings.list("space_123", "cube_123");
 await krova.tcpMappings.delete("space_123", "cube_123", mapping.id);

@@ -593,7 +593,18 @@ export class KrovaClient {
 
     /**
      * Create a TCP port mapping exposing a Cube port on the host. `cubePort` is
-     * required; `whitelistIps` optionally restricts who can reach it.
+     * required; `whitelistedIps` optionally restricts who can reach it.
+     *
+     * ⛔ Send `whitelistedIps`, not `whitelistIps`. The published spec named
+     * the field `whitelistIps` while the server has always read
+     * `whitelistedIps`, so every allow-listed mapping created through this SDK
+     * was silently published WORLD-OPEN, with a 201 and no error (reproduced
+     * on production 2026-09-02). The server now accepts both, so an older
+     * client keeps working, but `whitelistIps` is deprecated.
+     *
+     * **Omitting the allow-list leaves the port open to the internet.** That is
+     * the documented behaviour, not an oversight — but it means a typo in the
+     * field name fails OPEN, which is exactly how the original defect survived.
      */
     create: async (
       spaceId: string,
