@@ -2,7 +2,7 @@
   "name": "krova-node",
   "version": "0.0.0",
   "private": true,
-  "description": "Monorepo for the Krova Cloud JavaScript/TypeScript packages — SDK, CLI, MCP server, webhook verifier, and n8n node.",
+  "description": "Monorepo for the Krova Cloud JavaScript/TypeScript packages \u2014 SDK, CLI, MCP server, webhook verifier, and n8n node.",
   "type": "module",
   "packageManager": "pnpm@11.24.0",
   "engines": {
@@ -17,6 +17,7 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r --if-present lint"
+    "lint": "pnpm -r --if-present lint",
+    "publish:mcp-registry": "node scripts/publish-mcp-registry.mjs"
   }
 }
