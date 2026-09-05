@@ -1,19 +1,19 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "cloud.krova/mcp",
-  "description": "Provision and manage Krova Cloud Cubes \u2014 Firecracker microVMs with their own kernel, full root access and no public IP \u2014 from Claude, Cursor, or any MCP client.",
+  "description": "Provision and manage Krova Cloud Cubes \u2014 Firecracker microVMs with root access and no public IP.",
   "repository": {
     "url": "https://github.com/krovacloud/krova-node",
     "source": "github",
     "subfolder": "packages/mcp"
   },
-  "version": "0.3.0",
+  "version": "0.3.4",
   "websiteUrl": "https://krova.cloud/docs/mcp",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@krovacloud/mcp",
-      "version": "0.3.0",
+      "version": "0.3.4",
       "transport": {
         "type": "stdio"
       },
