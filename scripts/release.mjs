@@ -164,26 +164,6 @@ for (const p of ordered) {
   pj.version = next;
   if (!DRY) writeFileSync(pjPath, `${JSON.stringify(pj, null, 2)}\n`);
 
-  // ⛔ A package carrying an MCP `server.json` must have its version written
-  // here too, or the MCP registry entry silently rots.
-  //
-  // The registry validates that the version in server.json matches a REAL
-  // published npm version whose tarball carries the `mcpName` marker. This
-  // script derives `next` from npm rather than from package.json, so a
-  // hand-written version in server.json is stale the moment anything else
-  // ships — and the failure is quiet: the listing keeps pointing at an older
-  // release while npm moves on. Both fields must move together.
-  const serverJsonPath = join(dir, "server.json");
-  if (existsSync(serverJsonPath)) {
-    const sj = JSON.parse(readFileSync(serverJsonPath, "utf8"));
-    sj.version = next;
-    for (const pkg of sj.packages ?? []) {
-      if (pkg.identifier === name) pkg.version = next;
-    }
-    if (!DRY) writeFileSync(serverJsonPath, `${JSON.stringify(sj, null, 2)}\n`);
-    console.log(`  · server.json synced to ${next}`);
-  }
-
   runLoud(`pnpm --filter ${name} publish --provenance --access public --no-git-checks`);
   runLoud(`git tag ${name}@${next}`);
   runLoud(`git push origin ${name}@${next}`);
