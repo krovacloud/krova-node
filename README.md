@@ -1,5 +1,7 @@
 # krova-node
 
+[![krova-node MCP server](https://glama.ai/mcp/servers/krovacloud/krova-node/badges/card.svg)](https://glama.ai/mcp/servers/krovacloud/krova-node)
+
 The single home for the [Krova Cloud](https://krova.cloud) **JavaScript / TypeScript** packages — SDK,
 CLI, MCP server, webhook verifier, and the n8n node. A pnpm-workspace monorepo:
 the CLI/MCP consume the SDK via `workspace:*`, so everything stays in sync and a
