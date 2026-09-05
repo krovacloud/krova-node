@@ -1,0 +1,45 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "cloud.krova/mcp",
+  "description": "Provision and manage Krova Cloud Cubes \u2014 Firecracker microVMs with their own kernel, full root access and no public IP \u2014 from Claude, Cursor, or any MCP client.",
+  "repository": {
+    "url": "https://github.com/krovacloud/krova-node",
+    "source": "github",
+    "subfolder": "packages/mcp"
+  },
+  "version": "0.3.0",
+  "websiteUrl": "https://krova.cloud/docs/mcp",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@krovacloud/mcp",
+      "version": "0.3.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "KROVA_API_KEY",
+          "description": "A Krova Cloud API key, created under Settings \u2192 API keys. Scoped to one Space and inherits the permissions of the membership that created it.",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "KROVA_SPACE_ID",
+          "description": "Optional. A Space id the Cube tools default to, so a client does not have to name a Space on every call.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "KROVA_BASE_URL",
+          "description": "Optional. Overrides the API base URL. Only needed against a non-production environment.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}
