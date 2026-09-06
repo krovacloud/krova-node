@@ -183,3 +183,39 @@ See [CONTRIBUTING.md](https://github.com/krovacloud/krova-node/blob/main/CONTRIB
 ## License
 
 [MIT](./LICENSE) © 2026 Krova Inc.
+
+## Publishing to the official MCP Registry
+
+This server is listed as [`cloud.krova/mcp`](https://registry.modelcontextprotocol.io/v0.1/servers?search=cloud.krova).
+CI republishes it automatically on every release — see the *Publish MCP server
+to the official registry* step in `.github/workflows/ci-release.yml`.
+
+**It requires one repository secret, `MCP_PRIVATE_KEY`.** Until that exists the
+step logs a skip and does nothing, so releases are never blocked by it.
+
+The value is the raw Ed25519 private key as hex, derived from the key whose
+public half is published as a TXT record on the `krova.cloud` **apex**:
+
+```bash
+openssl pkey -in key.pem -noout -text | grep -A3 'priv:' | tail -n +2 | tr -d ' :\n'
+```
+
+⛔ **The namespace is the reason a secret exists at all.** `mcp-publisher login
+github-oidc` needs no secret, but only grants `io.github.<org>/*` — taking it
+would mean abandoning `cloud.krova/mcp`, republishing under a new name and
+orphaning the live entry. The branded namespace was chosen deliberately.
+
+### Running it by hand
+
+```bash
+pnpm publish:mcp-registry --dry-run   # derives the version, writes and publishes nothing
+pnpm publish:mcp-registry
+```
+
+The script reads the version from **npm**, never from `server.json`, and exits
+early when the registry already serves that version. That is deliberate: the
+stored number cannot be trusted, because `release.mjs` patch-bumps from npm's
+latest, CI never commits the bump back, and `server.json` is not in the
+package's `files` list so it does not ship in the tarball either. Publishing a
+stale version fails silently — the registry checks only that the version exists
+on npm with the `mcpName` marker, not that it is the latest.
