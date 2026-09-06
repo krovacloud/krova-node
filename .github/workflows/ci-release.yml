@@ -61,3 +61,36 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/release.mjs
+
+      # The MCP registry entry used to be published by hand, and drifted twice
+      # in a single day — it advertised 0.3.5 while npm served 0.3.6, then 0.3.6
+      # while npm served 0.3.7. The failure is SILENT: the registry validates
+      # only that the declared version exists on npm carrying the `mcpName`
+      # marker, never that it is the latest, so a stale entry never errors. It
+      # just tells every MCP client the wrong version, indefinitely.
+      #
+      # `publish-mcp-registry.mjs` derives the version from npm and exits early
+      # when the registry already serves it, so this is safe on every push even
+      # though `release.mjs` only republishes packages that changed.
+      #
+      # ⛔ DNS auth, not `login github-oidc`. OIDC needs no secret, but it only
+      # grants the `io.github.<org>/*` namespace — taking it would mean
+      # abandoning `cloud.krova/mcp`, republishing under a new name and
+      # orphaning the entry that is already live. The branded namespace was a
+      # deliberate choice; the secret is what it costs.
+      #
+      # Skips silently until MCP_PRIVATE_KEY exists, so merging this cannot
+      # break a release.
+      - name: Publish MCP server to the official registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          MCP_PRIVATE_KEY: ${{ secrets.MCP_PRIVATE_KEY }}
+        run: |
+          if [ -z "$MCP_PRIVATE_KEY" ]; then
+            echo "MCP_PRIVATE_KEY is not set - skipping the MCP registry publish."
+            echo "Add it as a repository secret to enable this step (see packages/mcp/README.md)."
+            exit 0
+          fi
+          curl -sL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+          ./mcp-publisher login dns --domain krova.cloud --private-key "$MCP_PRIVATE_KEY"
+          MCP_PUBLISHER_BIN="$PWD/mcp-publisher" node scripts/publish-mcp-registry.mjs

@@ -103,14 +103,44 @@ if (stale) {
   console.log("▸ server.json already matches npm");
 }
 
+// ── Already published? Then this is a no-op ─────────────────────────────────
+// ⛔ Required for running on EVERY release. `release.mjs` only republishes
+// packages that changed, so most runs leave the MCP package untouched and npm's
+// latest is already in the registry. Without this the step would try to publish
+// a version the registry already holds and fail the release for no reason.
+let alreadyLive = false;
+try {
+  const url = `https://registry.modelcontextprotocol.io/v0.1/servers?search=${encodeURIComponent(server.name.split("/")[0])}`;
+  const res = await fetch(url);
+  if (res.ok) {
+    const body = await res.json();
+    alreadyLive = (body.servers ?? []).some((entry) => {
+      const detail = entry.server ?? entry;
+      const meta = entry._meta?.["io.modelcontextprotocol.registry/official"];
+      return detail.name === server.name && detail.version === latest && meta?.isLatest;
+    });
+  }
+} catch {
+  // A registry read failure is not a reason to skip — fall through and let
+  // publish decide. Worst case it reports the version already exists.
+}
+
+if (alreadyLive) {
+  console.log(`▸ registry already serves ${latest} as latest — nothing to do`);
+  process.exit(0);
+}
+
 if (DRY) {
   console.log("\n(dry run — nothing written, nothing published)");
   process.exit(0);
 }
 
 // ── Validate, then publish ──────────────────────────────────────────────────
+// CI downloads the binary into the workspace rather than onto PATH.
+const PUBLISHER = process.env.MCP_PUBLISHER_BIN || "mcp-publisher";
+
 const run = (args) =>
-  execFileSync("mcp-publisher", args, {
+  execFileSync(PUBLISHER, args, {
     cwd: join(ROOT, "packages/mcp"),
     stdio: "inherit",
   });
