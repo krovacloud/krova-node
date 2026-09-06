@@ -197,8 +197,14 @@ The value is the raw Ed25519 private key as hex, derived from the key whose
 public half is published as a TXT record on the `krova.cloud` **apex**:
 
 ```bash
-openssl pkey -in key.pem -noout -text | grep -A3 'priv:' | tail -n +2 | tr -d ' :\n'
+openssl pkey -in key.pem -noout -text | grep -A3 'priv:' | tail -n +2 | tr -d ' :\n' | pbcopy
 ```
+
+⚠️ Pipe it to `pbcopy` rather than reading it off the terminal. The command
+emits no trailing newline, so **zsh displays a trailing `%`** — copy that by eye
+and it lands in the secret, and the publisher fails with
+`invalid hex private key format: ... invalid byte: U+0025 '%'`. CI now strips
+non-hex characters and checks the length is 64, so this cannot bite twice.
 
 ⛔ **The namespace is the reason a secret exists at all.** `mcp-publisher login
 github-oidc` needs no secret, but only grants `io.github.<org>/*` — taking it
