@@ -56,17 +56,67 @@ console.log(`▸ server   : ${server.name}`);
 console.log(`▸ package  : ${identifier}`);
 
 // ── The version, straight from npm ──────────────────────────────────────────
-let manifest;
-try {
-  const raw = execSync(`npm view ${identifier} --json`, {
-    stdio: ["ignore", "pipe", "ignore"],
-  }).toString();
-  manifest = JSON.parse(raw);
-} catch {
-  die(`could not read ${identifier} from npm`);
+//
+// ⛔ POLLED, NOT READ ONCE. This script runs immediately after `release.mjs`
+// publishes, and npm is read-after-write eventual: the first read routinely
+// returns the PREVIOUS version. That is not theoretical — on 2026-09-06
+// release.mjs published 0.3.9 at 05:29:43 and this step, moments later, read
+// 0.3.8 and published *that* to the registry. The entry then advertised a
+// version older than npm's, which is the exact drift the automation exists to
+// prevent, reintroduced by the automation itself.
+//
+// `release.mjs` writes the version it just published into package.json, so the
+// local manifest is the floor npm has to reach. When nothing was released this
+// run the local version is already <= npm's and the first read passes.
+const localVersion = JSON.parse(
+  readFileSync(join(ROOT, "packages/mcp/package.json"), "utf8")
+).version;
+
+const cmpSemver = (a, b) => {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0);
+  }
+  return 0;
+};
+
+const readNpm = () => {
+  try {
+    return JSON.parse(
+      execSync(`npm view ${identifier} --json`, {
+        stdio: ["ignore", "pipe", "ignore"],
+      }).toString()
+    );
+  } catch {
+    return null;
+  }
+};
+
+const ATTEMPTS = 12;
+const WAIT_MS = 5000;
+let manifest = null;
+let latest = null;
+
+for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+  manifest = readNpm();
+  latest = manifest?.["dist-tags"]?.latest ?? manifest?.version ?? null;
+  if (latest && cmpSemver(latest, localVersion) >= 0) break;
+
+  if (attempt === ATTEMPTS) {
+    die(
+      `npm still serves ${latest ?? "nothing"} for ${identifier} after ` +
+        `${(ATTEMPTS * WAIT_MS) / 1000}s, but package.json says ${localVersion}. ` +
+        `Publishing now would advertise a version older than npm's. Re-run once ` +
+        `npm has caught up.`
+    );
+  }
+  console.log(
+    `▸ npm serves ${latest ?? "nothing"}, waiting for >= ${localVersion} (${attempt}/${ATTEMPTS})`
+  );
+  execSync(`sleep ${WAIT_MS / 1000}`);
 }
 
-const latest = manifest["dist-tags"]?.latest ?? manifest.version;
 if (!latest) {
   die(`npm returned no latest version for ${identifier}`);
 }
