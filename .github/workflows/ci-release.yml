@@ -91,6 +91,21 @@ jobs:
             echo "Add it as a repository secret to enable this step (see packages/mcp/README.md)."
             exit 0
           fi
+          # ⛔ Strip everything that is not a hex digit before using the secret.
+          # The documented way to derive it ends in `tr -d ' :\n'`, so the output
+          # has NO trailing newline — and zsh renders that as a trailing `%`,
+          # which gets copied into the secret along with the key. The first real
+          # run failed exactly that way:
+          #   invalid hex private key format: encoding/hex: invalid byte: U+0025 '%'
+          # Stripping is safe because the value is hex by definition, and the
+          # length check below turns a genuinely corrupt key into a clear error
+          # instead of an opaque one from the publisher.
+          KEY="$(printf '%s' "$MCP_PRIVATE_KEY" | tr -cd '0-9a-fA-F')"
+          if [ "${#KEY}" -ne 64 ]; then
+            echo "MCP_PRIVATE_KEY is not a 32-byte Ed25519 key: got ${#KEY} hex chars, expected 64."
+            echo "Re-derive it with:  openssl pkey -in key.pem -noout -text | grep -A3 'priv:' | tail -n +2 | tr -d ' :\n' | pbcopy"
+            exit 1
+          fi
           curl -sL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
-          ./mcp-publisher login dns --domain krova.cloud --private-key "$MCP_PRIVATE_KEY"
+          ./mcp-publisher login dns --domain krova.cloud --private-key "$KEY"
           MCP_PUBLISHER_BIN="$PWD/mcp-publisher" node scripts/publish-mcp-registry.mjs
