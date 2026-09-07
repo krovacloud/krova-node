@@ -653,7 +653,7 @@ export interface paths {
         };
         /**
          * Get a Cube's SSH connection info
-         * @description Host (server public IPv4), host SSH port, login user, and the Cube's captured SSH host public keys. **Use `user` rather than assuming a username** — it is `ubuntu` or `debian` on Cubes created from images that ship a default user, and `root` on Cubes created before that change or imported from a rootfs without one. `hostKeys` is empty only until the reachability cron makes its first capture; clients fall back to trust-on-first-use until then, and pin strictly afterwards.
+         * @description `host` is the Cube's own stable SSH hostname, which survives migration to another server — it falls back to the server's public IPv4 when the Cube has no DNS record yet. Also returns the host SSH port, login user, and the Cube's captured SSH host public keys. **Use `user` rather than assuming a username** — it is `ubuntu` or `debian` on Cubes created from images that ship a default user, and `root` on Cubes created before that change or imported from a rootfs without one. `hostKeys` is empty only until the reachability cron makes its first capture; clients fall back to trust-on-first-use until then, and pin strictly afterwards.
          */
         get: {
             parameters: {
@@ -1071,13 +1071,17 @@ export interface paths {
                         cubePort: number;
                         /** @description Optional human label for the mapping. */
                         label?: string;
-                        /** @description Whether the mapping also forwards UDP traffic on the same host port, in addition to TCP. Optional; defaults to true when omitted.
-                         *     @default true */
+                        /**
+                         * @description Whether the mapping also forwards UDP traffic on the same host port, in addition to TCP. Optional; defaults to true when omitted.
+                         * @default true
+                         */
                         udpEnabled?: boolean;
                         /** @description IPs/CIDRs allowed to reach the published port. Omit or send an empty array to leave the port open to the internet. */
                         whitelistedIps?: string[];
-                        /** @deprecated
-                         *     @description DEPRECATED alias for `whitelistedIps`, accepted for backwards compatibility. `whitelistedIps` wins if both are sent. Use `whitelistedIps` in new code. */
+                        /**
+                         * @deprecated
+                         * @description DEPRECATED alias for `whitelistedIps`, accepted for backwards compatibility. `whitelistedIps` wins if both are sent. Use `whitelistedIps` in new code.
+                         */
                         whitelistIps?: string[];
                     };
                 };
@@ -1840,6 +1844,8 @@ export interface components {
             image: string;
             sshUser: string;
             costPerHour: number;
+            /** @description The server's DNS shard domain used to build the Cube's stable SSH hostname (`ip-<dashed-internal-ip>.<shard>.4268626.xyz`). Only present on the single-Cube GET; list and create responses omit it. Null when the Cube has no DNS record yet. */
+            serverDomain?: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */

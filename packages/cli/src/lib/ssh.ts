@@ -3,6 +3,7 @@
 
 import { spawn } from "node:child_process";
 import { appendFileSync, chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { isIP } from "node:net";
 import { dirname } from "node:path";
 
 import { configDir } from "./config.js";
@@ -74,6 +75,25 @@ export function knownHostsHost(host: string, port: number): string {
 
 export function knownHostsPath(): string {
   return join(configDir(), "known_hosts");
+}
+
+/** True for a DNS hostname (e.g. the Cube's stable SSH hostname), false for a
+ *  bare IPv4/IPv6 address. */
+export function isHostname(host: string): boolean {
+  return isIP(host) === 0;
+}
+
+/** True when `host:port` has no existing known_hosts pin yet — used to print a
+ *  one-time note the first time we pin a Cube's hostname rather than its IP. */
+export function isUnpinned(host: string, port: number): boolean {
+  const field = knownHostsHost(host, port);
+  let existing = "";
+  try {
+    existing = readFileSync(knownHostsPath(), "utf8");
+  } catch {
+    existing = "";
+  }
+  return !existing.split("\n").some((line) => line.split(/\s+/)[0] === field);
 }
 
 /** Pin the cube's host keys to ~/.config/krova/known_hosts (0600), pruning any

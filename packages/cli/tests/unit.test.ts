@@ -15,6 +15,8 @@ import {
 import { safeBrowserURL } from "../src/commands/login.js";
 import {
   buildSSHArgs,
+  isHostname,
+  isUnpinned,
   knownHostsHost,
   validateSSHHost,
   validateSSHUser,
@@ -88,6 +90,37 @@ test("knownHostsHost brackets non-default ports", () => {
   assert.equal(knownHostsHost("1.2.3.4", 22), "1.2.3.4");
   assert.equal(knownHostsHost("1.2.3.4", 0), "1.2.3.4");
   assert.equal(knownHostsHost("1.2.3.4", 2222), "[1.2.3.4]:2222");
+});
+
+test("isHostname distinguishes the Cube's stable DNS name from a bare IP", () => {
+  // The `ssh` command uses this to decide whether to print the one-time
+  // known_hosts re-pin note: only for a DNS name, never for the IPv4 fallback.
+  assert.equal(isHostname("ip-10-0-1-5.shard1.4268626.xyz"), true);
+  assert.equal(isHostname("1.2.3.4"), false);
+  assert.equal(isHostname("::1"), false);
+});
+
+test("isUnpinned reports true until that exact host:port has been pinned", () => {
+  // Regression guard for the known_hosts churn note: every existing Cube's
+  // `host` moves from an IP to a DNS name once (PR #614), so the note must
+  // fire exactly once per Cube — on the pin that doesn't exist yet.
+  const dir = mkdtempSync(join(tmpdir(), "krova-cli-known-hosts-"));
+  const prev = process.env.XDG_CONFIG_HOME;
+  process.env.XDG_CONFIG_HOME = dir;
+  try {
+    const host = "ip-10-0-1-5.shard1.4268626.xyz";
+    assert.equal(isUnpinned(host, 2222), true, "nothing pinned yet");
+    mkdirSync(join(dir, "krova"), { recursive: true });
+    writeFileSync(
+      join(dir, "krova", "known_hosts"),
+      `[${host}]:2222 ssh-ed25519 AAAA...\n`
+    );
+    assert.equal(isUnpinned(host, 2222), false, "already pinned under this exact field");
+    assert.equal(isUnpinned("1.2.3.4", 2222), true, "a different host is still unpinned");
+  } finally {
+    if (prev === undefined) delete process.env.XDG_CONFIG_HOME;
+    else process.env.XDG_CONFIG_HOME = prev;
+  }
 });
 
 test("buildSSHArgs: strict host-key opts, -- before destination, remote cmd appended", () => {
