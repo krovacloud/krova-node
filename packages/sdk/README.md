@@ -54,6 +54,13 @@ console.log(`  ${cube.resources.vcpu} vCPU / ${cube.resources.ramGb} GB RAM, ima
 // Cubes from images that ship a default user (both with passwordless sudo)
 // and "root" on Cubes created before that change, so the image id cannot
 // tell you. `cube.sshUser` on the Cube object carries the same value.
+//
+// `ssh.host` is the Cube's own stable SSH hostname — it survives migration
+// to another server, falling back to the server's public IPv4 only when the
+// Cube has no DNS record yet. If you pin host keys in your own known_hosts
+// (as the CLI does), expect a one-time re-pin for any Cube you'd previously
+// connected to by IP: the host string changes from an IP to a name, so it's
+// a new known_hosts entry, not a compromised host.
 const ssh = await krova.cubes.ssh("space_123", cube.id);
 console.log(`ssh ${ssh.user}@${ssh.host} -p ${ssh.port}`);
 
@@ -115,7 +122,7 @@ Ergonomic helpers for the Cube lifecycle. Each unwraps the response body and thr
 | `delete` | `(spaceId, cubeId)` | enqueues deletion |
 | `powerOff` | `(spaceId, cubeId)` | enqueues a power-off |
 | `wake` | `(spaceId, cubeId)` | enqueues a start |
-| `ssh` | `(spaceId, cubeId)` | the Cube's SSH connection info (`host`, `port`, `user`, `hostKeys`) |
+| `ssh` | `(spaceId, cubeId)` | the Cube's SSH connection info — `host` is its stable SSH hostname (falls back to the server's public IPv4 with no DNS record yet), plus `port`, `user`, `hostKeys` |
 | `restore` | `(spaceId, cubeId, snapshotId)` | enqueues a restore — replaces the Cube's disk from a snapshot |
 
 ```ts

@@ -119,7 +119,7 @@ All 23 tools, their parameters, and what they do. Every tool's `spaceId` is opti
 | --- | --- | --- |
 | `list_cubes` | `spaceId?` | List all Cubes (Firecracker microVMs) in a Space. |
 | `get_cube` | `spaceId?`, `cubeId` | Get details for a single Cube by id. |
-| `get_cube_ssh` | `spaceId?`, `cubeId` | Host, port, **login user** and pinned host keys for SSH. Call this rather than guessing a username — it is `ubuntu`/`debian` on newer Cubes and `root` on older ones, and cannot be derived from the image id. |
+| `get_cube_ssh` | `spaceId?`, `cubeId` | Host, port, **login user** and pinned host keys for SSH. `host` is the Cube's own stable SSH hostname — not the server's IP — and survives migration to another server; it falls back to the server's public IPv4 only when the Cube has no DNS record yet. Call this rather than guessing a username — it is `ubuntu`/`debian` on newer Cubes and `root` on older ones, and cannot be derived from the image id. |
 | `create_cube` | `spaceId?`, `name`, `image`, `vcpu`, `ramGb`, `diskGb`, `sshPublicKey`, `region?`, `userData?` | Provision a new Cube. Asynchronous — the returned Cube starts in a pending state. **Billable. Destructive.** |
 | `power_off_cube` | `spaceId?`, `cubeId` | Power off a running Cube (releases compute + host RAM, keeps disk). Asynchronous. |
 | `wake_cube` | `spaceId?`, `cubeId` | Start a stopped Cube. Asynchronous. |

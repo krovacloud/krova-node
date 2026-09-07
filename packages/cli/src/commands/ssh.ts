@@ -7,6 +7,8 @@ import {
   type SshInfo,
   buildSSHArgs,
   execSSH,
+  isHostname,
+  isUnpinned,
   validateSSHHost,
   validateSSHUser,
   writeKnownHosts,
@@ -62,6 +64,11 @@ export function sshCommand(): Command {
 
       let knownHosts = "";
       if (info.hostKeys.length) {
+        if (isHostname(info.host) && isUnpinned(info.host, info.port)) {
+          process.stderr.write(
+            "note: this Cube now has a stable SSH hostname (it stays the same even if the Cube migrates to another server) — pinning it is expected and only happens once.\n"
+          );
+        }
         knownHosts = writeKnownHosts(info);
       } else {
         process.stderr.write(
