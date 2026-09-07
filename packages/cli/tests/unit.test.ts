@@ -23,6 +23,7 @@ import { flattenRows } from "../src/commands/catalog.js";
 import { cubesCommand } from "../src/commands/cubes.js";
 import { parseListenAddr } from "../src/commands/webhooks.js";
 import { domainsCommand, parseOriginScheme } from "../src/commands/domains.js";
+import { tcpCommand } from "../src/commands/tcp.js";
 
 test("parseListenAddr handles host:port, bare host, bare port, and IPv6", () => {
   assert.deepEqual(parseListenAddr("127.0.0.1:4666"), { host: "127.0.0.1", port: 4666 });
@@ -278,4 +279,19 @@ test("domains exposes set-origin so an attached domain can be switched to HTTPS"
     add.options.some((o) => o.long === "--origin-scheme"),
     "add must take the scheme too, so a TLS-terminating Cube works on first attach",
   );
+});
+
+test("tcp add exposes --no-udp, defaulting UDP forwarding to on", () => {
+  // UDP is forwarded by default alongside TCP (the server's default when the
+  // request omits `udpEnabled`), so the flag can only ever turn it OFF. A
+  // negatable `--no-udp` option is how commander expresses that: absent, the
+  // parsed value is `true` and the CLI must send nothing; only `--no-udp`
+  // yields `false`, which the CLI then forwards explicitly.
+  const tcp = tcpCommand();
+  const add = tcp.commands.find((c) => c.name() === "add");
+  assert.ok(add, "tcp must expose `add`");
+
+  const udpOpt = add.options.find((o) => o.long === "--no-udp");
+  assert.ok(udpOpt, "tcp add must expose --no-udp");
+  assert.equal(udpOpt.negate, true, "--no-udp must be a negating option, defaulting `udp` to true");
 });
