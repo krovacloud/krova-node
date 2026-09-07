@@ -1844,7 +1844,7 @@ export interface components {
             image: string;
             sshUser: string;
             costPerHour: number;
-            /** @description The server's DNS shard domain used to build the Cube's stable SSH hostname (`ip-<dashed-internal-ip>.<shard>.4268626.xyz`). Only present on the single-Cube GET; list and create responses omit it. Null when the Cube has no DNS record yet. */
+            /** @description The hostname of the server currently hosting this Cube (e.g. `mango.krova.cloud`). This is NOT the Cube's own SSH target — use `host` from GET .../ssh for that, which is the Cube's own stable hostname and survives migration to another server. Null when the Cube has no server assigned. Only present on the single-Cube GET; list and create responses omit it. */
             serverDomain?: string | null;
             /** Format: date-time */
             createdAt: string;
