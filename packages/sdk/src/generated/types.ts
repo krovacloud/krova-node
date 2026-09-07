@@ -1071,6 +1071,9 @@ export interface paths {
                         cubePort: number;
                         /** @description Optional human label for the mapping. */
                         label?: string;
+                        /** @description Whether the mapping also forwards UDP traffic on the same host port, in addition to TCP. Optional; defaults to true when omitted.
+                         *     @default true */
+                        udpEnabled?: boolean;
                         /** @description IPs/CIDRs allowed to reach the published port. Omit or send an empty array to leave the port open to the internet. */
                         whitelistedIps?: string[];
                         /** @deprecated
@@ -1942,6 +1945,8 @@ export interface components {
             label: string | null;
             status: string;
             isSsh: boolean;
+            /** @description Whether the mapping also forwards UDP traffic on the same host port, in addition to TCP. */
+            udpEnabled: boolean;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */

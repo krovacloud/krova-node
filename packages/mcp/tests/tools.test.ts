@@ -357,6 +357,44 @@ describe("resource tools (domains, snapshots, tcp)", () => {
     assert.equal(snap.id, "snap_1");
   });
 
+  it("create_tcp_mapping forwards udpEnabled when given, but omits it entirely on silence", async () => {
+    // ⛔ Regression lock for the UDP-forwarding default: the server defaults
+    // `udpEnabled` to `true` when the field is absent from the request body.
+    // If this tool ever sent `udpEnabled: false` on silence, every mapping it
+    // creates would silently become TCP-only — the opposite of the intended
+    // default.
+    mock.handle((_req, res) => {
+      res.writeHead(201, { "content-type": "application/json" });
+      res.end(JSON.stringify({ tcpMapping: { id: "map_1", cubePort: 5000, hostPort: 30000 } }));
+    });
+    await runTool(
+      findTool("create_tcp_mapping"),
+      makeClient(mock.baseUrl),
+      { spaceId: "space_abc", cubeId: "cube_1", cubePort: 5000, udpEnabled: false },
+      ctx,
+    );
+    assert.equal(
+      (mock.requests[0]!.body as { udpEnabled?: boolean }).udpEnabled,
+      false,
+      "an explicit udpEnabled must be forwarded as given",
+    );
+
+    mock.handle((_req, res) => {
+      res.writeHead(201, { "content-type": "application/json" });
+      res.end(JSON.stringify({ tcpMapping: { id: "map_2", cubePort: 5001, hostPort: 30001 } }));
+    });
+    await runTool(
+      findTool("create_tcp_mapping"),
+      makeClient(mock.baseUrl),
+      { spaceId: "space_abc", cubeId: "cube_1", cubePort: 5001 },
+      ctx,
+    );
+    assert.ok(
+      !("udpEnabled" in (mock.requests[0]!.body as Record<string, unknown>)),
+      "an omitted udpEnabled must send no udpEnabled key, letting the server default (true) apply",
+    );
+  });
+
   it("restore_cube is destructive and posts the snapshotId", async () => {
     mock.handle((_req, res) => {
       res.writeHead(200, { "content-type": "application/json" });

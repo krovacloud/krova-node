@@ -116,6 +116,36 @@ test('TCP Mapping resource has list/create/delete operations', () => {
 	assert.deepEqual(operationsForResource('tcpMapping').sort(), ['create', 'delete', 'list']);
 });
 
+test('TCP Mapping Create exposes UDP Enabled as an optional (Additional Fields) property, defaulting to true', () => {
+	// UDP is forwarded by default alongside TCP: the API defaults `udpEnabled`
+	// to `true` when the field is absent from the request body. Putting the
+	// field inside "Additional Fields" (a collection) rather than as a plain
+	// top-level boolean is what makes silence possible — n8n only includes a
+	// collection entry in the resolved parameters when the user has actually
+	// added it via "Add Field", so leaving it out sends nothing at all and
+	// lets the server default apply. A plain top-level boolean would always
+	// resolve to a value (its default or the override) and get sent on every
+	// request, turning every mapping created without an opinion into
+	// `udpEnabled: true` explicitly sent — not the same as omitting it, and
+	// exactly the kind of drift that broke `whitelistedIps` before.
+	// Named distinctly from the Cube resource's own `additionalFields` collection
+	// (see the test right below this one) — reusing the same internal `name`
+	// across two collections in one node is exactly the kind of key collision
+	// that made this test brittle before the rename.
+	const additionalFields = desc.properties.filter(
+		(p) => p.name === 'tcpMappingAdditionalFields' && p.displayOptions?.show?.resource?.includes('tcpMapping'),
+	);
+	assert.equal(additionalFields.length, 1, 'tcpMapping create has one Additional Fields collection');
+	assert.deepEqual(additionalFields[0].displayOptions.show.operation, ['create']);
+
+	const udpEnabled = additionalFields[0].options.find((o) => o.name === 'udpEnabled');
+	assert.ok(udpEnabled, 'udpEnabled option exists inside Additional Fields');
+	assert.equal(udpEnabled.type, 'boolean');
+	assert.equal(udpEnabled.default, true, 'UDP is on by default');
+	assert.equal(udpEnabled.routing.send.type, 'body');
+	assert.equal(udpEnabled.routing.send.property, 'udpEnabled');
+});
+
 test('Cube Create maps name/image/region/vcpu/ramGb/diskGb to the request body', () => {
 	const props = desc.properties.filter((p) =>
 		p.displayOptions?.show?.operation?.includes('create'),

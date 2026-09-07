@@ -20,7 +20,7 @@ export function tcpCommand(): Command {
       const maps = await client.tcpMappings.list(space, id);
       if (rt.json) return printJSON(maps);
       printTable(
-        ["ID", "CUBE PORT", "HOST PORT", "LABEL", "STATUS", "SSH"],
+        ["ID", "CUBE PORT", "HOST PORT", "LABEL", "STATUS", "SSH", "UDP"],
         maps.map((m) => [
           m.id,
           String(m.cubePort),
@@ -28,6 +28,7 @@ export function tcpCommand(): Command {
           m.label ?? "",
           m.status,
           m.isSsh ? "yes" : "no",
+          m.udpEnabled ? "yes" : "no",
         ]),
       );
     });
@@ -45,6 +46,7 @@ export function tcpCommand(): Command {
       },
       [] as string[],
     )
+    .option("--no-udp", "don't forward UDP on this port (UDP is forwarded by default alongside TCP)")
     .description("expose a Cube TCP port on the host, optionally IP-restricted")
     .action(async (cubeRef: string, opts, c: Command) => {
       const rt = getRuntime(c);
@@ -65,9 +67,17 @@ export function tcpCommand(): Command {
       //
       // The server now accepts both names, so an older CLI keeps working; this
       // sends the canonical one.
+      //
+      // ⛔ `udpEnabled` — omit it unless `--no-udp` was passed. The server
+      // defaults `udpEnabled` to `true` when the field is absent, so this must
+      // NOT send `udpEnabled: opts.udp` (commander defaults `opts.udp` to
+      // `true`, but sending that explicitly is fine — sending `false` on mere
+      // silence would not be). Only `--no-udp` sets `opts.udp` to `false`, and
+      // only then do we send the field at all.
       const mapping = await client.tcpMappings.create(space, id, {
         cubePort,
         ...(whitelist.length ? { whitelistedIps: whitelist } : {}),
+        ...(opts.udp === false ? { udpEnabled: false } : {}),
       });
       if (rt.json) return printJSON(mapping);
       process.stdout.write(

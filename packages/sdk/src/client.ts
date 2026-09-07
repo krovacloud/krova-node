@@ -605,6 +605,11 @@ export class KrovaClient {
      * **Omitting the allow-list leaves the port open to the internet.** That is
      * the documented behaviour, not an oversight — but it means a typo in the
      * field name fails OPEN, which is exactly how the original defect survived.
+     *
+     * `udpEnabled` optionally forwards UDP traffic on the same host port
+     * alongside TCP. It is optional and the server defaults it to `true` when
+     * omitted — so leave it unset to get UDP forwarding, and pass `false`
+     * only to explicitly disable it.
      */
     create: async (
       spaceId: string,

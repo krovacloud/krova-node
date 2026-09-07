@@ -453,6 +453,13 @@ export const TOOLS: ToolDef[] = [
         .describe(
           "Deprecated alias for whitelistedIps. Accepted so existing agent prompts keep working; prefer whitelistedIps.",
         ),
+      udpEnabled: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to also forward UDP traffic on the same host port, in addition to TCP. UDP is forwarded by " +
+            "default — leave this unset to get UDP forwarding, and only pass false to disable it.",
+        ),
     },
     handler: (client, args, ctx) => {
       // ⛔ The wire field is `whitelistedIps`. The published spec named it
@@ -463,12 +470,17 @@ export const TOOLS: ToolDef[] = [
       // have saved prompts using it — but it is mapped onto the correct
       // field before it goes out.
       const allow = args.whitelistedIps ?? args.whitelistIps;
+      // ⛔ Omit `udpEnabled` entirely unless the caller explicitly set it.
+      // The server defaults `udpEnabled` to `true` when the field is absent,
+      // so sending `false` on mere silence (`args.udpEnabled ?? false`) would
+      // silently turn every mapping this tool creates TCP-only.
       return client.tcpMappings.create(
         resolveSpaceId(args.spaceId, ctx),
         args.cubeId,
         {
           cubePort: args.cubePort,
           ...(allow ? { whitelistedIps: allow } : {}),
+          ...(args.udpEnabled !== undefined ? { udpEnabled: args.udpEnabled } : {}),
         },
       );
     },

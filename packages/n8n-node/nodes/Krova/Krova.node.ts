@@ -751,6 +751,31 @@ export class Krova implements INodeType {
 			},
 
 			{
+				displayName: 'Additional Fields',
+				name: 'tcpMappingAdditionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: { show: { resource: ['tcpMapping'], operation: ['create'] } },
+				options: [
+					{
+						displayName: 'UDP Enabled',
+						name: 'udpEnabled',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to also forward UDP traffic on the same host port, in addition to TCP. UDP is forwarded by default, so leave this field out entirely to get it — the API defaults udpEnabled to true when the request omits it. Add this field only to turn UDP off (set to false).',
+						routing: {
+							send: {
+								type: 'body',
+								property: 'udpEnabled',
+							},
+						},
+					},
+				],
+			},
+
+			{
 				displayName: 'Mapping ID',
 				name: 'mappingId',
 				type: 'string',

@@ -590,3 +590,44 @@ test("an omitted allow-list sends no allow-list key at all", async () => {
   assert.ok(!("whitelistedIps" in seenBody));
   assert.ok(!("whitelistIps" in seenBody));
 });
+
+/**
+ * ⛔ Regression lock for the UDP-forwarding default.
+ *
+ * TCP mappings now optionally forward UDP too, via `udpEnabled`. The server
+ * defaults `udpEnabled` to `true` when the field is absent from the request
+ * body. If this SDK ever started sending `udpEnabled: false` on silence (e.g.
+ * from a careless `body.udpEnabled ?? false`), every mapping created through
+ * it would silently become TCP-only — the opposite of the server's default.
+ */
+test("tcpMappings.create sends `udpEnabled` on the wire when given", async () => {
+  let seenBody: Record<string, unknown> = {};
+  handler = (_req, res, body) => {
+    seenBody = JSON.parse(body || "{}") as Record<string, unknown>;
+    json(res, 201, { tcpMapping: { id: "map_3", cubePort: 5000, hostPort: 30003, udpEnabled: false } });
+  };
+
+  const client = new KrovaClient({ apiKey: "kro_test", baseUrl });
+  await client.tcpMappings.create("space_abc", "cube_abc", {
+    cubePort: 5000,
+    udpEnabled: false,
+  });
+
+  assert.equal(seenBody.udpEnabled, false, "an explicit `udpEnabled` must be forwarded as given");
+});
+
+test("an omitted `udpEnabled` sends no `udpEnabled` key at all, letting the server default (`true`) apply", async () => {
+  let seenBody: Record<string, unknown> = {};
+  handler = (_req, res, body) => {
+    seenBody = JSON.parse(body || "{}") as Record<string, unknown>;
+    json(res, 201, { tcpMapping: { id: "map_4", cubePort: 5001, hostPort: 30004, udpEnabled: true } });
+  };
+
+  const client = new KrovaClient({ apiKey: "kro_test", baseUrl });
+  await client.tcpMappings.create("space_abc", "cube_abc", { cubePort: 5001 });
+
+  assert.ok(
+    !("udpEnabled" in seenBody),
+    "sending `udpEnabled: false` on silence would silently turn the mapping TCP-only",
+  );
+});
