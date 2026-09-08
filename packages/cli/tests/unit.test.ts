@@ -21,6 +21,7 @@ import {
   validateSSHHost,
   validateSSHUser,
 } from "../src/lib/ssh.js";
+import { mappingConnectTarget } from "../src/lib/output.js";
 import { flattenRows } from "../src/commands/catalog.js";
 import { cubesCommand } from "../src/commands/cubes.js";
 import { parseListenAddr } from "../src/commands/webhooks.js";
@@ -39,6 +40,23 @@ test("parseListenAddr handles host:port, bare host, bare port, and IPv6", () => 
   assert.deepEqual(parseListenAddr("::1"), { host: "::1", port: 4666 });
   // junk port falls back to the default
   assert.deepEqual(parseListenAddr("localhost:notaport"), { host: "localhost", port: 4666 });
+});
+
+test("mappingConnectTarget prints the Cube's own host, not just a port", () => {
+  // The gap this closed: `krova tcp list` used to print a host port with no
+  // host, so a user needed a second command and had to know to combine them.
+  assert.equal(
+    mappingConnectTarget({ host: "ip-198-18-1-36.b00.2sc.dev", hostPort: 10007 }),
+    "ip-198-18-1-36.b00.2sc.dev:10007",
+  );
+});
+
+test("mappingConnectTarget falls back to the bare port rather than inventing a host", () => {
+  // A Cube with no server assigned has nowhere to connect. Printing the port
+  // alone is honest; `null:10007` or a guessed hostname is not.
+  assert.equal(mappingConnectTarget({ host: null, hostPort: 10007 }), "10007");
+  assert.equal(mappingConnectTarget({ hostPort: 10007 }), "10007");
+  assert.equal(mappingConnectTarget({ host: "", hostPort: 10007 }), "10007");
 });
 
 test("flattenRows expands nested objects so pricing rates aren't dropped", () => {

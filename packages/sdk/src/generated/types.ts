@@ -1947,6 +1947,8 @@ export interface components {
             id: string;
             cubeId: string;
             cubePort: number;
+            /** @description Where to connect for this mapping: `host:hostPort`. The Cube's own stable hostname, which survives migration to another server, falling back to the server's public IP when the Cube has no DNS record yet. Identical to `host` from GET .../ssh, and the same value for every mapping on a Cube. Null only when the Cube has no server assigned, in which case there is nowhere to connect. Do NOT use `serverDomain` from the Cube object — that is the current physical host and changes when the Cube moves. */
+            host: string | null;
             hostPort: number;
             label: string | null;
             status: string;
