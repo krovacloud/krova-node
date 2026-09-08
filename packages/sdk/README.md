@@ -211,6 +211,11 @@ const mapping = await krova.tcpMappings.create("space_123", "cube_123", {
   cubePort: 5432,
   whitelistedIps: ["203.0.113.4/32"],
 });
+// `mapping.host` is where to connect — the Cube's OWN stable hostname, which
+// survives migration to another server. Use it rather than the Cube's
+// `serverDomain`, which is the current physical host and changes when the
+// Cube moves. Null only when the Cube has no server assigned.
+console.log(`psql -h ${mapping.host} -p ${mapping.hostPort}`);
 await krova.tcpMappings.list("space_123", "cube_123");
 await krova.tcpMappings.delete("space_123", "cube_123", mapping.id);
 ```

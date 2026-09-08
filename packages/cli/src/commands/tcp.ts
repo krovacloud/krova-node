@@ -1,6 +1,6 @@
 import { Command } from "commander";
 
-import { printJSON, printTable } from "../lib/output.js";
+import { mappingConnectTarget, printJSON, printTable } from "../lib/output.js";
 import { resolveCube } from "../lib/resolve.js";
 import { getRuntime, makeClient, resolveSpace } from "../lib/runtime.js";
 
@@ -19,12 +19,25 @@ export function tcpCommand(): Command {
       const id = await resolveCube(client, space, cubeRef);
       const maps = await client.tcpMappings.list(space, id);
       if (rt.json) return printJSON(maps);
+      // CONNECT is what a reader actually needs: the table used to print a
+      // host port with no host, so building a connect string meant a second
+      // command and knowing to combine the two. `host` is the Cube's own
+      // stable name (it survives migration), so this string keeps working
+      // after the Cube moves — unlike the server's hostname.
       printTable(
-        ["ID", "CUBE PORT", "HOST PORT", "LABEL", "STATUS", "SSH", "UDP"],
+        [
+          "ID",
+          "CUBE PORT",
+          "CONNECT",
+          "LABEL",
+          "STATUS",
+          "SSH",
+          "UDP",
+        ],
         maps.map((m) => [
           m.id,
           String(m.cubePort),
-          String(m.hostPort),
+          mappingConnectTarget(m),
           m.label ?? "",
           m.status,
           m.isSsh ? "yes" : "no",
@@ -80,8 +93,11 @@ export function tcpCommand(): Command {
         ...(opts.udp === false ? { udpEnabled: false } : {}),
       });
       if (rt.json) return printJSON(mapping);
+      // Say where to reach it, not just which port was picked — the point of
+      // adding a mapping is to connect to it. Falls back to the bare port if
+      // the Cube has no host yet (no server assigned).
       process.stdout.write(
-        `Mapped cube port ${mapping.cubePort} → host port ${mapping.hostPort} (${mapping.id})\n`,
+        `Mapped cube port ${mapping.cubePort} → ${mappingConnectTarget(mapping)} (${mapping.id})\n`,
       );
     });
 
