@@ -1,4 +1,4 @@
-import { KrovaClient, KrovaError } from "@krovacloud/sdk";
+import { KrovaClient, KrovaError, krovaErrorFrom, type paths } from "@krovacloud/sdk";
 import { z } from "zod";
 
 /** Ambient context threaded into every handler (e.g. the default Space id). */
@@ -89,6 +89,18 @@ const spaceIdField = {
 const cubeIdField = {
   cubeId: z.string().min(1).describe("The Cube id to operate on."),
 };
+
+const endpointIdField = {
+  endpointId: z
+    .string()
+    .min(1)
+    .describe("The webhook endpoint id (see list_webhooks)."),
+};
+
+/** Body of `POST /spaces/{spaceId}/webhooks` as defined in the OpenAPI spec. */
+type CreateWebhookBody = NonNullable<
+  paths["/spaces/{spaceId}/webhooks"]["post"]["requestBody"]
+>["content"]["application/json"];
 
 /**
  * The full set of Krova Cloud MCP tools. Each maps a validated input to a
@@ -497,6 +509,150 @@ export const TOOLS: ToolDef[] = [
     },
     handler: (client, args, ctx) =>
       client.tcpMappings.delete(resolveSpaceId(args.spaceId, ctx), args.cubeId, args.mappingId),
+  }),
+
+  // ── Webhooks ────────────────────────────────────────────────────────────────
+  // The `@krovacloud/sdk` does not yet wrap webhook endpoints as a `client.webhooks`
+  // resource, so these tools drive `client.raw` directly — the typed escape hatch
+  // the client exposes for exactly this case.
+  defineTool({
+    name: "list_webhooks",
+    title: "List Webhooks",
+    description:
+      "List the webhook endpoints registered against a Space — each one is an HTTPS URL Krova delivers events to, with the events it subscribes to and whether it is enabled.",
+    annotations: { readOnlyHint: true, openWorldHint: true },
+    inputSchema: { ...spaceIdField },
+    handler: async (client, args, ctx) => {
+      const { data, error, response } = await client.raw.GET(
+        "/spaces/{spaceId}/webhooks",
+        { params: { path: { spaceId: resolveSpaceId(args.spaceId, ctx) } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data;
+    },
+  }),
+  defineTool({
+    name: "get_webhook",
+    title: "Get Webhook",
+    description:
+      "Get a single webhook endpoint by id, including the URL, subscribed events, and enabled flag. The signing secret is never returned — it is only available at create time.",
+    annotations: { readOnlyHint: true, openWorldHint: true },
+    inputSchema: { ...spaceIdField, ...endpointIdField },
+    handler: async (client, args, ctx) => {
+      const { data, error, response } = await client.raw.GET(
+        "/spaces/{spaceId}/webhooks/{endpointId}",
+        {
+          params: {
+            path: {
+              spaceId: resolveSpaceId(args.spaceId, ctx),
+              endpointId: args.endpointId,
+            },
+          },
+        },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data;
+    },
+  }),
+  defineTool({
+    name: "create_webhook",
+    title: "Create Webhook",
+    description:
+      "Create a webhook endpoint and subscribe it to one or more events. The signing secret is returned only in this response. Persist it immediately.",
+    annotations: { readOnlyHint: false, idempotentHint: false, openWorldHint: true },
+    inputSchema: {
+      ...spaceIdField,
+      url: z
+        .string()
+        .min(1)
+        .describe("Destination URL Krova POSTs events to. Must be HTTPS in production."),
+      events: z
+        .array(z.string())
+        .describe(
+          "Webhook event names to subscribe to (e.g. \"cube.created\"). The server validates each name against the published list — invalid names return a 400.",
+        ),
+      description: z
+        .string()
+        .min(1)
+        .max(256)
+        .optional()
+        .describe("Optional human-readable label for the endpoint."),
+    },
+    handler: async (client, args, ctx) => {
+      // The OpenAPI request body does not declare `description`; Krova accepts
+      // and persists it server-side, so the MCP tool exposes it but only sends
+      // it when explicitly provided.
+      const body = {
+        url: args.url,
+        events: args.events,
+        ...(args.description ? { description: args.description } : {}),
+      } as CreateWebhookBody;
+      const { data, error, response } = await client.raw.POST(
+        "/spaces/{spaceId}/webhooks",
+        {
+          params: { path: { spaceId: resolveSpaceId(args.spaceId, ctx) } },
+          body,
+        },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data;
+    },
+  }),
+  defineTool({
+    name: "delete_webhook",
+    title: "Delete Webhook",
+    description: "Deletes the endpoint and cascades its delivery history.",
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+    inputSchema: { ...spaceIdField, ...endpointIdField },
+    handler: async (client, args, ctx) => {
+      const { data, error, response } = await client.raw.DELETE(
+        "/spaces/{spaceId}/webhooks/{endpointId}",
+        {
+          params: {
+            path: {
+              spaceId: resolveSpaceId(args.spaceId, ctx),
+              endpointId: args.endpointId,
+            },
+          },
+        },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data;
+    },
+  }),
+  defineTool({
+    name: "list_webhook_deliveries",
+    title: "List Webhook Deliveries",
+    description:
+      "The last 30 days of delivery attempts for a webhook endpoint — newest first, capped at the supplied limit (max 100). Useful for diagnosing why an endpoint never received (or never acknowledged) an event.",
+    annotations: { readOnlyHint: true, openWorldHint: true },
+    inputSchema: {
+      ...spaceIdField,
+      ...endpointIdField,
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe("Maximum number of deliveries to return (1..100, default 50)."),
+    },
+    handler: async (client, args, ctx) => {
+      const { data, error, response } = await client.raw.GET(
+        "/spaces/{spaceId}/webhooks/{endpointId}/deliveries",
+        {
+          params: {
+            path: {
+              spaceId: resolveSpaceId(args.spaceId, ctx),
+              endpointId: args.endpointId,
+            },
+            ...(args.limit !== undefined ? { query: { limit: args.limit } } : {}),
+          },
+        },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data;
+    },
   }),
 ];
 
