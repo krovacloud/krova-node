@@ -65,6 +65,10 @@ export class Krova implements INodeType {
 						name: 'TCP Mapping',
 						value: 'tcpMapping',
 					},
+					{
+						name: 'Webhook',
+						value: 'webhook',
+					},
 				],
 				default: 'cube',
 			},
@@ -783,6 +787,177 @@ export class Krova implements INodeType {
 				default: '',
 				description: 'The mapping ID from the List operation',
 				displayOptions: { show: { resource: ['tcpMapping'], operation: ['delete'] } },
+			},
+
+			// ------------------------------------------------------------------
+			//         Webhook: Operations
+			// ------------------------------------------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: { show: { resource: ['webhook'] } },
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						action: 'Create webhook',
+						description:
+							'Create a webhook endpoint. The signing secret is returned only on Create. Persist it before the node finishes, as it cannot be retrieved later.',
+						routing: {
+							request: {
+								method: 'POST',
+								url: '=/spaces/{{ encodeURIComponent($parameter["spaceId"]) }}/webhooks',
+							},
+						},
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						action: 'Delete webhook',
+						description: 'Delete a webhook endpoint',
+						routing: {
+							request: {
+								method: 'DELETE',
+								url: '=/spaces/{{ encodeURIComponent($parameter["spaceId"]) }}/webhooks/{{ encodeURIComponent($parameter["endpointId"]) }}',
+							},
+						},
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						action: 'Get webhook',
+						description: 'Retrieve a single webhook endpoint by ID',
+						routing: {
+							request: {
+								method: 'GET',
+								url: '=/spaces/{{ encodeURIComponent($parameter["spaceId"]) }}/webhooks/{{ encodeURIComponent($parameter["endpointId"]) }}',
+							},
+						},
+					},
+					{
+						name: 'List',
+						value: 'list',
+						action: 'List webhooks',
+						description: 'List the webhook endpoints in a Space',
+						routing: {
+							request: {
+								method: 'GET',
+								url: '=/spaces/{{ encodeURIComponent($parameter["spaceId"]) }}/webhooks',
+							},
+						},
+					},
+					{
+						name: 'List Deliveries',
+						value: 'listDeliveries',
+						action: 'List webhook deliveries',
+						description: 'List the recent delivery attempts for a webhook endpoint',
+						routing: {
+							request: {
+								method: 'GET',
+								url: '=/spaces/{{ encodeURIComponent($parameter["spaceId"]) }}/webhooks/{{ encodeURIComponent($parameter["endpointId"]) }}/deliveries',
+							},
+						},
+					},
+				],
+				default: 'list',
+			},
+
+			// ------------------------------------------------------------------
+			//         Webhook: Shared fields
+			// ------------------------------------------------------------------
+			{
+				displayName: 'Space ID',
+				name: 'spaceId',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'The ID of the Space that owns the webhook endpoints',
+				displayOptions: { show: { resource: ['webhook'] } },
+			},
+
+			{
+				displayName: 'Endpoint ID',
+				name: 'endpointId',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'The webhook endpoint ID from the List operation',
+				displayOptions: {
+					show: {
+						resource: ['webhook'],
+						operation: ['get', 'delete', 'listDeliveries'],
+					},
+				},
+			},
+
+			// ------------------------------------------------------------------
+			//         Webhook: Create fields
+			// ------------------------------------------------------------------
+			{
+				displayName: 'URL',
+				name: 'url',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'The HTTPS URL the platform will POST events to',
+				displayOptions: { show: { resource: ['webhook'], operation: ['create'] } },
+				routing: { send: { type: 'body', property: 'url' } },
+			},
+
+			{
+				displayName: 'Events',
+				name: 'events',
+				type: 'string',
+				required: true,
+				default: '',
+				description:
+					'Comma-separated list of webhook event names to subscribe to, e.g. cube.started, cube.stopped',
+				displayOptions: { show: { resource: ['webhook'], operation: ['create'] } },
+				routing: {
+					send: {
+						type: 'body',
+						property: 'events',
+						value:
+							'={{ $parameter["events"].split(",").map(s => s.trim()).filter(s => s.length > 0) }}',
+					},
+				},
+			},
+
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				description: 'Optional human-readable description for the endpoint',
+				displayOptions: { show: { resource: ['webhook'], operation: ['create'] } },
+				routing: { send: { type: 'body', property: 'description' } },
+			},
+
+			// ------------------------------------------------------------------
+			//         Webhook: List Deliveries field
+			// ------------------------------------------------------------------
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				default: 50,
+				typeOptions: { minValue: 1, numberStepSize: 1 },
+				description: 'Max number of results to return',
+				displayOptions: {
+					show: {
+						resource: ['webhook'],
+						operation: ['listDeliveries'],
+					},
+				},
+				routing: {
+					request: {
+						qs: {
+							limit: '={{ $parameter["limit"] }}',
+						},
+					},
+				},
 			},
 		],
 	};

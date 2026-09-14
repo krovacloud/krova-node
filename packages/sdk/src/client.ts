@@ -71,6 +71,39 @@ export type CreateTcpMappingInput = NonNullable<
   paths["/spaces/{spaceId}/cubes/{cubeId}/tcp-mappings"]["post"]["requestBody"]
 >["content"]["application/json"];
 
+/**
+ * A webhook endpoint subscribed to Space events.
+ *
+ * ⛔ Runtime discrepancy: the bundled OpenAPI spec does not declare
+ * `description`, but `GET /spaces/{spaceId}/webhooks/{endpointId}` includes
+ * it as `string | null`. The schema-derived type is extended here so callers
+ * reading a single webhook see the field; it is optional so list responses
+ * (which omit it) still typecheck.
+ */
+export type Webhook = components["schemas"]["Webhook"] & {
+  description?: string | null;
+};
+
+/** A recorded webhook delivery attempt (last 30 days of history). */
+export type WebhookDelivery = components["schemas"]["WebhookDelivery"];
+
+/**
+ * Request body for creating a webhook endpoint.
+ *
+ * Derived from `paths["/spaces/{spaceId}/webhooks"]["post"]` exactly like
+ * {@link CreateDomainInput}; `description` is intersected on because the
+ * bundled spec omits it but the runtime accepts it.
+ */
+export type CreateWebhookInput = NonNullable<
+  paths["/spaces/{spaceId}/webhooks"]["post"]["requestBody"]
+>["content"]["application/json"] & {
+  /** Optional human-readable label shown on the endpoint. */
+  description?: string;
+};
+
+/** A webhook plus its signing secret. Returned ONLY by {@link KrovaClient.webhooks}.create. */
+export type WebhookWithSecret = Webhook & { secret: string };
+
 /** Default API base URL — the single `servers[0].url` from the OpenAPI spec. */
 export const DEFAULT_BASE_URL = "https://krova.cloud/api/v1";
 
@@ -711,6 +744,119 @@ export class KrovaClient {
       );
       if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
       return data;
+    },
+  };
+
+  // ---------------------------------------------------------------------------
+  // Webhooks
+  //
+  // ⛔ The Krova Cloud API exposes no PATCH endpoint for webhooks, so this
+  // group deliberately has no `update` or `rotateSecret` helper. To change a
+  // webhook's URL, events, or signing secret, delete it and create a new
+  // endpoint. The signing secret is returned ONCE — losing it means every
+  // subsequent delivery will fail signature verification.
+  // ---------------------------------------------------------------------------
+
+  readonly webhooks = {
+    /** List webhook endpoints in a Space. */
+    list: async (spaceId: string): Promise<Webhook[]> => {
+      const { data, error, response } = await this.raw.GET("/spaces/{spaceId}/webhooks", {
+        params: { path: { spaceId } },
+      });
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      // The bundled spec does not declare a response body schema for this
+      // path (only `description`); cast to the documented runtime shape.
+      return (data as { webhooks?: Webhook[] } | undefined)?.webhooks ?? [];
+    },
+
+    /** Get a single webhook endpoint by id. Does NOT include the signing secret. */
+    get: async (spaceId: string, endpointId: string): Promise<Webhook> => {
+      const { data, error, response } = await this.raw.GET(
+        "/spaces/{spaceId}/webhooks/{endpointId}",
+        { params: { path: { spaceId, endpointId } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      // The bundled spec does not declare a response body schema for this
+      // path (only `description`); cast to the documented runtime shape.
+      const body = data as { webhook?: Webhook } | undefined;
+      if (!body?.webhook)
+        throw krovaErrorFrom(response, { error: "Get webhook response had no `webhook`." });
+      return body.webhook;
+    },
+
+    /**
+     * Create a webhook endpoint. Returns the endpoint AND its signing secret.
+     *
+     * ⛔ The signing secret is shown ONLY at creation. Persist it immediately;
+     * you cannot retrieve it later — `webhooks.get` deliberately omits it.
+     * Losing the secret means every subsequent delivery will fail signature
+     * verification, and you will have to delete the endpoint and create a new
+     * one. An automation that swallows this helper's return value will lose
+     * the secret on the next request, so the response is checked here and
+     * throws if the server omits either the webhook or the secret.
+     *
+     * @param spaceId Target Space id.
+     * @param body Webhook spec — `{ url, events, description? }`.
+     */
+    create: async (spaceId: string, body: CreateWebhookInput): Promise<WebhookWithSecret> => {
+      const { data, error, response } = await this.raw.POST("/spaces/{spaceId}/webhooks", {
+        params: { path: { spaceId } },
+        body,
+      });
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      // The bundled spec does not declare a response body schema for this
+      // path (only `description`); cast to the documented runtime shape.
+      const payload = data as { webhook?: WebhookWithSecret } | undefined;
+      if (!payload?.webhook)
+        throw krovaErrorFrom(response, { error: "Create webhook response had no `webhook`." });
+      if (!payload.webhook.secret)
+        throw krovaErrorFrom(response, {
+          error:
+            "Create webhook response had no `secret` — capture it NOW; it is never returned again.",
+        });
+      return payload.webhook;
+    },
+
+    /**
+     * Delete a webhook endpoint (cascades delivery history).
+     *
+     * Resolves on any 2xx; the response body is intentionally not parsed
+     * because the server returns `{ success: true }` but the caller does not
+     * need it.
+     */
+    delete: async (spaceId: string, endpointId: string): Promise<void> => {
+      const { error, response } = await this.raw.DELETE(
+        "/spaces/{spaceId}/webhooks/{endpointId}",
+        { params: { path: { spaceId, endpointId } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+    },
+
+    /**
+     * List recent deliveries for a webhook endpoint (last 30 days, max 100).
+     *
+     * @param spaceId Target Space id.
+     * @param endpointId Webhook endpoint id.
+     * @param opts Optional `limit` (1..100). Omit to let the server default to 50.
+     */
+    deliveries: async (
+      spaceId: string,
+      endpointId: string,
+      opts?: { limit?: number },
+    ): Promise<WebhookDelivery[]> => {
+      const { data, error, response } = await this.raw.GET(
+        "/spaces/{spaceId}/webhooks/{endpointId}/deliveries",
+        {
+          params: {
+            path: { spaceId, endpointId },
+            ...(opts?.limit !== undefined ? { query: { limit: opts.limit } } : {}),
+          },
+        },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      // The bundled spec does not declare a response body schema for this
+      // path (only `description`); cast to the documented runtime shape.
+      return (data as { deliveries?: WebhookDelivery[] } | undefined)?.deliveries ?? [];
     },
   };
 
