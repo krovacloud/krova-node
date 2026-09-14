@@ -1834,7 +1834,7 @@ export interface components {
             id: string;
             name: string;
             /** @enum {string} */
-            state: "pending" | "booting" | "running" | "stopped" | "stopping" | "error" | "deleted";
+            state: "pending" | "booting" | "running" | "stopped" | "stopping" | "resizing" | "error" | "deleted";
             publicIpv4: string | null;
             resources: {
                 vcpu: number;
