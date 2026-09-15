@@ -112,6 +112,11 @@ describe("tool registry", () => {
       "list_tcp_mappings",
       "create_tcp_mapping",
       "delete_tcp_mapping",
+      "list_webhooks",
+      "get_webhook",
+      "create_webhook",
+      "delete_webhook",
+      "list_webhook_deliveries",
     ].sort();
     assert.deepEqual(TOOLS.map((t) => t.name).sort(), expected);
 

@@ -56,7 +56,7 @@ test('exposes all resources', () => {
 	const resourceProp = desc.properties.find((p) => p.name === 'resource');
 	assert.ok(resourceProp, 'resource selector exists');
 	const values = resourceProp.options.map((o) => o.value);
-	assert.deepEqual(values.sort(), ['catalog', 'cube', 'domain', 'snapshot', 'tcpMapping']);
+	assert.deepEqual(values.sort(), ['catalog', 'cube', 'domain', 'snapshot', 'tcpMapping', 'webhook']);
 });
 
 test('Cube resource has the expected operations', () => {
