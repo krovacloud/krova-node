@@ -162,6 +162,22 @@ export class Krova implements INodeType {
 						},
 					},
 					{
+						name: 'Set Termination Protection',
+						value: 'setTerminationProtection',
+						action: 'Set termination protection',
+						description:
+							'Toggle a Cube\'s termination-protection flag. While enabled, customer-initiated delete calls (this operation included) are refused by the server with HTTP 409 and the flag must be turned off first. Power-off, wake, restart, restore, network-reset, and snapshot operations are not affected by the flag. Idempotent: passing the current value is a server-side no-op.',
+						routing: {
+							request: {
+								method: 'PATCH',
+								url: '=/spaces/{{ encodeURIComponent($parameter["spaceId"]) }}/cubes/{{ encodeURIComponent($parameter["cubeId"]) }}',
+								body: {
+									terminationProtection: '={{ $parameter["terminationProtection"] }}',
+								},
+							},
+						},
+					},
+					{
 						name: 'Start',
 						value: 'wake',
 						action: 'Start a cube',
@@ -203,7 +219,7 @@ export class Krova implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['cube'],
-						operation: ['get', 'delete', 'power-off', 'restart', 'wake'],
+						operation: ['get', 'delete', 'power-off', 'restart', 'setTerminationProtection', 'wake'],
 					},
 				},
 			},
@@ -392,6 +408,25 @@ export class Krova implements INodeType {
 						},
 					},
 				],
+			},
+
+			// ------------------------------------------------------------------
+			//         Cube: Set Termination Protection field
+			// ------------------------------------------------------------------
+			{
+				displayName: 'Termination Protection',
+				name: 'terminationProtection',
+				type: 'boolean',
+				required: true,
+				default: false,
+				description:
+					'Whether to opt the Cube out of customer-initiated destruction. While true, a delete call returns 409 until turned off. Idempotent: passing the current value is a no-op.',
+				displayOptions: {
+					show: {
+						resource: ['cube'],
+						operation: ['setTerminationProtection'],
+					},
+				},
 			},
 
 			// ------------------------------------------------------------------

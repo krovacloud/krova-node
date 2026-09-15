@@ -61,7 +61,7 @@ test('exposes all resources', () => {
 
 test('Cube resource has the expected operations', () => {
 	const ops = operationsForResource('cube').sort();
-	assert.deepEqual(ops, ['create', 'delete', 'get', 'list', 'power-off', 'restart', 'wake']);
+	assert.deepEqual(ops, ['create', 'delete', 'get', 'list', 'power-off', 'restart', 'setTerminationProtection', 'wake']);
 });
 
 test('Catalog resource has the expected operations', () => {
@@ -205,6 +205,64 @@ test('Restart renders the Cube ID field and is not confusable with Start', () =>
 	assert.match(restart.description, /cold-restart/i);
 	assert.match(restart.description, /kernel/i);
 	assert.match(restart.description, /running/i);
+});
+
+test('Cube Set Termination Protection is a PATCH that carries the flag in the body', () => {
+	// The flag is the customer-facing gate against accidental deletion — exposed
+	// as its own PATCH operation so the existing Cube Update surface stays
+	// narrow. The flag is sent as `terminationProtection: <bool>` in the body,
+	// matching the v1 PATCH contract — same path, same key, no second schema.
+	const opProp = desc.properties.find(
+		(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes('cube'),
+	);
+	const op = opProp.options.find((o) => o.value === 'setTerminationProtection');
+	assert.equal(op.routing.request.method, 'PATCH');
+	assert.match(
+		op.routing.request.url,
+		/\/spaces\/\{\{ encodeURIComponent\(\$parameter\["spaceId"\]\) \}\}\/cubes\/\{\{ encodeURIComponent\(\$parameter\["cubeId"\]\) \}\}$/,
+	);
+	assert.deepEqual(op.routing.request.body, {
+		terminationProtection: '={{ $parameter["terminationProtection"] }}',
+	});
+
+	// The boolean input field renders only for this operation; omit it from
+	// displayOptions and the form sends nothing, the PATCH carries no flag,
+	// and the server treats it as a no-op.
+	const flagField = propertyByName('terminationProtection');
+	assert.ok(flagField, 'terminationProtection field is declared');
+	assert.equal(flagField.type, 'boolean');
+	assert.equal(flagField.default, false);
+	assert.deepEqual(flagField.displayOptions.show.operation, ['setTerminationProtection']);
+
+	// The Cube ID field is in the same display list (the toggle is per-cube).
+	const cubeId = desc.properties.find(
+		(p) => p.name === 'cubeId' && p.displayOptions?.show?.resource?.includes('cube'),
+	);
+	assert.ok(
+		cubeId.displayOptions.show.operation.includes('setTerminationProtection'),
+		'Cube ID field must render for setTerminationProtection or the operation is unusable',
+	);
+});
+
+test('Cube Delete surfaces a 409 from the server without swallowing the body', () => {
+	// n8n's declarative HTTP routing does NOT swallow non-2xx bodies — the
+	// node surfaces the server's 409 verbatim to the workflow, which is what
+	// every consumer of `cube / Delete` (this node included) relies on to
+	// branch on `error.code = "termination_protected"`. The Delete operation
+	// therefore MUST NOT carry an `errorHandling` or response-mapping that
+	// hides the 409; pin that here so a future "make it nicer" refactor
+	// doesn't quietly break the contract.
+	const opProp = desc.properties.find(
+		(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes('cube'),
+	);
+	const del = opProp.options.find((o) => o.value === 'delete');
+	assert.equal(del.routing.request.method, 'DELETE');
+	assert.match(del.routing.request.url, /\/cubes\/.*$/);
+	assert.equal(
+		del.routing.errorHandling,
+		undefined,
+		'Cube Delete must not declare an errorHandling override — the 409 body has to reach the workflow',
+	);
 });
 
 test('path params (spaceId/cubeId) are URL-encoded to prevent path-segment injection', () => {
