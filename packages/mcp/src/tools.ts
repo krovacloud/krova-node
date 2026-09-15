@@ -202,6 +202,12 @@ export const TOOLS: ToolDef[] = [
         .max(16 * 1024, "userData exceeds the 16 KiB cloud-init limit.")
         .optional()
         .describe("Optional cloud-init script (max 16 KiB)."),
+      terminationProtection: z
+        .boolean()
+        .optional()
+        .describe(
+          "Opt this Cube out of customer-initiated deletion. When true, `delete_cube` is rejected with 409 until you call `unprotect_cube`. Power-off, wake, restart, snapshot, and restore remain allowed regardless. Default false when omitted — agents must opt in deliberately.",
+        ),
     },
     handler: (client, args, ctx) =>
       client.cubes.create(resolveSpaceId(args.spaceId, ctx), {
@@ -211,6 +217,14 @@ export const TOOLS: ToolDef[] = [
         sshPublicKey: args.sshPublicKey,
         ...(args.region ? { region: args.region } : {}),
         ...(args.userData ? { userData: args.userData } : {}),
+        // ⛔ Forward the explicit value when the agent set it; silence means
+        // "let the server default (false) apply", which is also what
+        // `terminationProtection: false` would express — but only the
+        // explicit branch preserves that distinction if a future field is
+        // added on a PATCH.
+        ...(args.terminationProtection !== undefined
+          ? { terminationProtection: args.terminationProtection }
+          : {}),
       }),
   }),
   defineTool({
@@ -262,6 +276,37 @@ export const TOOLS: ToolDef[] = [
     inputSchema: { ...spaceIdField, ...cubeIdField },
     handler: (client, args, ctx) =>
       client.cubes.delete(resolveSpaceId(args.spaceId, ctx), args.cubeId),
+  }),
+  defineTool({
+    name: "protect_cube",
+    title: "Protect Cube From Termination",
+    description:
+      "Turn on termination protection for a Cube. While on, `delete_cube` is rejected with 409 and the Cube cannot be destroyed by the customer — Krova (admin/orbit) can still terminate it, with an audit row. Power-off, wake, restart, snapshot, and restore remain allowed regardless. Idempotent: protecting an already-protected Cube is a no-op server-side. Toggle off with `unprotect_cube`.",
+    // Reversible toggle, not destructive. Idempotent: the server treats
+    // repeat calls as no-ops.
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    inputSchema: { ...spaceIdField, ...cubeIdField },
+    handler: (client, args, ctx) =>
+      client.cubes.setTerminationProtection(
+        resolveSpaceId(args.spaceId, ctx),
+        args.cubeId,
+        true,
+      ),
+  }),
+  defineTool({
+    name: "unprotect_cube",
+    title: "Unprotect Cube",
+    description:
+      "Turn off termination protection for a Cube. After this call, `delete_cube` works normally again. Idempotent: unprotecting an already-unprotected Cube is a no-op server-side. To turn protection back on, call `protect_cube`.",
+    // Reversible toggle, not destructive. Idempotent.
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    inputSchema: { ...spaceIdField, ...cubeIdField },
+    handler: (client, args, ctx) =>
+      client.cubes.setTerminationProtection(
+        resolveSpaceId(args.spaceId, ctx),
+        args.cubeId,
+        false,
+      ),
   }),
   defineTool({
     name: "list_regions",

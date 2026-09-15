@@ -97,6 +97,8 @@ describe("tool registry", () => {
       "wake_cube",
       "restart_cube",
       "delete_cube",
+      "protect_cube",
+      "unprotect_cube",
       "list_regions",
       "list_images",
       "get_pricing",
@@ -166,7 +168,9 @@ describe("tool registry", () => {
     }
 
     // Sleep/wake + the create-resource tools mutate but preserve data — not
-    // read-only, not destructive.
+    // read-only, not destructive. The termination-protection toggles join this
+    // group: they flip a flag, never destroy a Cube, and an agent that
+    // repeated either is performing a no-op (the server is idempotent).
     for (const name of [
       "power_off_cube",
       "wake_cube",
@@ -174,6 +178,8 @@ describe("tool registry", () => {
       "create_domain",
       "create_snapshot",
       "create_tcp_mapping",
+      "protect_cube",
+      "unprotect_cube",
     ]) {
       const tool = findTool(name);
       assert.equal(tool.annotations.readOnlyHint, false, `${name} is not read-only`);
