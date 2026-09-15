@@ -1,5 +1,5 @@
 import createClient, { type Client, type Middleware } from "openapi-fetch";
-import { krovaErrorFrom } from "./error.js";
+import { krovaErrorFrom, terminationProtectedFrom } from "./error.js";
 import type { components, paths } from "./generated/types.js";
 
 /** The Cube resource, as defined in the Krova Cloud OpenAPI spec. */
@@ -70,6 +70,33 @@ export type UpdateDomainInput = NonNullable<
 export type CreateTcpMappingInput = NonNullable<
   paths["/spaces/{spaceId}/cubes/{cubeId}/tcp-mappings"]["post"]["requestBody"]
 >["content"]["application/json"];
+
+/**
+ * Request body for `POST /spaces/{spaceId}/cubes` as defined in the OpenAPI
+ * spec, with `terminationProtection` intersected on because the bundled spec
+ * does not declare the field but the v1 API accepts it. A boolean `false` (or
+ * omission) leaves the Cube in the documented default-unprotected state; `true`
+ * opts the Cube out of customer-initiated deletion until the flag is toggled
+ * back via `cubes.setTerminationProtection`.
+ */
+export type CreateCubeInput = NonNullable<
+  paths["/spaces/{spaceId}/cubes"]["post"]["requestBody"]
+>["content"]["application/json"] & {
+  /** Opt this Cube out of customer-initiated deletion (default `false`). */
+  terminationProtection?: boolean;
+};
+
+/**
+ * Request body for `PATCH /spaces/{spaceId}/cubes/{cubeId}` — the v1 API
+ * endpoint the SDK uses to toggle termination protection on an existing Cube.
+ * The bundled OpenAPI spec does not declare a PATCH on this path yet, so the
+ * type is structurally derived from the {@link Cube} fields the API echoes
+ * back. Only `terminationProtection` is exposed by `setTerminationProtection`;
+ * future toggles can extend this without breaking the public signature.
+ */
+export type SetTerminationProtectionInput = {
+  terminationProtection: boolean;
+};
 
 /**
  * A webhook endpoint subscribed to Space events.
@@ -148,8 +175,7 @@ const BASE_BACKOFF_MS = 500;
 /** Cap on any single backoff wait (ms), to keep retries "small but real". */
 const MAX_BACKOFF_MS = 10_000;
 
-const sleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Parse a `Retry-After` header (RFC 7231): either delta-seconds or an
@@ -296,23 +322,23 @@ export class KrovaClient {
     /**
      * Create a Cube. Returns the created {@link Cube}.
      *
+     * Set `terminationProtection: true` to opt the Cube out of
+     * customer-initiated deletion. The flag is per-Cube; power-off, wake,
+     * restart, snapshot, and restore remain allowed regardless.
+     *
      * @param spaceId Target Space id.
-     * @param body Cube spec — `{ name, image, resources, sshPublicKey, ... }`.
+     * @param body Cube spec — `{ name, image, resources, sshPublicKey, terminationProtection?, ... }`.
      * @param opts Optional `idempotencyKey` (max 255 chars, scoped per space).
      */
     create: async (
       spaceId: string,
-      body: NonNullable<
-        paths["/spaces/{spaceId}/cubes"]["post"]["requestBody"]
-      >["content"]["application/json"],
+      body: CreateCubeInput,
       opts?: { idempotencyKey?: string },
     ): Promise<Cube> => {
       const { data, error, response } = await this.raw.POST("/spaces/{spaceId}/cubes", {
         params: {
           path: { spaceId },
-          ...(opts?.idempotencyKey
-            ? { header: { "Idempotency-Key": opts.idempotencyKey } }
-            : {}),
+          ...(opts?.idempotencyKey ? { header: { "Idempotency-Key": opts.idempotencyKey } } : {}),
         },
         body,
       });
@@ -326,10 +352,9 @@ export class KrovaClient {
 
     /** Get a single Cube. Returns the {@link Cube}. */
     get: async (spaceId: string, cubeId: string): Promise<Cube> => {
-      const { data, error, response } = await this.raw.GET(
-        "/spaces/{spaceId}/cubes/{cubeId}",
-        { params: { path: { spaceId, cubeId } } },
-      );
+      const { data, error, response } = await this.raw.GET("/spaces/{spaceId}/cubes/{cubeId}", {
+        params: { path: { spaceId, cubeId } },
+      });
       if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
       const cube = data?.cube;
       if (!cube) {
@@ -366,13 +391,61 @@ export class KrovaClient {
       return data;
     },
 
-    /** Delete a Cube (asynchronous — deletion is enqueued). */
-    delete: async (spaceId: string, cubeId: string) => {
-      const { data, error, response } = await this.raw.DELETE(
-        "/spaces/{spaceId}/cubes/{cubeId}",
-        { params: { path: { spaceId, cubeId } } },
-      );
+    /**
+     * Toggle a Cube's termination-protection flag.
+     *
+     * The v1 API exposes `PATCH /spaces/{spaceId}/cubes/{cubeId}` with body
+     * `{ terminationProtection: boolean }`. The call is idempotent: passing the
+     * current value is a no-op server-side (no audit row is written).
+     *
+     * Returns the updated {@link Cube}, including `terminationProtection`,
+     * `terminationProtectionChangedAt`, and `terminationProtectionChangedBy`.
+     */
+    setTerminationProtection: async (
+      spaceId: string,
+      cubeId: string,
+      enabled: boolean,
+    ): Promise<Cube> => {
+      // The bundled OpenAPI spec does not declare a PATCH on this path; the
+      // PATCH endpoint lands when the v1 control-plane PR ships. Until then
+      // this is the typed escape hatch (`client.raw`) used everywhere else in
+      // the SDK for spec-evolving surfaces — the runtime contract is asserted
+      // by the integration suite.
+      const { data, error, response } = await this.raw.PATCH("/spaces/{spaceId}/cubes/{cubeId}", {
+        params: { path: { spaceId, cubeId } },
+        body: { terminationProtection: enabled } as SetTerminationProtectionInput,
+      });
       if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      const cube = (data as { cube?: Cube } | undefined)?.cube;
+      if (!cube) {
+        throw krovaErrorFrom(response, {
+          error: "Set termination-protection response had no `cube`.",
+        });
+      }
+      return cube;
+    },
+
+    /**
+     * Delete a Cube (asynchronous — deletion is enqueued).
+     *
+     * Throws {@link TerminationProtectedError} when the server returns `409`
+     * with `error.code = "termination_protected"` — the Cube had its
+     * termination-protection flag set and must be unprotected first. Any other
+     * non-2xx response surfaces as a plain {@link KrovaError}.
+     */
+    delete: async (spaceId: string, cubeId: string) => {
+      const { data, error, response } = await this.raw.DELETE("/spaces/{spaceId}/cubes/{cubeId}", {
+        params: { path: { spaceId, cubeId } },
+      });
+      if (error !== undefined || !response.ok) {
+        // The published Error schema is `{ error: string }`, but the
+        // termination-protected 409 returns `{ error: { code, message, cube } }`.
+        // Try the richer shape first; fall through to a plain KrovaError on
+        // anything else so callers see a typed error for every failure mode.
+        const tpe = terminationProtectedFrom(response, cubeId, error);
+        if (tpe) throw tpe;
+        throw krovaErrorFrom(response, error);
+      }
       if (data === undefined)
         throw krovaErrorFrom(response, { error: "Delete Cube response was empty." });
       return data;
@@ -426,10 +499,9 @@ export class KrovaClient {
      * available) the pinned host public keys for strict host-key verification.
      */
     ssh: async (spaceId: string, cubeId: string): Promise<CubeSshInfo> => {
-      const { data, error, response } = await this.raw.GET(
-        "/spaces/{spaceId}/cubes/{cubeId}/ssh",
-        { params: { path: { spaceId, cubeId } } },
-      );
+      const { data, error, response } = await this.raw.GET("/spaces/{spaceId}/cubes/{cubeId}/ssh", {
+        params: { path: { spaceId, cubeId } },
+      });
       if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
       if (data === undefined)
         throw krovaErrorFrom(response, { error: "Cube SSH-info response was empty." });
@@ -463,8 +535,7 @@ export class KrovaClient {
   async getSpace(): Promise<Space> {
     const { data, error, response } = await this.raw.GET("/space");
     if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
-    if (data === undefined)
-      throw krovaErrorFrom(response, { error: "Space response was empty." });
+    if (data === undefined) throw krovaErrorFrom(response, { error: "Space response was empty." });
     return data;
   }
 
@@ -534,8 +605,7 @@ export class KrovaClient {
         { params: { path: { spaceId, cubeId, mappingId } } },
       );
       if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
-      if (!data)
-        throw krovaErrorFrom(response, { error: "Domain records response was empty." });
+      if (!data) throw krovaErrorFrom(response, { error: "Domain records response was empty." });
       return data;
     },
 
@@ -655,7 +725,9 @@ export class KrovaClient {
       );
       if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
       if (!data?.tcpMapping)
-        throw krovaErrorFrom(response, { error: "Create TCP mapping response had no `tcpMapping`." });
+        throw krovaErrorFrom(response, {
+          error: "Create TCP mapping response had no `tcpMapping`.",
+        });
       return data.tcpMapping;
     },
 
@@ -825,10 +897,9 @@ export class KrovaClient {
      * need it.
      */
     delete: async (spaceId: string, endpointId: string): Promise<void> => {
-      const { error, response } = await this.raw.DELETE(
-        "/spaces/{spaceId}/webhooks/{endpointId}",
-        { params: { path: { spaceId, endpointId } } },
-      );
+      const { error, response } = await this.raw.DELETE("/spaces/{spaceId}/webhooks/{endpointId}", {
+        params: { path: { spaceId, endpointId } },
+      });
       if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
     },
 
