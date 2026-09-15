@@ -10,25 +10,32 @@
  * ```
  */
 export {
-  KrovaClient,
-  DEFAULT_BASE_URL,
-  type KrovaClientOptions,
   type AuthScheme,
-  type Cube,
-  type Region,
-  type Image,
-  type PricingTier,
-  type Pagination,
-  type Space,
-  type CubeSshInfo,
-  type Domain,
-  type Snapshot,
-  type TcpMapping,
+  type CreateCubeInput,
   type CreateDomainInput,
-  type UpdateDomainInput,
   type CreateTcpMappingInput,
+  type Cube,
+  type CubeSshInfo,
+  DEFAULT_BASE_URL,
+  type Domain,
+  type Image,
+  KrovaClient,
+  type KrovaClientOptions,
+  type Pagination,
+  type PricingTier,
+  type Region,
+  type Snapshot,
+  type Space,
+  type TcpMapping,
+  type UpdateDomainInput,
 } from "./client.js";
-export { KrovaError, krovaErrorFrom, type KrovaErrorBody } from "./error.js";
+export {
+  KrovaError,
+  type KrovaErrorBody,
+  krovaErrorFrom,
+  TerminationProtectedError,
+  terminationProtectedFrom,
+} from "./error.js";
 
 // Re-export the generated OpenAPI types for advanced/`.raw` consumers.
-export type { paths, components } from "./generated/types.js";
+export type { components, paths } from "./generated/types.js";

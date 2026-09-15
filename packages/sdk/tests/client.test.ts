@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { type AddressInfo } from "node:net";
+import type { AddressInfo } from "node:net";
 import { after, before, test } from "node:test";
 import { type Cube, KrovaClient, KrovaError } from "../src/index.js";
 
@@ -8,11 +8,7 @@ import { type Cube, KrovaClient, KrovaError } from "../src/index.js";
  * A minimal mock of the Krova Cloud API. Each test installs a handler that
  * receives the request (with its collected body) and writes a response.
  */
-type Handler = (
-  req: IncomingMessage,
-  res: ServerResponse,
-  body: string,
-) => void;
+type Handler = (req: IncomingMessage, res: ServerResponse, body: string) => void;
 
 let server: Server;
 let baseUrl: string;
@@ -320,6 +316,7 @@ test("list/get/catalog responses are typed (not unknown)", async () => {
     image: "ubuntu-24.04",
     sshUser: "ubuntu",
     costPerHour: 0.01,
+    terminationProtection: false,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
   } satisfies Cube;
@@ -435,7 +432,10 @@ test("domains.list unwraps { domains }; create returns the domain AND its record
   const client = new KrovaClient({ apiKey: "kro_x", baseUrl });
   const list = await client.domains.list("s1", "c1");
   assert.equal(list[0]?.id, "dom_1");
-  const created = await client.domains.create("s1", "c1", { domain: "api.example.com", port: 8080 });
+  const created = await client.domains.create("s1", "c1", {
+    domain: "api.example.com",
+    port: 8080,
+  });
   assert.equal(created.domain.id, "dom_2");
   // The whole point of the 0.4.0 change: the caller can publish DNS straight
   // away instead of making a second call or hard-coding record shapes.
@@ -525,7 +525,12 @@ test("cubes.restore posts the snapshotId to the restore endpoint", async () => {
 test("backups.download returns the signed URL body", async () => {
   handler = (req, res) => {
     assert.equal(req.url, "/api/v1/spaces/s1/backups/bak_1/download");
-    json(res, 200, { url: "https://x/y", filename: "cube.cube", sizeBytes: 10, expiresAt: "2026-07-05T00:00:00Z" });
+    json(res, 200, {
+      url: "https://x/y",
+      filename: "cube.cube",
+      sizeBytes: 10,
+      expiresAt: "2026-07-05T00:00:00Z",
+    });
   };
   const client = new KrovaClient({ apiKey: "kro_x", baseUrl });
   const dl = await client.backups.download("s1", "bak_1");
@@ -604,7 +609,9 @@ test("tcpMappings.create sends `udpEnabled` on the wire when given", async () =>
   let seenBody: Record<string, unknown> = {};
   handler = (_req, res, body) => {
     seenBody = JSON.parse(body || "{}") as Record<string, unknown>;
-    json(res, 201, { tcpMapping: { id: "map_3", cubePort: 5000, hostPort: 30003, udpEnabled: false } });
+    json(res, 201, {
+      tcpMapping: { id: "map_3", cubePort: 5000, hostPort: 30003, udpEnabled: false },
+    });
   };
 
   const client = new KrovaClient({ apiKey: "kro_test", baseUrl });
@@ -620,7 +627,9 @@ test("an omitted `udpEnabled` sends no `udpEnabled` key at all, letting the serv
   let seenBody: Record<string, unknown> = {};
   handler = (_req, res, body) => {
     seenBody = JSON.parse(body || "{}") as Record<string, unknown>;
-    json(res, 201, { tcpMapping: { id: "map_4", cubePort: 5001, hostPort: 30004, udpEnabled: true } });
+    json(res, 201, {
+      tcpMapping: { id: "map_4", cubePort: 5001, hostPort: 30004, udpEnabled: true },
+    });
   };
 
   const client = new KrovaClient({ apiKey: "kro_test", baseUrl });
