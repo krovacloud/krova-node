@@ -15,7 +15,7 @@ function listCmd(): Command {
       const { cubes } = await client.cubes.list(space);
       if (rt.json) return printJSON(cubes);
       printTable(
-        ["ID", "NAME", "STATE", "VCPU", "RAM(GB)", "DISK(GB)", "IMAGE", "IPV4"],
+        ["ID", "NAME", "STATE", "VCPU", "RAM(GB)", "DISK(GB)", "IMAGE", "IPV4", "PROTECTED"],
         cubes.map((c) => [
           c.id,
           c.name,
@@ -25,6 +25,11 @@ function listCmd(): Command {
           String(c.resources.diskGb),
           c.image,
           c.publicIpv4 ?? "—",
+          // The ✓ is the only character readable in a terminal at 80-column
+          // width; spelling out "yes"/"no" pushes the column past the screen
+          // edge on the smallest supported layout. Empty cell when the flag is
+          // off — the header column is the cue.
+          c.terminationProtection ? "✓" : "",
         ])
       );
     });
@@ -67,6 +72,11 @@ function createCmd(): Command {
     .option("--region <slug>", "region slug (see `krova regions`)")
     .option("--user-data <script>", "cloud-init script")
     .option("--idempotency-key <key>", "idempotency key (24h dedupe)")
+    .option(
+      "--termination-protection",
+      "turn on termination protection (the cube cannot be deleted until turned off)",
+      false
+    )
     .action(async (opts, cmd: Command) => {
       const rt = getRuntime(cmd);
       const client = makeClient(rt.res);
@@ -92,6 +102,9 @@ function createCmd(): Command {
       };
       if (opts.region) body.region = opts.region;
       if (opts.userData) body.userData = opts.userData;
+      // Only send the flag when explicitly turned on; the server defaults it
+      // to `false`, and an explicit `false` would just be noise on the wire.
+      if (opts.terminationProtection) body.terminationProtection = true;
       const cube = await client.cubes.create(
         space,
         body as never,
@@ -173,6 +186,33 @@ function sshPortCmd(): Command {
     });
 }
 
+/**
+ * Toggle a Cube's termination-protection flag. Shared by `protect` and
+ * `unprotect`; only the boolean `enabled` differs.
+ */
+function setProtectionCmd(name: string, enabled: boolean, past: string): Command {
+  return new Command(name)
+    .argument("<cube>", "cube name or ID")
+    .description(
+      enabled
+        ? "turn on termination protection (idempotent — no-op if already on; the cube cannot be deleted until turned off)"
+        : "turn off termination protection (idempotent — no-op if already off)",
+    )
+    .action(async (cubeRef: string, _opts, cmd: Command) => {
+      const rt = getRuntime(cmd);
+      const client = makeClient(rt.res);
+      const space = await resolveSpace(rt);
+      const id = await resolveCube(client, space, cubeRef);
+      // The SDK call is idempotent: re-protecting a protected cube or
+      // unprotecting an unprotected one is a no-op on the server. The CLI
+      // surfaces the latest audit fields in `--json` for callers that want to
+      // see who last changed the flag.
+      const cube = await client.cubes.setTerminationProtection(space, id, enabled);
+      if (rt.json) return printJSON(cube);
+      process.stdout.write(`${past} cube ${id}\n`);
+    });
+}
+
 export function cubesCommand(): Command {
   const cubes = new Command("cubes").description("manage Cubes (Firecracker microVMs)");
   cubes.addCommand(listCmd());
@@ -185,6 +225,8 @@ export function cubesCommand(): Command {
   cubes.addCommand(actionCmd("delete", "Deleting", (c, s, id) => c.delete(s, id)));
   cubes.addCommand(restartCmd());
   cubes.addCommand(sshPortCmd());
+  cubes.addCommand(setProtectionCmd("protect", true, "Protected"));
+  cubes.addCommand(setProtectionCmd("unprotect", false, "Unprotected"));
   return cubes;
 }
 
