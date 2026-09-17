@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["src/**/*.ts", "tests/**/*.ts", "*.json"]
+    "includes": ["src/**/*.ts", "!src/generated/**", "tests/**/*.ts", "*.json"]
   },
   "formatter": {
     "enabled": true,

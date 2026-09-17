@@ -53,6 +53,35 @@ jobs:
       # could ship a package that does not compile.
       - run: pnpm -r typecheck
       - run: pnpm -r test
+      # The SDK's types are generated from `packages/sdk/openapi.json`, a
+      # SNAPSHOT of the spec krova-cloud serves. Nothing pushes that spec here,
+      # so it only moves when a human copies it, and for a long stretch nobody
+      # could: `pnpm gen` was dead on a peer-dependency mismatch (see the
+      # override in pnpm-workspace.yaml). The published SDK ended up declaring
+      # `TcpMapping.host` required when the live API does not send it.
+      #
+      # `pnpm -r test` already proves the committed types match the committed
+      # snapshot. This proves the snapshot matches the live API — the half that
+      # needs the network, and the half that was missing.
+      #
+      # ⛔ Exit 1 (drift) fails the build. Exit 2 (could not reach the spec)
+      # warns instead, because a krova.cloud outage is not a contract change
+      # and must not block an unrelated merge. The two are deliberately
+      # different codes so this step can never report "could not check" as
+      # "checked and fine".
+      - name: Check the SDK's OpenAPI snapshot against the live API
+        run: |
+          # `set +e` is required: Actions runs this with `bash -e`, which would
+          # abort on the non-zero exit before the status could be inspected.
+          set +e
+          node scripts/check-openapi-drift.mjs
+          status=$?
+          set -e
+          if [ "$status" -eq 2 ]; then
+            echo "::warning::Could not reach the live OpenAPI spec - drift was NOT verified on this run."
+            exit 0
+          fi
+          exit "$status"
       - name: Release changed packages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         # npm auth is OIDC trusted publishing (id-token: write above) — each

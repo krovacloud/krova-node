@@ -18,6 +18,7 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r --if-present lint",
+    "check:openapi-drift": "node scripts/check-openapi-drift.mjs",
     "publish:mcp-registry": "node scripts/publish-mcp-registry.mjs"
   }
 }
