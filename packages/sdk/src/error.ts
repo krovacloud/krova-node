@@ -83,17 +83,30 @@ export class KrovaError extends Error {
 
 /**
  * Build a {@link KrovaError} from a failing response + parsed error body.
+ *
+ * `body` is `unknown` rather than {@link KrovaErrorBody} because not every
+ * documented error response is the flat `{ error: string }` shape — DELETE
+ * /cubes/{cubeId} publishes a 409 whose `error` is an object. This function
+ * already coped with that at runtime; typing the parameter narrowly only meant
+ * the call sites had to lie. Widening accepts strictly more, so no caller
+ * breaks.
+ *
+ * `body` is carried onto the error only when it really is the flat shape, so
+ * {@link KrovaError.body} never advertises a `string` that is not there. A
+ * caller that needs the raw payload of some other shape has `response`.
  */
-export function krovaErrorFrom(response: Response, body: KrovaErrorBody | undefined): KrovaError {
+export function krovaErrorFrom(response: Response, body: unknown): KrovaError {
+  const flat =
+    typeof body === "object" && body !== null && typeof (body as KrovaErrorBody).error === "string"
+      ? (body as KrovaErrorBody)
+      : undefined;
   const message =
-    (typeof body?.error === "string" && body.error) ||
-    response.statusText ||
-    `Request failed with status ${response.status}`;
+    flat?.error || response.statusText || `Request failed with status ${response.status}`;
   return new KrovaError(message, {
     status: response.status,
     code: response.headers.get("x-error-code") ?? undefined,
     requestId: response.headers.get("x-request-id") ?? undefined,
-    body,
+    body: flat,
     response,
   });
 }

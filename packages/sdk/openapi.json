@@ -1,50 +1,108 @@
 {
-  "openapi": "3.1.0",
-  "info": {
-    "title": "Krova Cloud API",
-    "version": "1.0.0",
-    "description": "Programmatic access to Krova Cloud. Authenticate with the X-API-KEY header. Keys are scoped per Space and inherit the permissions of the membership that created them. Mutating POST / DELETE endpoints are rate-limited to 10 requests per 60 seconds per client IP.",
-    "contact": { "email": "support@krova.cloud" }
-  },
-  "servers": [{ "url": "https://krova.cloud/api/v1" }],
-  "security": [{ "ApiKeyAuth": [] }],
   "components": {
-    "securitySchemes": { "ApiKeyAuth": { "type": "apiKey", "in": "header", "name": "X-API-KEY" } },
-    "schemas": {
-      "Space": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string" },
-          "tier": { "type": "string" },
-          "createdAt": { "type": "string", "format": "date-time" }
-        },
-        "required": ["id", "name", "tier", "createdAt"]
-      },
-      "CubeSshInfo": {
-        "type": "object",
-        "properties": {
-          "host": { "type": "string", "nullable": true },
-          "port": { "type": "integer" },
-          "user": { "type": "string" },
-          "hostKeys": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": { "type": { "type": "string" }, "key": { "type": "string" } },
-              "required": ["type", "key"]
+    "responses": {
+      "BadRequest": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
             }
           }
         },
-        "required": ["host", "port", "user", "hostKeys"]
+        "description": "Bad request"
       },
+      "Forbidden": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        },
+        "description": "Authenticated but lacks the required permission"
+      },
+      "NotFound": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        },
+        "description": "Resource not found"
+      },
+      "RateLimited": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        },
+        "description": "Rate limit exceeded (10 mutations / 60s)"
+      },
+      "Unauthorized": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        },
+        "description": "Missing or invalid API key"
+      }
+    },
+    "schemas": {
       "Cube": {
-        "type": "object",
         "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string" },
+          "costPerHour": {
+            "type": "number"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "publicIpv4": {
+            "nullable": true,
+            "type": "string"
+          },
+          "resources": {
+            "properties": {
+              "diskGb": {
+                "type": "integer"
+              },
+              "ramGb": {
+                "type": "number"
+              },
+              "vcpu": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "vcpu",
+              "ramGb",
+              "diskGb"
+            ],
+            "type": "object"
+          },
+          "serverDomain": {
+            "description": "The hostname of the server currently hosting this Cube (e.g. `mango.krova.cloud`), shared by every Cube on that server. This is NOT the Cube's own SSH target — use `host` from GET .../ssh for that, which is the Cube's own stable hostname and survives migration to another server. Null when the Cube has no server assigned. Only present on the single-Cube GET; list and create responses omit it.",
+            "nullable": true,
+            "type": "string"
+          },
+          "sshUser": {
+            "type": "string"
+          },
           "state": {
-            "type": "string",
             "enum": [
               "pending",
               "booting",
@@ -54,43 +112,28 @@
               "resizing",
               "error",
               "deleted"
-            ]
-          },
-          "publicIpv4": { "type": "string", "nullable": true },
-          "resources": {
-            "type": "object",
-            "properties": {
-              "vcpu": { "type": "integer" },
-              "ramGb": { "type": "number" },
-              "diskGb": { "type": "integer" }
-            },
-            "required": ["vcpu", "ramGb", "diskGb"]
-          },
-          "image": { "type": "string" },
-          "sshUser": { "type": "string" },
-          "costPerHour": { "type": "number" },
-          "serverDomain": {
-            "type": "string",
-            "nullable": true,
-            "description": "The hostname of the server currently hosting this Cube (e.g. `mango.krova.cloud`). This is NOT the Cube's own SSH target — use `host` from GET .../ssh for that, which is the Cube's own stable hostname and survives migration to another server. Null when the Cube has no server assigned. Only present on the single-Cube GET; list and create responses omit it."
+            ],
+            "type": "string"
           },
           "terminationProtection": {
-            "type": "boolean",
-            "description": "Whether this Cube is locked against customer-initiated deletion. Per-Cube, opt-in, default `false`. Power-off, wake, restart, snapshot, and restore remain allowed regardless. The two audit fields are populated whenever the flag is on."
+            "description": "Per-cube opt-in flag. When true, customer-initiated destroy paths return 409 with `error.code = \"termination_protected\"`. Power-off, wake, restart, restore, network-reset, and snapshot ops are NOT termination and remain allowed. Default false.",
+            "type": "boolean"
           },
           "terminationProtectionChangedAt": {
-            "type": "string",
+            "description": "ISO8601 timestamp of the most recent toggle of `terminationProtection`. Null when the flag has never been turned on.",
             "format": "date-time",
             "nullable": true,
-            "description": "When `terminationProtection` last changed. `null` until the flag is first set, then tracked on every toggle."
+            "type": "string"
           },
           "terminationProtectionChangedBy": {
-            "type": "string",
+            "description": "Identifies the actor that last toggled the flag: `\"user:<id>\"` for a customer, `\"admin:<id>\"` for an operator, `\"system:<job-name>\"` for a worker-driven write. Null when the flag has never been turned on.",
             "nullable": true,
-            "description": "Who last changed `terminationProtection`. `\"user:<id>\"` for customer toggles, `\"admin:<id>\"` for operator changes. `null` until the flag is first set."
+            "type": "string"
           },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
         },
         "required": [
           "id",
@@ -102,126 +145,296 @@
           "sshUser",
           "costPerHour",
           "terminationProtection",
+          "terminationProtectionChangedAt",
+          "terminationProtectionChangedBy",
           "createdAt",
           "updatedAt"
-        ]
+        ],
+        "type": "object"
       },
-      "Pagination": {
-        "type": "object",
+      "CubeSshInfo": {
         "properties": {
-          "page": { "type": "integer" },
-          "limit": { "type": "integer" },
-          "total": { "type": "integer" },
-          "totalPages": { "type": "integer" }
+          "host": {
+            "nullable": true,
+            "type": "string"
+          },
+          "hostKeys": {
+            "items": {
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "key"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "port": {
+            "type": "integer"
+          },
+          "user": {
+            "type": "string"
+          }
         },
-        "required": ["page", "limit", "total", "totalPages"]
-      },
-      "Region": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string" },
-          "slug": { "type": "string" }
-        },
-        "required": ["id", "name", "slug"]
-      },
-      "Image": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string" },
-          "version": { "type": "string" },
-          "description": { "type": "string" },
-          "defaultUser": { "type": "string" }
-        },
-        "required": ["id", "name", "version", "description", "defaultUser"]
-      },
-      "PricingTier": {
-        "type": "object",
-        "properties": {
-          "minVcpus": { "type": "integer" },
-          "maxVcpus": { "type": "integer", "nullable": true },
-          "multiplier": { "type": "number" },
-          "label": { "type": "string" }
-        },
-        "required": ["minVcpus", "maxVcpus", "multiplier", "label"]
+        "required": [
+          "host",
+          "port",
+          "user",
+          "hostKeys"
+        ],
+        "type": "object"
       },
       "DnsRecord": {
-        "type": "object",
         "properties": {
-          "id": { "type": "string", "enum": ["ownership", "routing", "certificate"] },
-          "type": { "type": "string", "enum": ["CNAME", "TXT", "A"] },
-          "host": { "type": "string" },
-          "value": { "type": "string" },
-          "purpose": { "type": "string", "enum": ["ownership", "routing", "certificate"] },
-          "note": { "type": "string", "nullable": true },
-          "mustBeGrey": { "type": "boolean" },
-          "proxyOk": { "type": "boolean" }
+          "host": {
+            "type": "string"
+          },
+          "id": {
+            "enum": [
+              "ownership",
+              "routing",
+              "certificate"
+            ],
+            "type": "string"
+          },
+          "mustBeGrey": {
+            "type": "boolean"
+          },
+          "note": {
+            "nullable": true,
+            "type": "string"
+          },
+          "proxyOk": {
+            "type": "boolean"
+          },
+          "purpose": {
+            "enum": [
+              "ownership",
+              "routing",
+              "certificate"
+            ],
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "CNAME",
+              "TXT",
+              "A"
+            ],
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
         },
-        "required": ["id", "type", "host", "value", "purpose", "mustBeGrey", "proxyOk"]
+        "required": [
+          "id",
+          "type",
+          "host",
+          "value",
+          "purpose",
+          "mustBeGrey",
+          "proxyOk"
+        ],
+        "type": "object"
       },
       "DnsRecordStatus": {
-        "type": "object",
         "properties": {
-          "id": { "type": "string" },
-          "type": { "type": "string", "enum": ["CNAME", "TXT", "A"] },
-          "host": { "type": "string" },
-          "value": { "type": "string" },
-          "purpose": { "type": "string" },
-          "note": { "type": "string", "nullable": true },
-          "mustBeGrey": { "type": "boolean" },
-          "proxyOk": { "type": "boolean" },
-          "state": { "type": "string", "enum": ["found", "missing", "mismatch", "unknown"] },
-          "detail": { "type": "string" },
-          "observed": { "type": "array", "nullable": true, "items": { "type": "string" } }
+          "detail": {
+            "type": "string"
+          },
+          "host": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "mustBeGrey": {
+            "type": "boolean"
+          },
+          "note": {
+            "nullable": true,
+            "type": "string"
+          },
+          "observed": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "proxyOk": {
+            "type": "boolean"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "found",
+              "missing",
+              "mismatch",
+              "unknown"
+            ],
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "CNAME",
+              "TXT",
+              "A"
+            ],
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
         },
-        "required": ["id", "type", "host", "value", "purpose", "state", "detail"]
+        "required": [
+          "id",
+          "type",
+          "host",
+          "value",
+          "purpose",
+          "state",
+          "detail"
+        ],
+        "type": "object"
       },
       "Domain": {
-        "type": "object",
         "properties": {
-          "id": { "type": "string" },
-          "cubeId": { "type": "string" },
-          "domain": { "type": "string" },
-          "port": { "type": "integer", "nullable": true },
-          "status": { "type": "string" },
-          "ingressStatus": { "type": "string", "nullable": true },
-          "securityHeadersMode": { "type": "string", "enum": ["enforced", "app_managed"] },
-          "responseHeaderTimeoutSecs": { "type": "integer" },
-          "responseHeaderOverrides": {
-            "type": "object",
+          "acmeDelegationTarget": {
             "nullable": true,
-            "description": "Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all.",
-            "properties": {
-              "set": { "type": "object", "additionalProperties": { "type": "string" } },
-              "remove": { "type": "array", "items": { "type": "string" } }
-            }
+            "type": "string"
+          },
+          "basicAuthEnabled": {
+            "type": "boolean"
+          },
+          "basicAuthUser": {
+            "nullable": true,
+            "type": "string"
+          },
+          "corsConfig": {
+            "nullable": true,
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "cubeId": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "ingressStatus": {
+            "nullable": true,
+            "type": "string"
+          },
+          "ipAllowList": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "ipDenyList": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "isWildcard": {
+            "type": "boolean"
+          },
+          "maxRequestBodyMb": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "port": {
+            "nullable": true,
+            "type": "integer"
           },
           "requestHeaderOverrides": {
-            "type": "object",
-            "nullable": true,
             "description": "Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all.",
-            "properties": {
-              "set": { "type": "object", "additionalProperties": { "type": "string" } },
-              "remove": { "type": "array", "items": { "type": "string" } }
-            }
-          },
-          "maxRequestBodyMb": { "type": "integer", "nullable": true },
-          "responseCompression": { "type": "boolean" },
-          "ipAllowList": { "type": "array", "nullable": true, "items": { "type": "string" } },
-          "ipDenyList": { "type": "array", "nullable": true, "items": { "type": "string" } },
-          "basicAuthUser": { "type": "string", "nullable": true },
-          "basicAuthEnabled": { "type": "boolean" },
-          "corsConfig": { "type": "object", "nullable": true },
-          "isWildcard": { "type": "boolean" },
-          "wildcardCertState": {
-            "type": "string",
             "nullable": true,
-            "enum": ["pending_delegation", "issuing", "ready", "failed"]
+            "properties": {
+              "remove": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "set": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
           },
-          "acmeDelegationTarget": { "type": "string", "nullable": true },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "responseCompression": {
+            "type": "boolean"
+          },
+          "responseHeaderOverrides": {
+            "description": "Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all.",
+            "nullable": true,
+            "properties": {
+              "remove": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "set": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "responseHeaderTimeoutSecs": {
+            "type": "integer"
+          },
+          "securityHeadersMode": {
+            "enum": [
+              "enforced",
+              "app_managed"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "wildcardCertState": {
+            "enum": [
+              "pending_delegation",
+              "issuing",
+              "ready",
+              "failed"
+            ],
+            "nullable": true,
+            "type": "string"
+          }
         },
         "required": [
           "id",
@@ -246,36 +459,232 @@
           "acmeDelegationTarget",
           "createdAt",
           "updatedAt"
-        ]
+        ],
+        "type": "object"
+      },
+      "Error": {
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "Image": {
+        "properties": {
+          "defaultUser": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "version",
+          "description",
+          "defaultUser"
+        ],
+        "type": "object"
+      },
+      "Pagination": {
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "limit",
+          "total",
+          "totalPages"
+        ],
+        "type": "object"
+      },
+      "PricingTier": {
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "maxVcpus": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "minVcpus": {
+            "type": "integer"
+          },
+          "multiplier": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "minVcpus",
+          "maxVcpus",
+          "multiplier",
+          "label"
+        ],
+        "type": "object"
+      },
+      "Region": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug"
+        ],
+        "type": "object"
+      },
+      "Snapshot": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "cubeId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "cubeId",
+          "name",
+          "sizeBytes",
+          "status",
+          "kind",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "Space": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tier": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "tier",
+          "createdAt"
+        ],
+        "type": "object"
       },
       "TcpMapping": {
-        "type": "object",
         "properties": {
-          "id": { "type": "string" },
-          "cubeId": { "type": "string" },
-          "cubePort": { "type": "integer" },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "cubeId": {
+            "type": "string"
+          },
+          "cubePort": {
+            "type": "integer"
+          },
           "host": {
-            "type": "string",
+            "description": "Where to connect for this mapping: `host:hostPort`. The Cube's own stable hostname, which survives migration to another server, falling back to the server's public IP when the Cube has no DNS record yet. Identical to `host` from GET .../ssh, and the same value for every mapping on a Cube. Null only when the Cube has no server assigned, in which case there is nowhere to connect. Do NOT use `serverDomain` from the Cube object — that is the current physical host and changes when the Cube moves.",
             "nullable": true,
-            "description": "Where to connect for this mapping: `host:hostPort`. The Cube's own stable hostname, which survives migration to another server, falling back to the server's public IP when the Cube has no DNS record yet. Identical to `host` from GET .../ssh, and the same value for every mapping on a Cube. Null only when the Cube has no server assigned, in which case there is nowhere to connect. Do NOT use `serverDomain` from the Cube object — that is the current physical host and changes when the Cube moves."
+            "type": "string"
           },
-          "hostPort": { "type": "integer" },
-          "label": { "type": "string", "nullable": true },
-          "status": { "type": "string" },
-          "isSsh": { "type": "boolean" },
+          "hostPort": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "isSsh": {
+            "type": "boolean"
+          },
+          "label": {
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
           "udpEnabled": {
-            "type": "boolean",
-            "description": "Whether the mapping also forwards UDP traffic on the same host port, in addition to TCP."
+            "description": "Whether this mapping also forwards UDP on the same host port. True means TCP and UDP; false means TCP only. Always false for the platform SSH mapping.",
+            "type": "boolean"
           },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
           "whitelistedIps": {
-            "type": "array",
             "items": {
-              "type": "object",
-              "properties": { "id": { "type": "string" }, "cidr": { "type": "string" } },
-              "required": ["id", "cidr"]
-            }
+              "properties": {
+                "cidr": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "cidr"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           }
         },
         "required": [
@@ -286,54 +695,83 @@
           "label",
           "status",
           "isSsh",
+          "udpEnabled",
           "createdAt",
           "updatedAt",
-          "whitelistedIps",
-          "udpEnabled",
-          "host"
-        ]
-      },
-      "Snapshot": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string" },
-          "cubeId": { "type": "string" },
-          "name": { "type": "string" },
-          "sizeBytes": { "type": "integer", "nullable": true },
-          "status": { "type": "string" },
-          "kind": { "type": "string" },
-          "createdAt": { "type": "string", "format": "date-time" }
-        },
-        "required": ["id", "cubeId", "name", "sizeBytes", "status", "kind", "createdAt"]
+          "whitelistedIps"
+        ],
+        "type": "object"
       },
       "Webhook": {
-        "type": "object",
         "properties": {
-          "id": { "type": "string" },
-          "url": { "type": "string", "format": "uri" },
-          "events": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "description": "A Krova webhook event name (see the webhooks docs for the full list)."
-            }
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
           },
-          "enabled": { "type": "boolean" },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "enabled": {
+            "type": "boolean"
+          },
+          "events": {
+            "items": {
+              "description": "A Krova webhook event name (see the webhooks docs for the full list).",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "url": {
+            "format": "uri",
+            "type": "string"
+          }
         },
-        "required": ["id", "url", "events", "enabled", "createdAt", "updatedAt"]
+        "required": [
+          "id",
+          "url",
+          "events",
+          "enabled",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
       },
       "WebhookDelivery": {
-        "type": "object",
         "properties": {
-          "id": { "type": "string" },
-          "event": { "type": "string" },
-          "status": { "type": "string", "enum": ["pending", "delivered", "failed"] },
-          "attempts": { "type": "integer" },
-          "lastAttemptAt": { "type": "string", "format": "date-time", "nullable": true },
-          "responseStatus": { "type": "integer", "nullable": true },
-          "createdAt": { "type": "string", "format": "date-time" }
+          "attempts": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "event": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "lastAttemptAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "responseStatus": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "delivered",
+              "failed"
+            ],
+            "type": "string"
+          }
         },
         "required": [
           "id",
@@ -343,137 +781,145 @@
           "lastAttemptAt",
           "responseStatus",
           "createdAt"
-        ]
-      },
-      "Error": {
-        "type": "object",
-        "properties": { "error": { "type": "string" } },
-        "required": ["error"]
+        ],
+        "type": "object"
       }
     },
-    "responses": {
-      "BadRequest": {
-        "description": "Bad request",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
-      },
-      "Unauthorized": {
-        "description": "Missing or invalid API key",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
-      },
-      "Forbidden": {
-        "description": "Authenticated but lacks the required permission",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
-      },
-      "NotFound": {
-        "description": "Resource not found",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
-      },
-      "RateLimited": {
-        "description": "Rate limit exceeded (10 mutations / 60s)",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "in": "header",
+        "name": "X-API-KEY",
+        "type": "apiKey"
       }
     }
   },
+  "externalDocs": {
+    "description": "Krova Cloud documentation",
+    "url": "https://krova.cloud/docs"
+  },
+  "info": {
+    "contact": {
+      "email": "support@krova.cloud",
+      "name": "Krova Cloud Support",
+      "url": "https://krova.cloud/contact"
+    },
+    "description": "Programmatic access to Krova Cloud. Authenticate with the X-API-KEY header. Keys are scoped per Space and inherit the permissions of the membership that created them. Mutating POST / DELETE endpoints are rate-limited to 10 requests per 60 seconds per client IP.",
+    "termsOfService": "https://krova.cloud/terms",
+    "title": "Krova Cloud API",
+    "version": "1.0.0",
+    "x-logo": {
+      "altText": "Krova Cloud",
+      "url": "https://krova.cloud/logo.png"
+    }
+  },
+  "openapi": "3.1.0",
   "paths": {
-    "/regions": {
-      "get": {
-        "summary": "List regions with available capacity",
-        "security": [],
-        "tags": ["Public"],
+    "/auth/cli/poll": {
+      "post": {
+        "description": "Public, unauthenticated. The CLI submits its deviceCode until the user approves or denies. On approval a real API key is minted ONCE, scoped to the approved Space and the approving user's membership, and returned a single time. Rate-limited per client IP.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "deviceCode": {
+                    "description": "The device code from /auth/cli/start.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "deviceCode"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
-            "description": "Region list",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
                   "properties": {
-                    "regions": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/Region" }
+                    "apiKey": {
+                      "description": "The full API key. Shown once and never returned again — store it securely.",
+                      "type": "string"
+                    },
+                    "spaceId": {
+                      "description": "The Space the key is scoped to.",
+                      "type": "string"
                     }
                   },
-                  "required": ["regions"]
+                  "required": [
+                    "apiKey",
+                    "spaceId"
+                  ],
+                  "type": "object"
                 }
               }
-            }
+            },
+            "description": "Approved — API key minted (returned once)"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "description": "The user denied the login request"
+          },
+          "410": {
+            "description": "The device code expired, was already consumed, or is unknown"
+          },
+          "428": {
+            "description": "Authorization still pending — keep polling at the given interval"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
           }
-        }
-      }
-    },
-    "/images": {
-      "get": {
-        "summary": "List available OS images",
+        },
         "security": [],
-        "tags": ["Public"],
-        "responses": {
-          "200": {
-            "description": "Image list",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "images": { "type": "array", "items": { "$ref": "#/components/schemas/Image" } }
-                  },
-                  "required": ["images"]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/pricing": {
-      "get": {
-        "summary": "Per-resource hourly rates and volume pricing tiers",
-        "security": [],
-        "tags": ["Public"],
-        "responses": {
-          "200": {
-            "description": "Pricing data",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "currency": { "type": "string" },
-                    "rates": {
-                      "type": "object",
-                      "properties": {
-                        "vcpuPerHour": { "type": "number" },
-                        "ramGbPerHour": { "type": "number" },
-                        "diskGbPerHour": { "type": "number" }
-                      },
-                      "required": ["vcpuPerHour", "ramGbPerHour", "diskGbPerHour"]
-                    },
-                    "tiers": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/PricingTier" }
-                    },
-                    "note": { "type": "string" }
-                  },
-                  "required": ["currency", "rates", "tiers", "note"]
-                }
-              }
-            }
-          }
-        }
+        "summary": "Poll for CLI device-authorization approval (RFC 8628)",
+        "tags": [
+          "CLI Auth"
+        ]
       }
     },
     "/auth/cli/start": {
       "post": {
-        "summary": "Begin a CLI device-authorization login (RFC 8628)",
         "description": "Public, unauthenticated. Mints a device code (returned once) and a short human user code, and returns the verification URIs the user opens in a browser to approve. The CLI then polls /auth/cli/poll. Rate-limited per client IP.",
-        "security": [],
-        "tags": ["CLI Auth"],
         "responses": {
           "200": {
-            "description": "Device-authorization request created",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
+                  "properties": {
+                    "deviceCode": {
+                      "description": "High-entropy code the CLI keeps secret and presents on each poll. Only its hash is stored server-side.",
+                      "type": "string"
+                    },
+                    "expiresIn": {
+                      "description": "Seconds until the device code expires (~600).",
+                      "type": "integer"
+                    },
+                    "interval": {
+                      "description": "Seconds to wait between polls.",
+                      "type": "integer"
+                    },
+                    "userCode": {
+                      "description": "Short human-readable code (KROVA-XXXX-XXXX) the user confirms in the browser.",
+                      "type": "string"
+                    },
+                    "verificationUri": {
+                      "description": "Browser URL where the user approves.",
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "verificationUriComplete": {
+                      "description": "verificationUri with the user code pre-filled.",
+                      "format": "uri",
+                      "type": "string"
+                    }
+                  },
                   "required": [
                     "deviceCode",
                     "userCode",
@@ -482,1211 +928,647 @@
                     "interval",
                     "expiresIn"
                   ],
-                  "properties": {
-                    "deviceCode": {
-                      "type": "string",
-                      "description": "High-entropy code the CLI keeps secret and presents on each poll. Only its hash is stored server-side."
-                    },
-                    "userCode": {
-                      "type": "string",
-                      "description": "Short human-readable code (KROVA-XXXX-XXXX) the user confirms in the browser."
-                    },
-                    "verificationUri": {
-                      "type": "string",
-                      "format": "uri",
-                      "description": "Browser URL where the user approves."
-                    },
-                    "verificationUriComplete": {
-                      "type": "string",
-                      "format": "uri",
-                      "description": "verificationUri with the user code pre-filled."
-                    },
-                    "interval": {
-                      "type": "integer",
-                      "description": "Seconds to wait between polls."
-                    },
-                    "expiresIn": {
-                      "type": "integer",
-                      "description": "Seconds until the device code expires (~600)."
-                    }
-                  }
+                  "type": "object"
                 }
               }
-            }
+            },
+            "description": "Device-authorization request created"
           },
-          "429": { "$ref": "#/components/responses/RateLimited" },
-          "503": { "description": "Could not allocate a login code; retry" }
-        }
-      }
-    },
-    "/auth/cli/poll": {
-      "post": {
-        "summary": "Poll for CLI device-authorization approval (RFC 8628)",
-        "description": "Public, unauthenticated. The CLI submits its deviceCode until the user approves or denies. On approval a real API key is minted ONCE, scoped to the approved Space and the approving user's membership, and returned a single time. Rate-limited per client IP.",
-        "security": [],
-        "tags": ["CLI Auth"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["deviceCode"],
-                "properties": {
-                  "deviceCode": {
-                    "type": "string",
-                    "description": "The device code from /auth/cli/start."
-                  }
-                }
-              }
-            }
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "description": "Could not allocate a login code; retry"
           }
         },
+        "security": [],
+        "summary": "Begin a CLI device-authorization login (RFC 8628)",
+        "tags": [
+          "CLI Auth"
+        ]
+      }
+    },
+    "/images": {
+      "get": {
         "responses": {
           "200": {
-            "description": "Approved — API key minted (returned once)",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": ["apiKey", "spaceId"],
                   "properties": {
-                    "apiKey": {
-                      "type": "string",
-                      "description": "The full API key. Shown once and never returned again — store it securely."
-                    },
-                    "spaceId": {
-                      "type": "string",
-                      "description": "The Space the key is scoped to."
+                    "images": {
+                      "items": {
+                        "$ref": "#/components/schemas/Image"
+                      },
+                      "type": "array"
                     }
-                  }
+                  },
+                  "required": [
+                    "images"
+                  ],
+                  "type": "object"
                 }
               }
-            }
-          },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "403": { "description": "The user denied the login request" },
-          "410": { "description": "The device code expired, was already consumed, or is unknown" },
-          "428": {
-            "description": "Authorization still pending — keep polling at the given interval"
-          },
-          "429": { "$ref": "#/components/responses/RateLimited" }
-        }
+            },
+            "description": "Image list"
+          }
+        },
+        "security": [],
+        "summary": "List available OS images",
+        "tags": [
+          "Public"
+        ]
+      }
+    },
+    "/pricing": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "currency": {
+                      "type": "string"
+                    },
+                    "note": {
+                      "type": "string"
+                    },
+                    "rates": {
+                      "properties": {
+                        "diskGbPerHour": {
+                          "type": "number"
+                        },
+                        "ramGbPerHour": {
+                          "type": "number"
+                        },
+                        "vcpuPerHour": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "vcpuPerHour",
+                        "ramGbPerHour",
+                        "diskGbPerHour"
+                      ],
+                      "type": "object"
+                    },
+                    "tiers": {
+                      "items": {
+                        "$ref": "#/components/schemas/PricingTier"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "currency",
+                    "rates",
+                    "tiers",
+                    "note"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Pricing data"
+          }
+        },
+        "security": [],
+        "summary": "Per-resource hourly rates and volume pricing tiers",
+        "tags": [
+          "Public"
+        ]
+      }
+    },
+    "/regions": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "regions": {
+                      "items": {
+                        "$ref": "#/components/schemas/Region"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "regions"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Region list"
+          }
+        },
+        "security": [],
+        "summary": "List regions with available capacity",
+        "tags": [
+          "Public"
+        ]
       }
     },
     "/space": {
       "get": {
-        "summary": "Resolve the space this API key is scoped to",
         "description": "Returns the single space the API key belongs to. Lets a client auto-resolve the space id from the key alone (no spaceId in the URL).",
-        "tags": ["Spaces"],
         "responses": {
           "200": {
-            "description": "The key's space",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/Space" } }
-            }
-          },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      }
-    },
-    "/spaces/{spaceId}/cubes": {
-      "get": {
-        "summary": "List Cubes in a Space",
-        "tags": ["Cubes"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Paginated Cube list",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "cubes": { "type": "array", "items": { "$ref": "#/components/schemas/Cube" } },
-                    "pagination": { "$ref": "#/components/schemas/Pagination" }
-                  },
-                  "required": ["cubes", "pagination"]
+                  "$ref": "#/components/schemas/Space"
                 }
               }
-            }
+            },
+            "description": "The key's space"
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" }
-        }
-      },
-      "post": {
-        "summary": "Create a Cube",
-        "tags": ["Cubes"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": false,
-            "description": "Optional unique key (max 255 chars). Replays return the original response and add header Idempotency-Replayed: true. Scoped per space; expires after 24h.",
-            "schema": { "type": "string", "maxLength": 255 }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["name", "image", "resources", "sshPublicKey"],
-                "properties": {
-                  "name": { "type": "string" },
-                  "image": { "type": "string" },
-                  "resources": {
-                    "type": "object",
-                    "required": ["vcpu", "ramGb", "diskGb"],
-                    "properties": {
-                      "vcpu": { "type": "number" },
-                      "ramGb": { "type": "number" },
-                      "diskGb": { "type": "number" }
-                    }
-                  },
-                  "sshPublicKey": {
-                    "type": "string",
-                    "description": "SSH public key written to the Cube login user's authorized_keys at boot (~/.ssh/authorized_keys for the ubuntu or debian user; /root/.ssh/authorized_keys on Cubes created before the default-user change). GET /cubes/{cubeId}/ssh reports the login user for a given Cube. Must start with ssh-ed25519, ssh-rsa, ecdsa-sha2-*, ssh-dss, or sk-*@openssh.com."
-                  },
-                  "region": {
-                    "type": "string",
-                    "description": "Region slug from /v1/regions (optional)."
-                  },
-                  "userData": {
-                    "type": "string",
-                    "description": "cloud-init script (max 16 KB, optional)."
-                  },
-                  "terminationProtection": {
-                    "type": "boolean",
-                    "description": "Opt this Cube out of customer-initiated deletion (default `false`). Power-off, wake, restart, snapshot, and restore remain allowed regardless. Toggleable later via PATCH /spaces/{spaceId}/cubes/{cubeId} with `{ terminationProtection: boolean }`."
-                  }
-                }
-              }
-            }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
           }
         },
-        "responses": {
-          "201": {
-            "description": "Cube created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": { "cube": { "$ref": "#/components/schemas/Cube" } }
-                }
-              }
-            }
-          },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" },
-          "429": { "$ref": "#/components/responses/RateLimited" }
-        }
-      }
-    },
-    "/spaces/{spaceId}/cubes/{cubeId}": {
-      "get": {
-        "summary": "Get a Cube",
-        "tags": ["Cubes"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Cube",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": { "cube": { "$ref": "#/components/schemas/Cube" } },
-                  "required": ["cube"]
-                }
-              }
-            }
-          },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      },
-      "delete": {
-        "summary": "Delete a Cube (asynchronous)",
-        "tags": ["Cubes"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Deletion enqueued",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": { "success": { "type": "boolean" } },
-                  "required": ["success"]
-                }
-              }
-            }
-          },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "429": { "$ref": "#/components/responses/RateLimited" }
-        }
-      },
-      "patch": {
-        "summary": "Update a Cube (toggle termination protection)",
-        "description": "Idempotent. Currently the only PATCHable Cube field is `terminationProtection`: when omitted, the value is left unchanged; when present, it sets the flag and writes an audit row. Other Cube-mutation surfaces (rename, resize, etc.) are not part of the public API. Returns the updated Cube.",
-        "tags": ["Cubes"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "terminationProtection": { "type": "boolean" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Cube updated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": { "cube": { "$ref": "#/components/schemas/Cube" } },
-                  "required": ["cube"]
-                }
-              }
-            }
-          },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "429": { "$ref": "#/components/responses/RateLimited" }
-        }
-      }
-    },
-    "/spaces/{spaceId}/cubes/{cubeId}/power-off": {
-      "post": {
-        "summary": "Power off a running Cube",
-        "tags": ["Cubes"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Power off enqueued" },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "429": { "$ref": "#/components/responses/RateLimited" }
-        }
-      }
-    },
-    "/spaces/{spaceId}/cubes/{cubeId}/wake": {
-      "post": {
-        "summary": "Start a stopped Cube",
-        "tags": ["Cubes"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Start enqueued" },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "429": { "$ref": "#/components/responses/RateLimited" }
-        }
-      }
-    },
-    "/spaces/{spaceId}/cubes/{cubeId}/restart": {
-      "post": {
-        "summary": "Restart a running Cube",
-        "description": "Cold-restarts the Cube: the hypervisor process is stopped and relaunched, so the Cube boots against the host's current kernel. This is how a Cube picks up a refreshed guest kernel after a platform image update — a `reboot` issued inside the Cube cannot do it, because the kernel is supplied externally by the host. Disk state is preserved; only the kernel changes. Cube must be `running` (a stopped Cube already picks up the latest kernel when started). Concurrent restarts of the same Cube are rejected with 409 rather than queued twice.",
-        "tags": ["Cubes"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Restart enqueued" },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "409": { "description": "Cube is not running, or a restart is already in progress" },
-          "429": { "$ref": "#/components/responses/RateLimited" }
-        }
-      }
-    },
-    "/spaces/{spaceId}/cubes/{cubeId}/ssh-port": {
-      "put": {
-        "summary": "Change a Cube's SSH port",
-        "description": "Sets the port INSIDE the Cube that SSH is forwarded to — NOT the host port you connect to. The host port is allocated by Krova and is unchanged by this call. Pointing this at a port nothing is listening on inside the Cube will make SSH unreachable; the default is 22. The change is applied atomically (the old port mapping is replaced).",
-        "tags": ["Cubes"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["cubePort"],
-                "properties": {
-                  "cubePort": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 65535,
-                    "description": "The port inside the Cube that sshd listens on (default 22). This is the Cube side of the mapping, not the host port."
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "SSH port updated" },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "429": { "$ref": "#/components/responses/RateLimited" }
-        }
-      }
-    },
-    "/spaces/{spaceId}/cubes/{cubeId}/ssh": {
-      "get": {
-        "summary": "Get a Cube's SSH connection info",
-        "description": "`host` is the Cube's own stable SSH hostname, which survives migration to another server — it falls back to the server's public IPv4 when the Cube has no DNS record yet. Also returns the host SSH port, login user, and the Cube's captured SSH host public keys. **Use `user` rather than assuming a username** — it is `ubuntu` or `debian` on Cubes created from images that ship a default user, and `root` on Cubes created before that change or imported from a rootfs without one. `hostKeys` is empty only until the reachability cron makes its first capture; clients fall back to trust-on-first-use until then, and pin strictly afterwards.",
-        "tags": ["Cubes"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "SSH connection info",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/CubeSshInfo" } }
-            }
-          },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      }
-    },
-    "/spaces/{spaceId}/cubes/{cubeId}/domains": {
-      "get": {
-        "summary": "List custom domains attached to a Cube",
-        "tags": ["Domains"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Domain list",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "domains": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/Domain" }
-                    }
-                  },
-                  "required": ["domains"]
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "summary": "Attach a custom domain to a Cube",
-        "description": "Attaches a domain and optionally configures any per-domain proxy settings at the same time. Settings can also be changed later via PATCH.",
-        "tags": ["Domains"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": false,
-            "description": "Optional unique key (max 255 chars). Replays return the original response and add header Idempotency-Replayed: true. Scoped per space; expires after 24h.",
-            "schema": { "type": "string", "maxLength": 255 }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["domain", "port"],
-                "properties": {
-                  "domain": {
-                    "type": "string",
-                    "description": "The hostname to attach, e.g. app.example.com"
-                  },
-                  "port": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 65535,
-                    "description": "Cube port the domain proxies to."
-                  },
-                  "securityHeadersMode": {
-                    "type": "string",
-                    "enum": ["enforced", "app_managed"],
-                    "description": "enforced = proxy sets platform security headers (HSTS, X-Frame-Options, …); app_managed = the app's own headers pass through. Default enforced."
-                  },
-                  "responseHeaderTimeoutSecs": {
-                    "type": "integer",
-                    "minimum": 10,
-                    "maximum": 3600,
-                    "description": "Seconds the app may take to send response headers (streaming unaffected). Default 60."
-                  },
-                  "responseHeaderOverrides": {
-                    "type": "object",
-                    "nullable": true,
-                    "description": "Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all.",
-                    "properties": {
-                      "set": { "type": "object", "additionalProperties": { "type": "string" } },
-                      "remove": { "type": "array", "items": { "type": "string" } }
-                    }
-                  },
-                  "requestHeaderOverrides": {
-                    "type": "object",
-                    "nullable": true,
-                    "description": "Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all.",
-                    "properties": {
-                      "set": { "type": "object", "additionalProperties": { "type": "string" } },
-                      "remove": { "type": "array", "items": { "type": "string" } }
-                    }
-                  },
-                  "maxRequestBodyMb": {
-                    "type": "integer",
-                    "nullable": true,
-                    "minimum": 1,
-                    "maximum": 10240,
-                    "description": "Max request body size (MB). Null = unlimited (default)."
-                  },
-                  "corsConfig": {
-                    "type": "object",
-                    "nullable": true,
-                    "description": "Per-domain CORS policy, applied at the edge. Null (default) = CORS disabled and no Access-Control-* header is emitted anywhere. When set, the proxy answers OPTIONS preflight itself (204, the cube is never involved) and adds the headers to normal AND error responses, so a cross-origin request to a failing or sleeping cube is never CORS-masked.",
-                    "required": ["allowedOrigins"],
-                    "properties": {
-                      "allowedOrigins": {
-                        "type": "array",
-                        "maxItems": 20,
-                        "items": { "type": "string" },
-                        "description": "Exact scheme://host[:port] origins (no path, query or trailing slash), or the single-element wildcard [\"*\"]. \"*\" and allowCredentials are mutually exclusive."
-                      },
-                      "allowedMethods": {
-                        "type": "array",
-                        "maxItems": 30,
-                        "items": { "type": "string" },
-                        "description": "Allowed methods. Omitted = GET, POST, PUT, PATCH, DELETE, OPTIONS."
-                      },
-                      "allowedHeaders": {
-                        "type": "array",
-                        "maxItems": 30,
-                        "items": { "type": "string" },
-                        "description": "Allowed request headers. Omitted/empty = echo the preflight's Access-Control-Request-Headers."
-                      },
-                      "exposedHeaders": {
-                        "type": "array",
-                        "maxItems": 30,
-                        "items": { "type": "string" },
-                        "description": "Response headers exposed to JS. Omitted/empty = none."
-                      },
-                      "allowCredentials": {
-                        "type": "boolean",
-                        "description": "Send Access-Control-Allow-Credentials: true. Rejected together with the \"*\" origin."
-                      },
-                      "maxAgeSeconds": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 86400,
-                        "description": "Preflight cache TTL. Default 600; 86400 is Chromium's hard cap."
-                      }
-                    }
-                  },
-                  "originScheme": {
-                    "type": "string",
-                    "enum": ["http", "https"],
-                    "description": "Scheme the edge speaks to the CUBE on the backend hop. http (default) = cleartext. https = the cube terminates TLS itself (a control panel holding its own certificate, or an app listening on HTTPS) and answers plain HTTP with a redirect, so it cannot be reached over cleartext at all. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443; a deliberate custom port is honoured exactly. Verified against the cube before it is applied — if the domain does not serve, the route is left on http."
-                  },
-                  "responseCompression": {
-                    "type": "boolean",
-                    "description": "Edge gzip/zstd compression. Default false (domains behind a CDN are already compressed there)."
-                  },
-                  "ipAllowList": {
-                    "type": "array",
-                    "nullable": true,
-                    "maxItems": 50,
-                    "items": { "type": "string" },
-                    "description": "Visitor IP/CIDR allow-list (v4+v6). Non-empty ⇒ only these reach the app. Null/empty = open."
-                  },
-                  "ipDenyList": {
-                    "type": "array",
-                    "nullable": true,
-                    "maxItems": 50,
-                    "items": { "type": "string" },
-                    "description": "Visitor IP/CIDR deny-list (v4+v6) → 403. Null/empty = none."
-                  },
-                  "basicAuthUser": {
-                    "type": "string",
-                    "nullable": true,
-                    "description": "HTTP Basic Auth username. Null/empty clears Basic Auth. Setting it requires basicAuthPassword."
-                  },
-                  "basicAuthPassword": {
-                    "type": "string",
-                    "writeOnly": true,
-                    "description": "Plaintext Basic Auth password — bcrypt-hashed server-side, never stored or returned. Required when setting basicAuthUser."
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Domain attached",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "domain": { "$ref": "#/components/schemas/Domain" },
-                    "records": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/DnsRecord" }
-                    }
-                  },
-                  "required": ["domain", "records"]
-                }
-              }
-            }
-          },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "429": { "$ref": "#/components/responses/RateLimited" }
-        }
-      }
-    },
-    "/spaces/{spaceId}/cubes/{cubeId}/domains/{mappingId}/records": {
-      "get": {
-        "summary": "DNS records this domain needs, with their live status",
-        "description": "Every record required for the domain to work, each checked against live DNS. Poll this after publishing them.\n\n`state` is per record: `found`, `missing` (not published yet — the expected state before you add it, never an error), `mismatch` (something else is there), or `unknown` (we could not check — never a statement about your DNS). `summary.complete` is true only when every record is `found`.\n\nA wildcard needs three records; an exact host needs one. Each call performs live DNS lookups and is rate limited.",
-        "tags": ["Domains"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "mappingId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Required records with live status",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "domain": { "type": "string" },
-                    "isWildcard": { "type": "boolean" },
-                    "records": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/DnsRecordStatus" }
-                    },
-                    "summary": {
-                      "type": "object",
-                      "properties": {
-                        "found": { "type": "integer" },
-                        "total": { "type": "integer" },
-                        "complete": { "type": "boolean" }
-                      },
-                      "required": ["found", "total", "complete"]
-                    },
-                    "checkedAt": { "type": "string", "format": "date-time" }
-                  },
-                  "required": ["domain", "isWildcard", "records", "summary", "checkedAt"]
-                }
-              }
-            }
-          },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "429": { "$ref": "#/components/responses/RateLimited" }
-        }
-      }
-    },
-    "/spaces/{spaceId}/cubes/{cubeId}/domains/{mappingId}": {
-      "patch": {
-        "summary": "Update a custom domain's proxy settings",
-        "description": "Partial update — only the fields you send change; omitted fields are left as-is. The Basic Auth password is write-only and bcrypt-hashed server-side.",
-        "tags": ["Domains"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "mappingId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "securityHeadersMode": {
-                    "type": "string",
-                    "enum": ["enforced", "app_managed"],
-                    "description": "enforced = proxy sets platform security headers (HSTS, X-Frame-Options, …); app_managed = the app's own headers pass through. Default enforced."
-                  },
-                  "responseHeaderTimeoutSecs": {
-                    "type": "integer",
-                    "minimum": 10,
-                    "maximum": 3600,
-                    "description": "Seconds the app may take to send response headers (streaming unaffected). Default 60."
-                  },
-                  "responseHeaderOverrides": {
-                    "type": "object",
-                    "nullable": true,
-                    "description": "Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all.",
-                    "properties": {
-                      "set": { "type": "object", "additionalProperties": { "type": "string" } },
-                      "remove": { "type": "array", "items": { "type": "string" } }
-                    }
-                  },
-                  "requestHeaderOverrides": {
-                    "type": "object",
-                    "nullable": true,
-                    "description": "Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all.",
-                    "properties": {
-                      "set": { "type": "object", "additionalProperties": { "type": "string" } },
-                      "remove": { "type": "array", "items": { "type": "string" } }
-                    }
-                  },
-                  "maxRequestBodyMb": {
-                    "type": "integer",
-                    "nullable": true,
-                    "minimum": 1,
-                    "maximum": 10240,
-                    "description": "Max request body size (MB). Null = unlimited (default)."
-                  },
-                  "corsConfig": {
-                    "type": "object",
-                    "nullable": true,
-                    "description": "Per-domain CORS policy, applied at the edge. Null (default) = CORS disabled and no Access-Control-* header is emitted anywhere. When set, the proxy answers OPTIONS preflight itself (204, the cube is never involved) and adds the headers to normal AND error responses, so a cross-origin request to a failing or sleeping cube is never CORS-masked.",
-                    "required": ["allowedOrigins"],
-                    "properties": {
-                      "allowedOrigins": {
-                        "type": "array",
-                        "maxItems": 20,
-                        "items": { "type": "string" },
-                        "description": "Exact scheme://host[:port] origins (no path, query or trailing slash), or the single-element wildcard [\"*\"]. \"*\" and allowCredentials are mutually exclusive."
-                      },
-                      "allowedMethods": {
-                        "type": "array",
-                        "maxItems": 30,
-                        "items": { "type": "string" },
-                        "description": "Allowed methods. Omitted = GET, POST, PUT, PATCH, DELETE, OPTIONS."
-                      },
-                      "allowedHeaders": {
-                        "type": "array",
-                        "maxItems": 30,
-                        "items": { "type": "string" },
-                        "description": "Allowed request headers. Omitted/empty = echo the preflight's Access-Control-Request-Headers."
-                      },
-                      "exposedHeaders": {
-                        "type": "array",
-                        "maxItems": 30,
-                        "items": { "type": "string" },
-                        "description": "Response headers exposed to JS. Omitted/empty = none."
-                      },
-                      "allowCredentials": {
-                        "type": "boolean",
-                        "description": "Send Access-Control-Allow-Credentials: true. Rejected together with the \"*\" origin."
-                      },
-                      "maxAgeSeconds": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 86400,
-                        "description": "Preflight cache TTL. Default 600; 86400 is Chromium's hard cap."
-                      }
-                    }
-                  },
-                  "originScheme": {
-                    "type": "string",
-                    "enum": ["http", "https"],
-                    "description": "Scheme the edge speaks to the CUBE on the backend hop. http (default) = cleartext. https = the cube terminates TLS itself (a control panel holding its own certificate, or an app listening on HTTPS) and answers plain HTTP with a redirect, so it cannot be reached over cleartext at all. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443; a deliberate custom port is honoured exactly. Verified against the cube before it is applied — if the domain does not serve, the route is left on http."
-                  },
-                  "responseCompression": {
-                    "type": "boolean",
-                    "description": "Edge gzip/zstd compression. Default false (domains behind a CDN are already compressed there)."
-                  },
-                  "ipAllowList": {
-                    "type": "array",
-                    "nullable": true,
-                    "maxItems": 50,
-                    "items": { "type": "string" },
-                    "description": "Visitor IP/CIDR allow-list (v4+v6). Non-empty ⇒ only these reach the app. Null/empty = open."
-                  },
-                  "ipDenyList": {
-                    "type": "array",
-                    "nullable": true,
-                    "maxItems": 50,
-                    "items": { "type": "string" },
-                    "description": "Visitor IP/CIDR deny-list (v4+v6) → 403. Null/empty = none."
-                  },
-                  "basicAuthUser": {
-                    "type": "string",
-                    "nullable": true,
-                    "description": "HTTP Basic Auth username. Null/empty clears Basic Auth. Setting it requires basicAuthPassword."
-                  },
-                  "basicAuthPassword": {
-                    "type": "string",
-                    "writeOnly": true,
-                    "description": "Plaintext Basic Auth password — bcrypt-hashed server-side, never stored or returned. Required when setting basicAuthUser."
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Settings updated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": { "domain": { "$ref": "#/components/schemas/Domain" } },
-                  "required": ["domain"]
-                }
-              }
-            }
-          },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "429": { "$ref": "#/components/responses/RateLimited" }
-        }
-      },
-      "delete": {
-        "summary": "Detach a custom domain",
-        "tags": ["Domains"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "mappingId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Detached",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": { "success": { "type": "boolean" } },
-                  "required": ["success"]
-                }
-              }
-            }
-          },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      }
-    },
-    "/spaces/{spaceId}/cubes/{cubeId}/tcp-mappings": {
-      "get": {
-        "summary": "List TCP port forwards for a Cube",
-        "tags": ["TCP mappings"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "TCP mapping list",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "tcpMappings": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/TcpMapping" }
-                    }
-                  },
-                  "required": ["tcpMappings"]
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "summary": "Create a TCP port forward",
-        "tags": ["TCP mappings"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": false,
-            "description": "Optional unique key (max 255 chars). Replays return the original response and add header Idempotency-Replayed: true. Scoped per space; expires after 24h.",
-            "schema": { "type": "string", "maxLength": 255 }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["cubePort"],
-                "properties": {
-                  "cubePort": { "type": "integer" },
-                  "label": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "description": "Optional human label for the mapping."
-                  },
-                  "udpEnabled": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Whether the mapping also forwards UDP traffic on the same host port, in addition to TCP. Optional; defaults to true when omitted."
-                  },
-                  "whitelistedIps": {
-                    "type": "array",
-                    "items": { "type": "string" },
-                    "description": "IPs/CIDRs allowed to reach the published port. Omit or send an empty array to leave the port open to the internet."
-                  },
-                  "whitelistIps": {
-                    "type": "array",
-                    "items": { "type": "string" },
-                    "deprecated": true,
-                    "description": "DEPRECATED alias for `whitelistedIps`, accepted for backwards compatibility. `whitelistedIps` wins if both are sent. Use `whitelistedIps` in new code."
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Mapping created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": { "tcpMapping": { "$ref": "#/components/schemas/TcpMapping" } },
-                  "required": ["tcpMapping"]
-                }
-              }
-            }
-          },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "429": { "$ref": "#/components/responses/RateLimited" }
-        }
-      }
-    },
-    "/spaces/{spaceId}/cubes/{cubeId}/tcp-mappings/{mappingId}": {
-      "delete": {
-        "summary": "Delete a TCP port forward",
-        "tags": ["TCP mappings"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "mappingId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Deleted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": { "success": { "type": "boolean" } },
-                  "required": ["success"]
-                }
-              }
-            }
-          },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      }
-    },
-    "/spaces/{spaceId}/cubes/{cubeId}/snapshots": {
-      "get": {
-        "summary": "List snapshots for a Cube",
-        "tags": ["Snapshots"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Snapshot list",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "snapshots": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/Snapshot" }
-                    }
-                  },
-                  "required": ["snapshots"]
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "summary": "Create a snapshot",
-        "tags": ["Snapshots"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": false,
-            "description": "Optional unique key (max 255 chars). Replays return the original response and add header Idempotency-Replayed: true. Scoped per space; expires after 24h.",
-            "schema": { "type": "string", "maxLength": 255 }
-          }
-        ],
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": { "type": "object", "properties": { "name": { "type": "string" } } }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Snapshot enqueued",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": { "snapshot": { "$ref": "#/components/schemas/Snapshot" } },
-                  "required": ["snapshot"]
-                }
-              }
-            }
-          },
-          "429": { "$ref": "#/components/responses/RateLimited" }
-        }
-      }
-    },
-    "/spaces/{spaceId}/cubes/{cubeId}/snapshots/{snapshotId}": {
-      "delete": {
-        "summary": "Delete a snapshot",
-        "tags": ["Snapshots"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "snapshotId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Deleted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": { "success": { "type": "boolean" } },
-                  "required": ["success"]
-                }
-              }
-            }
-          },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      }
-    },
-    "/spaces/{spaceId}/cubes/{cubeId}/restore": {
-      "post": {
-        "summary": "Restore a Cube from a snapshot",
-        "tags": ["Snapshots"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "cubeId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["snapshotId"],
-                "properties": { "snapshotId": { "type": "string" } }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Restore enqueued",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": { "success": { "type": "boolean" } },
-                  "required": ["success"]
-                }
-              }
-            }
-          },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
+        "summary": "Resolve the space this API key is scoped to",
+        "tags": [
+          "Spaces"
+        ]
       }
     },
     "/spaces/{spaceId}/backups/{backupId}/download": {
       "get": {
-        "summary": "Generate a presigned download URL for a backup .cube archive",
-        "tags": ["Backups"],
         "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "backupId", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "backupId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
           "200": {
-            "description": "Presigned URL valid for 15 minutes",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
                   "properties": {
-                    "url": { "type": "string" },
-                    "filename": { "type": "string" },
-                    "sizeBytes": { "type": "integer", "nullable": true },
-                    "expiresAt": { "type": "string", "format": "date-time" }
-                  }
+                    "expiresAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "filename": {
+                      "type": "string"
+                    },
+                    "sizeBytes": {
+                      "nullable": true,
+                      "type": "integer"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
                 }
+              }
+            },
+            "description": "Presigned URL valid for 15 minutes"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Backup is not in 'complete' status"
+          }
+        },
+        "summary": "Generate a presigned download URL for a backup .cube archive",
+        "tags": [
+          "Backups"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/cubes": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "cubes": {
+                      "items": {
+                        "$ref": "#/components/schemas/Cube"
+                      },
+                      "type": "array"
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/Pagination"
+                    }
+                  },
+                  "required": [
+                    "cubes",
+                    "pagination"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Paginated Cube list"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "summary": "List Cubes in a Space",
+        "tags": [
+          "Cubes"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional unique key (max 255 chars). Replays return the original response and add header Idempotency-Replayed: true. Scoped per space; expires after 24h.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "image": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "region": {
+                    "description": "Region slug from /v1/regions (optional).",
+                    "type": "string"
+                  },
+                  "resources": {
+                    "properties": {
+                      "diskGb": {
+                        "type": "number"
+                      },
+                      "ramGb": {
+                        "type": "number"
+                      },
+                      "vcpu": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "vcpu",
+                      "ramGb",
+                      "diskGb"
+                    ],
+                    "type": "object"
+                  },
+                  "sshPublicKey": {
+                    "description": "SSH public key written to the Cube login user's authorized_keys at boot (~/.ssh/authorized_keys for the ubuntu or debian user; /root/.ssh/authorized_keys on Cubes created before the default-user change). GET /cubes/{cubeId}/ssh reports the login user for a given Cube. Must start with ssh-ed25519, ssh-rsa, ecdsa-sha2-*, ssh-dss, or sk-*@openssh.com.",
+                    "type": "string"
+                  },
+                  "terminationProtection": {
+                    "default": false,
+                    "description": "Create the Cube with termination protection already on, so it is never briefly deletable between create and a follow-up PATCH. Optional; anything other than a boolean is rejected with 400.",
+                    "type": "boolean"
+                  },
+                  "userData": {
+                    "description": "cloud-init script (max 16 KB, optional).",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "image",
+                  "resources",
+                  "sshPublicKey"
+                ],
+                "type": "object"
               }
             }
           },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "409": { "description": "Backup is not in 'complete' status" }
-        }
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "cube": {
+                      "$ref": "#/components/schemas/Cube"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Cube created"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "Create a Cube",
+        "tags": [
+          "Cubes"
+        ]
       }
     },
     "/spaces/{spaceId}/cubes/imports": {
       "post": {
-        "summary": "Initiate a .cube archive import (browser-side multipart upload)",
-        "tags": ["Imports"],
         "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": ["name", "fileSizeBytes"],
                 "properties": {
-                  "name": { "type": "string", "maxLength": 64 },
-                  "fileSizeBytes": { "type": "integer", "minimum": 1048576 },
-                  "sshKeyMode": {
-                    "type": "string",
-                    "enum": ["replace", "keep"],
-                    "default": "replace",
-                    "description": "What to do with SSH access on the imported rootfs. `replace` (default) writes `sshPublicKey` to the login user's authorized_keys and requires `sshPublicKey` to be set. `keep` leaves the image's own authorized_keys and sshd configuration completely untouched — nothing is written — so you must already hold a private key that the image accepts, or you will not be able to log in."
-                  },
-                  "sshPublicKey": {
-                    "type": "string",
+                  "diskGbOverride": {
                     "nullable": true,
-                    "description": "Public key to install when `sshKeyMode` is `replace`. Written to the login user's `~/.ssh/authorized_keys` — which user that is comes from the imported rootfs itself, so an image without a Krova default user keeps logging in as root. Ignored when `sshKeyMode` is `keep`."
+                    "type": "integer"
                   },
-                  "region": { "type": "string", "nullable": true },
-                  "vcpusOverride": { "type": "integer", "nullable": true },
-                  "ramMbOverride": { "type": "integer", "nullable": true },
-                  "diskGbOverride": { "type": "integer", "nullable": true },
-                  "userData": { "type": "string", "nullable": true },
                   "expectedConfig": {
-                    "type": "object",
                     "nullable": true,
                     "properties": {
-                      "vcpus": { "type": "integer" },
-                      "ramMb": { "type": "integer" },
-                      "diskLimitGb": { "type": "integer" }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Import initiated; returns presigned part URLs",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "importId": { "type": "string" },
-                    "uploadId": { "type": "string" },
-                    "key": { "type": "string" },
-                    "chunkSizeBytes": { "type": "integer" },
-                    "parts": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "partNumber": { "type": "integer" },
-                          "url": { "type": "string" }
-                        }
+                      "diskLimitGb": {
+                        "type": "integer"
+                      },
+                      "ramMb": {
+                        "type": "integer"
+                      },
+                      "vcpus": {
+                        "type": "integer"
                       }
                     },
-                    "expiresAt": { "type": "string", "format": "date-time" }
+                    "type": "object"
+                  },
+                  "fileSizeBytes": {
+                    "minimum": 1048576,
+                    "type": "integer"
+                  },
+                  "name": {
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "ramMbOverride": {
+                    "nullable": true,
+                    "type": "integer"
+                  },
+                  "region": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "sshKeyMode": {
+                    "default": "replace",
+                    "description": "What to do with SSH access on the imported rootfs. `replace` (default) writes `sshPublicKey` to the login user's authorized_keys and requires `sshPublicKey` to be set. `keep` leaves the image's own authorized_keys and sshd configuration completely untouched — nothing is written — so you must already hold a private key that the image accepts, or you will not be able to log in.",
+                    "enum": [
+                      "replace",
+                      "keep"
+                    ],
+                    "type": "string"
+                  },
+                  "sshPublicKey": {
+                    "description": "Public key to install when `sshKeyMode` is `replace`. Written to the login user's `~/.ssh/authorized_keys` — which user that is comes from the imported rootfs itself, so an image without a Krova default user keeps logging in as root. Ignored when `sshKeyMode` is `keep`.",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "userData": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "vcpusOverride": {
+                    "nullable": true,
+                    "type": "integer"
                   }
-                }
+                },
+                "required": [
+                  "name",
+                  "fileSizeBytes"
+                ],
+                "type": "object"
               }
             }
           },
-          "400": { "description": "Invalid input" },
-          "403": { "description": "Plan limit exceeded" },
-          "503": { "description": "No active storage backend" }
-        }
-      }
-    },
-    "/spaces/{spaceId}/cubes/imports/{importId}": {
-      "get": {
-        "summary": "Get the current state of an import",
-        "tags": ["Imports"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "importId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
+          "required": true
+        },
         "responses": {
-          "200": {
-            "description": "Current import state",
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
+                  "properties": {
+                    "chunkSizeBytes": {
+                      "type": "integer"
+                    },
+                    "expiresAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "importId": {
+                      "type": "string"
+                    },
+                    "key": {
+                      "type": "string"
+                    },
+                    "parts": {
+                      "items": {
+                        "properties": {
+                          "partNumber": {
+                            "type": "integer"
+                          },
+                          "url": {
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "uploadId": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Import initiated; returns presigned part URLs"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Plan limit exceeded"
+          },
+          "503": {
+            "description": "No active storage backend"
+          }
+        },
+        "summary": "Initiate a .cube archive import (browser-side multipart upload)",
+        "tags": [
+          "Imports"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/cubes/imports/{importId}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "importId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Cancelled"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Cannot cancel an import past the 'uploading' state"
+          }
+        },
+        "summary": "Cancel an in-flight upload (only allowed in 'uploading' state)",
+        "tags": [
+          "Imports"
+        ]
+      },
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "importId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
                   "properties": {
                     "import": {
-                      "type": "object",
                       "properties": {
-                        "id": { "type": "string" },
-                        "name": { "type": "string" },
+                        "completedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "cubeId": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "error": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
                         "status": {
-                          "type": "string",
                           "enum": [
                             "uploading",
                             "finalizing",
@@ -1694,143 +1576,1768 @@
                             "complete",
                             "failed",
                             "expired"
-                          ]
+                          ],
+                          "type": "string"
                         },
-                        "cubeId": { "type": "string", "nullable": true },
-                        "error": { "type": "string", "nullable": true },
-                        "createdAt": { "type": "string" },
-                        "updatedAt": { "type": "string" },
-                        "completedAt": { "type": "string", "nullable": true }
-                      }
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               }
-            }
+            },
+            "description": "Current import state"
           },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      },
-      "delete": {
-        "summary": "Cancel an in-flight upload (only allowed in 'uploading' state)",
-        "tags": ["Imports"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "importId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Cancelled",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": { "success": { "type": "boolean" } },
-                  "required": ["success"]
-                }
-              }
-            }
-          },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "409": { "description": "Cannot cancel an import past the 'uploading' state" }
-        }
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "summary": "Get the current state of an import",
+        "tags": [
+          "Imports"
+        ]
       }
     },
     "/spaces/{spaceId}/cubes/imports/{importId}/complete": {
       "post": {
-        "summary": "Finalize a .cube import: complete multipart upload + create cube row + enqueue provisioning",
-        "tags": ["Imports"],
         "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "importId", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "importId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": ["parts", "config"],
                 "properties": {
-                  "parts": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "required": ["partNumber", "etag"],
-                      "properties": {
-                        "partNumber": { "type": "integer" },
-                        "etag": { "type": "string" }
-                      }
-                    }
-                  },
                   "config": {
-                    "type": "object",
-                    "required": ["vcpus", "ramMb", "diskLimitGb", "imageId"],
                     "properties": {
-                      "vcpus": { "type": "integer" },
-                      "ramMb": { "type": "integer" },
-                      "diskLimitGb": { "type": "integer" },
-                      "imageId": { "type": "string" },
-                      "userData": { "type": "string", "nullable": true }
-                    }
+                      "diskLimitGb": {
+                        "type": "integer"
+                      },
+                      "imageId": {
+                        "type": "string"
+                      },
+                      "ramMb": {
+                        "type": "integer"
+                      },
+                      "userData": {
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "vcpus": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "vcpus",
+                      "ramMb",
+                      "diskLimitGb",
+                      "imageId"
+                    ],
+                    "type": "object"
+                  },
+                  "parts": {
+                    "items": {
+                      "properties": {
+                        "etag": {
+                          "type": "string"
+                        },
+                        "partNumber": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "partNumber",
+                        "etag"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
                   }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Provisioning enqueued",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "importId": { "type": "string" },
-                    "cubeId": { "type": "string" },
-                    "status": { "type": "string", "enum": ["provisioning"] }
-                  }
-                }
+                },
+                "required": [
+                  "parts",
+                  "config"
+                ],
+                "type": "object"
               }
             }
           },
-          "400": { "description": "Invalid input" },
-          "403": { "description": "Plan limit exceeded" },
-          "409": { "description": "Import not in 'uploading' state" },
-          "502": { "description": "S3 finalization failed" },
-          "503": { "description": "Storage backend unavailable" }
-        }
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "cubeId": {
+                      "type": "string"
+                    },
+                    "importId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "provisioning"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Provisioning enqueued"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Plan limit exceeded"
+          },
+          "409": {
+            "description": "Import not in 'uploading' state"
+          },
+          "502": {
+            "description": "S3 finalization failed"
+          },
+          "503": {
+            "description": "Storage backend unavailable"
+          }
+        },
+        "summary": "Finalize a .cube import: complete multipart upload + create cube row + enqueue provisioning",
+        "tags": [
+          "Imports"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/cubes/{cubeId}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Deletion enqueued"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "enum": [
+                            "termination_protected"
+                          ],
+                          "type": "string"
+                        },
+                        "cube": {
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "terminationProtectionChangedAt": {
+                              "format": "date-time",
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "terminationProtectionChangedBy": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The Cube has termination protection on. Turn it off with PATCH before deleting. Power-off, wake, restart, restore, network-reset and snapshot operations are not termination and are never blocked by this."
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "Delete a Cube (asynchronous)",
+        "tags": [
+          "Cubes"
+        ]
+      },
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "cube": {
+                      "$ref": "#/components/schemas/Cube"
+                    }
+                  },
+                  "required": [
+                    "cube"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Cube"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "summary": "Get a Cube",
+        "tags": [
+          "Cubes"
+        ]
+      },
+      "patch": {
+        "description": "Idempotent. Termination protection is the only PATCHable field today: sending the value it already has returns the Cube unchanged and writes no audit row. Omitting it is a 400 rather than a no-op, so a typo in the field name cannot look like success. Rename and resize are not part of the public API.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "terminationProtection": {
+                    "description": "Turn protection on or off. Turning it on stamps `terminationProtectionChangedAt` and `terminationProtectionChangedBy`; turning it off clears both.",
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "terminationProtection"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "cube": {
+                      "$ref": "#/components/schemas/Cube"
+                    }
+                  },
+                  "required": [
+                    "cube"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The updated Cube"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "Update a Cube (toggle termination protection)",
+        "tags": [
+          "Cubes"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/cubes/{cubeId}/domains": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "domains": {
+                      "items": {
+                        "$ref": "#/components/schemas/Domain"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "domains"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Domain list"
+          }
+        },
+        "summary": "List custom domains attached to a Cube",
+        "tags": [
+          "Domains"
+        ]
+      },
+      "post": {
+        "description": "Attaches a domain and optionally configures any per-domain proxy settings at the same time. Settings can also be changed later via PATCH.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional unique key (max 255 chars). Replays return the original response and add header Idempotency-Replayed: true. Scoped per space; expires after 24h.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "basicAuthPassword": {
+                    "description": "Plaintext Basic Auth password — bcrypt-hashed server-side, never stored or returned. Required when setting basicAuthUser.",
+                    "type": "string",
+                    "writeOnly": true
+                  },
+                  "basicAuthUser": {
+                    "description": "HTTP Basic Auth username. Null/empty clears Basic Auth. Setting it requires basicAuthPassword.",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "corsConfig": {
+                    "description": "Per-domain CORS policy, applied at the edge. Null (default) = CORS disabled and no Access-Control-* header is emitted anywhere. When set, the proxy answers OPTIONS preflight itself (204, the cube is never involved) and adds the headers to normal AND error responses, so a cross-origin request to a failing or stopped cube is never CORS-masked.",
+                    "nullable": true,
+                    "properties": {
+                      "allowCredentials": {
+                        "description": "Send Access-Control-Allow-Credentials: true. Rejected together with the \"*\" origin.",
+                        "type": "boolean"
+                      },
+                      "allowedHeaders": {
+                        "description": "Allowed request headers. Omitted/empty = echo the preflight's Access-Control-Request-Headers.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "maxItems": 30,
+                        "type": "array"
+                      },
+                      "allowedMethods": {
+                        "description": "Allowed methods. Omitted = GET, POST, PUT, PATCH, DELETE, OPTIONS.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "maxItems": 30,
+                        "type": "array"
+                      },
+                      "allowedOrigins": {
+                        "description": "Exact scheme://host[:port] origins (no path, query or trailing slash), or the single-element wildcard [\"*\"]. \"*\" and allowCredentials are mutually exclusive.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "maxItems": 20,
+                        "type": "array"
+                      },
+                      "exposedHeaders": {
+                        "description": "Response headers exposed to JS. Omitted/empty = none.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "maxItems": 30,
+                        "type": "array"
+                      },
+                      "maxAgeSeconds": {
+                        "description": "Preflight cache TTL. Default 600; 86400 is Chromium's hard cap.",
+                        "maximum": 86400,
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "allowedOrigins"
+                    ],
+                    "type": "object"
+                  },
+                  "domain": {
+                    "description": "The hostname to attach, e.g. app.example.com",
+                    "type": "string"
+                  },
+                  "ipAllowList": {
+                    "description": "Visitor IP/CIDR allow-list (v4+v6). Non-empty ⇒ only these reach the app. Null/empty = open.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 50,
+                    "nullable": true,
+                    "type": "array"
+                  },
+                  "ipDenyList": {
+                    "description": "Visitor IP/CIDR deny-list (v4+v6) → 403. Null/empty = none.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 50,
+                    "nullable": true,
+                    "type": "array"
+                  },
+                  "maxRequestBodyMb": {
+                    "description": "Max request body size (MB). Null = unlimited (default).",
+                    "maximum": 10240,
+                    "minimum": 1,
+                    "nullable": true,
+                    "type": "integer"
+                  },
+                  "originScheme": {
+                    "description": "Scheme the edge speaks to the CUBE on the backend hop. http (default) = cleartext. https = the cube terminates TLS itself (a control panel holding its own certificate, or an app listening on HTTPS) and answers plain HTTP with a redirect, so it cannot be reached over cleartext at all. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443; a deliberate custom port is honoured exactly. Verified against the cube before it is applied — if the domain does not serve, the route is left on http.",
+                    "enum": [
+                      "http",
+                      "https"
+                    ],
+                    "type": "string"
+                  },
+                  "port": {
+                    "description": "Cube port the domain proxies to.",
+                    "maximum": 65535,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "requestHeaderOverrides": {
+                    "description": "Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all.",
+                    "nullable": true,
+                    "properties": {
+                      "remove": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "set": {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "responseCompression": {
+                    "description": "Edge gzip/zstd compression. Default false (domains behind a CDN are already compressed there).",
+                    "type": "boolean"
+                  },
+                  "responseHeaderOverrides": {
+                    "description": "Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all.",
+                    "nullable": true,
+                    "properties": {
+                      "remove": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "set": {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "responseHeaderTimeoutSecs": {
+                    "description": "Seconds the app may take to send response headers (streaming unaffected). Default 60.",
+                    "maximum": 3600,
+                    "minimum": 10,
+                    "type": "integer"
+                  },
+                  "securityHeadersMode": {
+                    "description": "enforced = proxy sets platform security headers (HSTS, X-Frame-Options, …); app_managed = the app's own headers pass through. Default enforced.",
+                    "enum": [
+                      "enforced",
+                      "app_managed"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "domain",
+                  "port"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "domain": {
+                      "$ref": "#/components/schemas/Domain"
+                    },
+                    "records": {
+                      "items": {
+                        "$ref": "#/components/schemas/DnsRecord"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "domain",
+                    "records"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Domain attached"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "Attach a custom domain to a Cube",
+        "tags": [
+          "Domains"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/cubes/{cubeId}/domains/{mappingId}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "mappingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Detached"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "summary": "Detach a custom domain",
+        "tags": [
+          "Domains"
+        ]
+      },
+      "patch": {
+        "description": "Partial update — only the fields you send change; omitted fields are left as-is. The Basic Auth password is write-only and bcrypt-hashed server-side.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "mappingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "basicAuthPassword": {
+                    "description": "Plaintext Basic Auth password — bcrypt-hashed server-side, never stored or returned. Required when setting basicAuthUser.",
+                    "type": "string",
+                    "writeOnly": true
+                  },
+                  "basicAuthUser": {
+                    "description": "HTTP Basic Auth username. Null/empty clears Basic Auth. Setting it requires basicAuthPassword.",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "corsConfig": {
+                    "description": "Per-domain CORS policy, applied at the edge. Null (default) = CORS disabled and no Access-Control-* header is emitted anywhere. When set, the proxy answers OPTIONS preflight itself (204, the cube is never involved) and adds the headers to normal AND error responses, so a cross-origin request to a failing or stopped cube is never CORS-masked.",
+                    "nullable": true,
+                    "properties": {
+                      "allowCredentials": {
+                        "description": "Send Access-Control-Allow-Credentials: true. Rejected together with the \"*\" origin.",
+                        "type": "boolean"
+                      },
+                      "allowedHeaders": {
+                        "description": "Allowed request headers. Omitted/empty = echo the preflight's Access-Control-Request-Headers.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "maxItems": 30,
+                        "type": "array"
+                      },
+                      "allowedMethods": {
+                        "description": "Allowed methods. Omitted = GET, POST, PUT, PATCH, DELETE, OPTIONS.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "maxItems": 30,
+                        "type": "array"
+                      },
+                      "allowedOrigins": {
+                        "description": "Exact scheme://host[:port] origins (no path, query or trailing slash), or the single-element wildcard [\"*\"]. \"*\" and allowCredentials are mutually exclusive.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "maxItems": 20,
+                        "type": "array"
+                      },
+                      "exposedHeaders": {
+                        "description": "Response headers exposed to JS. Omitted/empty = none.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "maxItems": 30,
+                        "type": "array"
+                      },
+                      "maxAgeSeconds": {
+                        "description": "Preflight cache TTL. Default 600; 86400 is Chromium's hard cap.",
+                        "maximum": 86400,
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "allowedOrigins"
+                    ],
+                    "type": "object"
+                  },
+                  "ipAllowList": {
+                    "description": "Visitor IP/CIDR allow-list (v4+v6). Non-empty ⇒ only these reach the app. Null/empty = open.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 50,
+                    "nullable": true,
+                    "type": "array"
+                  },
+                  "ipDenyList": {
+                    "description": "Visitor IP/CIDR deny-list (v4+v6) → 403. Null/empty = none.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 50,
+                    "nullable": true,
+                    "type": "array"
+                  },
+                  "maxRequestBodyMb": {
+                    "description": "Max request body size (MB). Null = unlimited (default).",
+                    "maximum": 10240,
+                    "minimum": 1,
+                    "nullable": true,
+                    "type": "integer"
+                  },
+                  "originScheme": {
+                    "description": "Scheme the edge speaks to the CUBE on the backend hop. http (default) = cleartext. https = the cube terminates TLS itself (a control panel holding its own certificate, or an app listening on HTTPS) and answers plain HTTP with a redirect, so it cannot be reached over cleartext at all. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443; a deliberate custom port is honoured exactly. Verified against the cube before it is applied — if the domain does not serve, the route is left on http.",
+                    "enum": [
+                      "http",
+                      "https"
+                    ],
+                    "type": "string"
+                  },
+                  "requestHeaderOverrides": {
+                    "description": "Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all.",
+                    "nullable": true,
+                    "properties": {
+                      "remove": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "set": {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "responseCompression": {
+                    "description": "Edge gzip/zstd compression. Default false (domains behind a CDN are already compressed there).",
+                    "type": "boolean"
+                  },
+                  "responseHeaderOverrides": {
+                    "description": "Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all.",
+                    "nullable": true,
+                    "properties": {
+                      "remove": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "set": {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "responseHeaderTimeoutSecs": {
+                    "description": "Seconds the app may take to send response headers (streaming unaffected). Default 60.",
+                    "maximum": 3600,
+                    "minimum": 10,
+                    "type": "integer"
+                  },
+                  "securityHeadersMode": {
+                    "description": "enforced = proxy sets platform security headers (HSTS, X-Frame-Options, …); app_managed = the app's own headers pass through. Default enforced.",
+                    "enum": [
+                      "enforced",
+                      "app_managed"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "domain": {
+                      "$ref": "#/components/schemas/Domain"
+                    }
+                  },
+                  "required": [
+                    "domain"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Settings updated"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "Update a custom domain's proxy settings",
+        "tags": [
+          "Domains"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/cubes/{cubeId}/domains/{mappingId}/records": {
+      "get": {
+        "description": "Every record required for the domain to work, each checked against live DNS. Poll this after publishing them.\n\n`state` is per record: `found`, `missing` (not published yet — the expected state before you add it, never an error), `mismatch` (something else is there), or `unknown` (we could not check — never a statement about your DNS). `summary.complete` is true only when every record is `found`.\n\nA wildcard needs three records; an exact host needs one. Each call performs live DNS lookups and is rate limited.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "mappingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "checkedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "domain": {
+                      "type": "string"
+                    },
+                    "isWildcard": {
+                      "type": "boolean"
+                    },
+                    "records": {
+                      "items": {
+                        "$ref": "#/components/schemas/DnsRecordStatus"
+                      },
+                      "type": "array"
+                    },
+                    "summary": {
+                      "properties": {
+                        "complete": {
+                          "type": "boolean"
+                        },
+                        "found": {
+                          "type": "integer"
+                        },
+                        "total": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "found",
+                        "total",
+                        "complete"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "domain",
+                    "isWildcard",
+                    "records",
+                    "summary",
+                    "checkedAt"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Required records with live status"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "DNS records this domain needs, with their live status",
+        "tags": [
+          "Domains"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/cubes/{cubeId}/power-off": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Power off enqueued"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "Power off a running Cube",
+        "tags": [
+          "Cubes"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/cubes/{cubeId}/restart": {
+      "post": {
+        "description": "Cold-restarts the Cube: the hypervisor process is stopped and relaunched, so the Cube boots against the host's current kernel. This is how a Cube picks up a refreshed guest kernel after a platform image update — a `reboot` issued inside the Cube cannot do it, because the kernel is supplied externally by the host. Disk state is preserved; only the kernel changes. Cube must be `running` (a stopped Cube already picks up the latest kernel when started). Concurrent restarts of the same Cube are rejected with 409 rather than queued twice.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restart enqueued"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Cube is not running, or a restart is already in progress"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "Restart a running Cube",
+        "tags": [
+          "Cubes"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/cubes/{cubeId}/restore": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "snapshotId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "snapshotId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Restore enqueued"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "summary": "Restore a Cube from a snapshot",
+        "tags": [
+          "Snapshots"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/cubes/{cubeId}/snapshots": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "snapshots": {
+                      "items": {
+                        "$ref": "#/components/schemas/Snapshot"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "snapshots"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Snapshot list"
+          }
+        },
+        "summary": "List snapshots for a Cube",
+        "tags": [
+          "Snapshots"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional unique key (max 255 chars). Replays return the original response and add header Idempotency-Replayed: true. Scoped per space; expires after 24h.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "snapshot": {
+                      "$ref": "#/components/schemas/Snapshot"
+                    }
+                  },
+                  "required": [
+                    "snapshot"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Snapshot enqueued"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "Create a snapshot",
+        "tags": [
+          "Snapshots"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/cubes/{cubeId}/snapshots/{snapshotId}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshotId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Deleted"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "summary": "Delete a snapshot",
+        "tags": [
+          "Snapshots"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/cubes/{cubeId}/ssh": {
+      "get": {
+        "description": "Host (server public IPv4), host SSH port, login user, and the Cube's captured SSH host public keys. **Use `user` rather than assuming a username** — it is `ubuntu` or `debian` on Cubes created from images that ship a default user, and `root` on Cubes created before that change or imported from a rootfs without one. `hostKeys` is empty only until the reachability cron makes its first capture; clients fall back to trust-on-first-use until then, and pin strictly afterwards.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CubeSshInfo"
+                }
+              }
+            },
+            "description": "SSH connection info"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "summary": "Get a Cube's SSH connection info",
+        "tags": [
+          "Cubes"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/cubes/{cubeId}/ssh-port": {
+      "put": {
+        "description": "Sets the port INSIDE the Cube that SSH is forwarded to — NOT the host port you connect to. The host port is allocated by Krova and is unchanged by this call. Pointing this at a port nothing is listening on inside the Cube will make SSH unreachable; the default is 22. The change is applied atomically (the old port mapping is replaced).",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "cubePort": {
+                    "description": "The port inside the Cube that sshd listens on (default 22). This is the Cube side of the mapping, not the host port.",
+                    "maximum": 65535,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "cubePort"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "SSH port updated"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "Change a Cube's SSH port",
+        "tags": [
+          "Cubes"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/cubes/{cubeId}/tcp-mappings": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "tcpMappings": {
+                      "items": {
+                        "$ref": "#/components/schemas/TcpMapping"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "tcpMappings"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "TCP mapping list"
+          }
+        },
+        "summary": "List TCP port forwards for a Cube",
+        "tags": [
+          "TCP mappings"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional unique key (max 255 chars). Replays return the original response and add header Idempotency-Replayed: true. Scoped per space; expires after 24h.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "cubePort": {
+                    "type": "integer"
+                  },
+                  "label": {
+                    "description": "Optional human label for the mapping.",
+                    "maxLength": 100,
+                    "type": "string"
+                  },
+                  "udpEnabled": {
+                    "default": true,
+                    "description": "Also forward UDP on this port. Defaults to true. Always false for the platform SSH mapping. The allowlist, if you send one, applies to both protocols.",
+                    "type": "boolean"
+                  },
+                  "whitelistIps": {
+                    "deprecated": true,
+                    "description": "DEPRECATED alias for `whitelistedIps`, accepted for backwards compatibility. `whitelistedIps` wins if both are sent. Use `whitelistedIps` in new code.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "whitelistedIps": {
+                    "description": "IPs/CIDRs allowed to reach the published port. Omit or send an empty array to leave the port open to the internet.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "cubePort"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "tcpMapping": {
+                      "$ref": "#/components/schemas/TcpMapping"
+                    }
+                  },
+                  "required": [
+                    "tcpMapping"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Mapping created"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "Create a TCP port forward",
+        "tags": [
+          "TCP mappings"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/cubes/{cubeId}/tcp-mappings/{mappingId}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "mappingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Deleted"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "summary": "Delete a TCP port forward",
+        "tags": [
+          "TCP mappings"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/cubes/{cubeId}/wake": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Start enqueued"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "Start a stopped Cube",
+        "tags": [
+          "Cubes"
+        ]
       }
     },
     "/spaces/{spaceId}/webhooks": {
       "get": {
-        "summary": "List webhook endpoints",
-        "tags": ["Webhooks"],
         "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "Webhook list" } }
+        "responses": {
+          "200": {
+            "description": "Webhook list"
+          }
+        },
+        "summary": "List webhook endpoints",
+        "tags": [
+          "Webhooks"
+        ]
       },
       "post": {
-        "summary": "Create a webhook endpoint (signing secret returned once)",
-        "tags": ["Webhooks"],
         "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": ["url", "events"],
                 "properties": {
-                  "url": { "type": "string", "format": "uri" },
                   "events": {
-                    "type": "array",
                     "items": {
-                      "type": "string",
                       "enum": [
                         "cube.created",
                         "cube.running",
@@ -1849,6 +3356,12 @@
                         "resource.alert.disk",
                         "domain.alert.error_4xx",
                         "domain.alert.error_5xx",
+                        "cube.space_transferred",
+                        "cube.space_transfer.requested",
+                        "cube.space_transfer.accepted",
+                        "cube.space_transfer.declined",
+                        "cube.space_transfer.cancelled",
+                        "cube.space_transfer.expired",
                         "snapshot.created",
                         "snapshot.restored",
                         "snapshot.deleted",
@@ -1877,81 +3390,197 @@
                         "member.joined",
                         "member.removed",
                         "member.role_changed"
-                      ]
-                    }
+                      ],
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "url": {
+                    "format": "uri",
+                    "type": "string"
                   }
-                }
+                },
+                "required": [
+                  "url",
+                  "events"
+                ],
+                "type": "object"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
-          "201": { "description": "Webhook created (response includes secret)" },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "429": { "$ref": "#/components/responses/RateLimited" }
-        }
+          "201": {
+            "description": "Webhook created (response includes secret)"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "Create a webhook endpoint (signing secret returned once)",
+        "tags": [
+          "Webhooks"
+        ]
       }
     },
     "/spaces/{spaceId}/webhooks/{endpointId}": {
-      "get": {
-        "summary": "Get a webhook (no secret)",
-        "tags": ["Webhooks"],
-        "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "endpointId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": { "200": { "description": "Webhook" } }
-      },
       "delete": {
-        "summary": "Delete a webhook (cascades deliveries)",
-        "tags": ["Webhooks"],
         "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "endpointId", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "endpointId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "Deleted" },
-          "429": { "$ref": "#/components/responses/RateLimited" }
-        }
+          "200": {
+            "description": "Deleted"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "Delete a webhook (cascades deliveries)",
+        "tags": [
+          "Webhooks"
+        ]
+      },
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "endpointId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Webhook"
+          }
+        },
+        "summary": "Get a webhook (no secret)",
+        "tags": [
+          "Webhooks"
+        ]
       }
     },
     "/spaces/{spaceId}/webhooks/{endpointId}/deliveries": {
       "get": {
-        "summary": "Last 30 days of webhook delivery history (max 100)",
-        "tags": ["Webhooks"],
         "parameters": [
-          { "name": "spaceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "endpointId", "in": "path", "required": true, "schema": { "type": "string" } },
           {
-            "name": "limit",
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "endpointId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "in": "query",
+            "name": "limit",
             "required": false,
-            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 50 }
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
           }
         ],
-        "responses": { "200": { "description": "Delivery list" } }
+        "responses": {
+          "200": {
+            "description": "Delivery list"
+          }
+        },
+        "summary": "Last 30 days of webhook delivery history (max 100)",
+        "tags": [
+          "Webhooks"
+        ]
       }
     }
   },
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "servers": [
+    {
+      "description": "Production",
+      "url": "https://krova.cloud/api/v1"
+    }
+  ],
   "tags": [
-    { "name": "Public", "description": "No authentication required" },
     {
-      "name": "CLI Auth",
-      "description": "OAuth 2.0 Device Authorization Grant (RFC 8628) for `krova login` — no API key required"
-    },
-    { "name": "Spaces", "description": "Resolve the space an API key is scoped to" },
-    { "name": "Cubes", "description": "Create, list, manage Cubes" },
-    { "name": "Domains" },
-    { "name": "TCP mappings" },
-    { "name": "Snapshots" },
-    {
-      "name": "Backups",
-      "description": "Portable .cube archives — download an existing backup as a single file"
+      "description": "No authentication required",
+      "name": "Public"
     },
     {
-      "name": "Imports",
-      "description": "Customer-uploaded .cube archives — browser-direct multipart upload to S3, then provisioning"
+      "description": "OAuth 2.0 Device Authorization Grant (RFC 8628) for `krova login` — no API key required",
+      "name": "CLI Auth"
     },
-    { "name": "Webhooks", "description": "Outbound HTTP callbacks for Cube events" }
+    {
+      "description": "Resolve the space an API key is scoped to",
+      "name": "Spaces"
+    },
+    {
+      "description": "Create, list, manage Cubes",
+      "name": "Cubes"
+    },
+    {
+      "name": "Domains"
+    },
+    {
+      "name": "TCP mappings"
+    },
+    {
+      "name": "Snapshots"
+    },
+    {
+      "description": "Portable .cube archives — download an existing backup as a single file",
+      "name": "Backups"
+    },
+    {
+      "description": "Customer-uploaded .cube archives — browser-direct multipart upload to S3, then provisioning",
+      "name": "Imports"
+    },
+    {
+      "description": "Outbound HTTP callbacks for Cube events",
+      "name": "Webhooks"
+    }
   ]
 }

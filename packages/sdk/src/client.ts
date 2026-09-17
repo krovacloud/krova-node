@@ -438,10 +438,11 @@ export class KrovaClient {
         params: { path: { spaceId, cubeId } },
       });
       if (error !== undefined || !response.ok) {
-        // The published Error schema is `{ error: string }`, but the
-        // termination-protected 409 returns `{ error: { code, message, cube } }`.
-        // Try the richer shape first; fall through to a plain KrovaError on
-        // anything else so callers see a typed error for every failure mode.
+        // Most errors are the flat `{ error: string }` schema; the
+        // termination-protected 409 is published as `{ error: { code, message,
+        // cube } }`. Try the richer shape first; fall through to a plain
+        // KrovaError on anything else so callers see a typed error for every
+        // failure mode.
         const tpe = terminationProtectedFrom(response, cubeId, error);
         if (tpe) throw tpe;
         throw krovaErrorFrom(response, error);

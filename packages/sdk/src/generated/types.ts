@@ -4,193 +4,6 @@
  */
 
 export interface paths {
-    "/regions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List regions with available capacity */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Region list */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            regions: components["schemas"]["Region"][];
-                        };
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/images": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List available OS images */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Image list */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            images: components["schemas"]["Image"][];
-                        };
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pricing": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Per-resource hourly rates and volume pricing tiers */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Pricing data */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            currency: string;
-                            rates: {
-                                vcpuPerHour: number;
-                                ramGbPerHour: number;
-                                diskGbPerHour: number;
-                            };
-                            tiers: components["schemas"]["PricingTier"][];
-                            note: string;
-                        };
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/cli/start": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Begin a CLI device-authorization login (RFC 8628)
-         * @description Public, unauthenticated. Mints a device code (returned once) and a short human user code, and returns the verification URIs the user opens in a browser to approve. The CLI then polls /auth/cli/poll. Rate-limited per client IP.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Device-authorization request created */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @description High-entropy code the CLI keeps secret and presents on each poll. Only its hash is stored server-side. */
-                            deviceCode: string;
-                            /** @description Short human-readable code (KROVA-XXXX-XXXX) the user confirms in the browser. */
-                            userCode: string;
-                            /**
-                             * Format: uri
-                             * @description Browser URL where the user approves.
-                             */
-                            verificationUri: string;
-                            /**
-                             * Format: uri
-                             * @description verificationUri with the user code pre-filled.
-                             */
-                            verificationUriComplete: string;
-                            /** @description Seconds to wait between polls. */
-                            interval: number;
-                            /** @description Seconds until the device code expires (~600). */
-                            expiresIn: number;
-                        };
-                    };
-                };
-                429: components["responses"]["RateLimited"];
-                /** @description Could not allocate a login code; retry */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/auth/cli/poll": {
         parameters: {
             query?: never;
@@ -265,6 +78,193 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/cli/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Begin a CLI device-authorization login (RFC 8628)
+         * @description Public, unauthenticated. Mints a device code (returned once) and a short human user code, and returns the verification URIs the user opens in a browser to approve. The CLI then polls /auth/cli/poll. Rate-limited per client IP.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Device-authorization request created */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description High-entropy code the CLI keeps secret and presents on each poll. Only its hash is stored server-side. */
+                            deviceCode: string;
+                            /** @description Seconds until the device code expires (~600). */
+                            expiresIn: number;
+                            /** @description Seconds to wait between polls. */
+                            interval: number;
+                            /** @description Short human-readable code (KROVA-XXXX-XXXX) the user confirms in the browser. */
+                            userCode: string;
+                            /**
+                             * Format: uri
+                             * @description Browser URL where the user approves.
+                             */
+                            verificationUri: string;
+                            /**
+                             * Format: uri
+                             * @description verificationUri with the user code pre-filled.
+                             */
+                            verificationUriComplete: string;
+                        };
+                    };
+                };
+                429: components["responses"]["RateLimited"];
+                /** @description Could not allocate a login code; retry */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List available OS images */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Image list */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            images: components["schemas"]["Image"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pricing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Per-resource hourly rates and volume pricing tiers */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Pricing data */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            currency: string;
+                            note: string;
+                            rates: {
+                                diskGbPerHour: number;
+                                ramGbPerHour: number;
+                                vcpuPerHour: number;
+                            };
+                            tiers: components["schemas"]["PricingTier"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/regions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List regions with available capacity */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Region list */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            regions: components["schemas"]["Region"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/space": {
         parameters: {
             query?: never;
@@ -296,6 +296,59 @@ export interface paths {
                 };
                 401: components["responses"]["Unauthorized"];
                 404: components["responses"]["NotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceId}/backups/{backupId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Generate a presigned download URL for a backup .cube archive */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    backupId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Presigned URL valid for 15 minutes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: date-time */
+                            expiresAt?: string;
+                            filename?: string;
+                            sizeBytes?: number | null;
+                            url?: string;
+                        };
+                    };
+                };
+                404: components["responses"]["NotFound"];
+                /** @description Backup is not in 'complete' status */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
         put?: never;
@@ -358,21 +411,24 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        name: string;
                         image: string;
+                        name: string;
+                        /** @description Region slug from /v1/regions (optional). */
+                        region?: string;
                         resources: {
-                            vcpu: number;
-                            ramGb: number;
                             diskGb: number;
+                            ramGb: number;
+                            vcpu: number;
                         };
                         /** @description SSH public key written to the Cube login user's authorized_keys at boot (~/.ssh/authorized_keys for the ubuntu or debian user; /root/.ssh/authorized_keys on Cubes created before the default-user change). GET /cubes/{cubeId}/ssh reports the login user for a given Cube. Must start with ssh-ed25519, ssh-rsa, ecdsa-sha2-*, ssh-dss, or sk-*@openssh.com. */
                         sshPublicKey: string;
-                        /** @description Region slug from /v1/regions (optional). */
-                        region?: string;
+                        /**
+                         * @description Create the Cube with termination protection already on, so it is never briefly deletable between create and a follow-up PATCH. Optional; anything other than a boolean is rejected with 400.
+                         * @default false
+                         */
+                        terminationProtection?: boolean;
                         /** @description cloud-init script (max 16 KB, optional). */
                         userData?: string;
-                        /** @description Opt this Cube out of customer-initiated deletion (default `false`). Power-off, wake, restart, snapshot, and restore remain allowed regardless. Toggleable later via PATCH /spaces/{spaceId}/cubes/{cubeId} with `{ terminationProtection: boolean }`. */
-                        terminationProtection?: boolean;
                     };
                 };
             };
@@ -392,6 +448,281 @@ export interface paths {
                 401: components["responses"]["Unauthorized"];
                 403: components["responses"]["Forbidden"];
                 429: components["responses"]["RateLimited"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceId}/cubes/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Initiate a .cube archive import (browser-side multipart upload) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        diskGbOverride?: number | null;
+                        expectedConfig?: {
+                            diskLimitGb?: number;
+                            ramMb?: number;
+                            vcpus?: number;
+                        } | null;
+                        fileSizeBytes: number;
+                        name: string;
+                        ramMbOverride?: number | null;
+                        region?: string | null;
+                        /**
+                         * @description What to do with SSH access on the imported rootfs. `replace` (default) writes `sshPublicKey` to the login user's authorized_keys and requires `sshPublicKey` to be set. `keep` leaves the image's own authorized_keys and sshd configuration completely untouched — nothing is written — so you must already hold a private key that the image accepts, or you will not be able to log in.
+                         * @default replace
+                         * @enum {string}
+                         */
+                        sshKeyMode?: "replace" | "keep";
+                        /** @description Public key to install when `sshKeyMode` is `replace`. Written to the login user's `~/.ssh/authorized_keys` — which user that is comes from the imported rootfs itself, so an image without a Krova default user keeps logging in as root. Ignored when `sshKeyMode` is `keep`. */
+                        sshPublicKey?: string | null;
+                        userData?: string | null;
+                        vcpusOverride?: number | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description Import initiated; returns presigned part URLs */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            chunkSizeBytes?: number;
+                            /** Format: date-time */
+                            expiresAt?: string;
+                            importId?: string;
+                            key?: string;
+                            parts?: {
+                                partNumber?: number;
+                                url?: string;
+                            }[];
+                            uploadId?: string;
+                        };
+                    };
+                };
+                /** @description Invalid input */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Plan limit exceeded */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description No active storage backend */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceId}/cubes/imports/{importId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the current state of an import */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    importId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Current import state */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            import?: {
+                                completedAt?: string | null;
+                                createdAt?: string;
+                                cubeId?: string | null;
+                                error?: string | null;
+                                id?: string;
+                                name?: string;
+                                /** @enum {string} */
+                                status?: "uploading" | "finalizing" | "provisioning" | "complete" | "failed" | "expired";
+                                updatedAt?: string;
+                            };
+                        };
+                    };
+                };
+                404: components["responses"]["NotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Cancel an in-flight upload (only allowed in 'uploading' state) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    importId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Cancelled */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            success: boolean;
+                        };
+                    };
+                };
+                404: components["responses"]["NotFound"];
+                /** @description Cannot cancel an import past the 'uploading' state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceId}/cubes/imports/{importId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finalize a .cube import: complete multipart upload + create cube row + enqueue provisioning */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    importId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        config: {
+                            diskLimitGb: number;
+                            imageId: string;
+                            ramMb: number;
+                            userData?: string | null;
+                            vcpus: number;
+                        };
+                        parts: {
+                            etag: string;
+                            partNumber: number;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Provisioning enqueued */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            cubeId?: string;
+                            importId?: string;
+                            /** @enum {string} */
+                            status?: "provisioning";
+                        };
+                    };
+                };
+                /** @description Invalid input */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Plan limit exceeded */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Import not in 'uploading' state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description S3 finalization failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Storage backend unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
         delete?: never;
@@ -461,6 +792,27 @@ export interface paths {
                     };
                 };
                 404: components["responses"]["NotFound"];
+                /** @description The Cube has termination protection on. Turn it off with PATCH before deleting. Power-off, wake, restart, restore, network-reset and snapshot operations are not termination and are never blocked by this. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                /** @enum {string} */
+                                code: "termination_protected";
+                                cube?: {
+                                    id?: string;
+                                    /** Format: date-time */
+                                    terminationProtectionChangedAt?: string | null;
+                                    terminationProtectionChangedBy?: string | null;
+                                };
+                                message: string;
+                            };
+                        };
+                    };
+                };
                 429: components["responses"]["RateLimited"];
             };
         };
@@ -468,7 +820,7 @@ export interface paths {
         head?: never;
         /**
          * Update a Cube (toggle termination protection)
-         * @description Idempotent. Currently the only PATCHable Cube field is `terminationProtection`: when omitted, the value is left unchanged; when present, it sets the flag and writes an audit row. Other Cube-mutation surfaces (rename, resize, etc.) are not part of the public API. Returns the updated Cube.
+         * @description Idempotent. Termination protection is the only PATCHable field today: sending the value it already has returns the Cube unchanged and writes no audit row. Omitting it is a 400 rather than a no-op, so a typo in the field name cannot look like success. Rename and resize are not part of the public API.
          */
         patch: {
             parameters: {
@@ -483,12 +835,13 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        terminationProtection?: boolean;
+                        /** @description Turn protection on or off. Turning it on stamps `terminationProtectionChangedAt` and `terminationProtectionChangedBy`; turning it off clears both. */
+                        terminationProtection: boolean;
                     };
                 };
             };
             responses: {
-                /** @description Cube updated */
+                /** @description The updated Cube */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -499,10 +852,341 @@ export interface paths {
                         };
                     };
                 };
+                400: components["responses"]["BadRequest"];
                 404: components["responses"]["NotFound"];
                 429: components["responses"]["RateLimited"];
             };
         };
+        trace?: never;
+    };
+    "/spaces/{spaceId}/cubes/{cubeId}/domains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List custom domains attached to a Cube */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    cubeId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Domain list */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            domains: components["schemas"]["Domain"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Attach a custom domain to a Cube
+         * @description Attaches a domain and optionally configures any per-domain proxy settings at the same time. Settings can also be changed later via PATCH.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Optional unique key (max 255 chars). Replays return the original response and add header Idempotency-Replayed: true. Scoped per space; expires after 24h. */
+                    "Idempotency-Key"?: string;
+                };
+                path: {
+                    spaceId: string;
+                    cubeId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Plaintext Basic Auth password — bcrypt-hashed server-side, never stored or returned. Required when setting basicAuthUser. */
+                        basicAuthPassword?: string;
+                        /** @description HTTP Basic Auth username. Null/empty clears Basic Auth. Setting it requires basicAuthPassword. */
+                        basicAuthUser?: string | null;
+                        /** @description Per-domain CORS policy, applied at the edge. Null (default) = CORS disabled and no Access-Control-* header is emitted anywhere. When set, the proxy answers OPTIONS preflight itself (204, the cube is never involved) and adds the headers to normal AND error responses, so a cross-origin request to a failing or stopped cube is never CORS-masked. */
+                        corsConfig?: {
+                            /** @description Send Access-Control-Allow-Credentials: true. Rejected together with the "*" origin. */
+                            allowCredentials?: boolean;
+                            /** @description Allowed request headers. Omitted/empty = echo the preflight's Access-Control-Request-Headers. */
+                            allowedHeaders?: string[];
+                            /** @description Allowed methods. Omitted = GET, POST, PUT, PATCH, DELETE, OPTIONS. */
+                            allowedMethods?: string[];
+                            /** @description Exact scheme://host[:port] origins (no path, query or trailing slash), or the single-element wildcard ["*"]. "*" and allowCredentials are mutually exclusive. */
+                            allowedOrigins: string[];
+                            /** @description Response headers exposed to JS. Omitted/empty = none. */
+                            exposedHeaders?: string[];
+                            /** @description Preflight cache TTL. Default 600; 86400 is Chromium's hard cap. */
+                            maxAgeSeconds?: number;
+                        } | null;
+                        /** @description The hostname to attach, e.g. app.example.com */
+                        domain: string;
+                        /** @description Visitor IP/CIDR allow-list (v4+v6). Non-empty ⇒ only these reach the app. Null/empty = open. */
+                        ipAllowList?: string[] | null;
+                        /** @description Visitor IP/CIDR deny-list (v4+v6) → 403. Null/empty = none. */
+                        ipDenyList?: string[] | null;
+                        /** @description Max request body size (MB). Null = unlimited (default). */
+                        maxRequestBodyMb?: number | null;
+                        /**
+                         * @description Scheme the edge speaks to the CUBE on the backend hop. http (default) = cleartext. https = the cube terminates TLS itself (a control panel holding its own certificate, or an app listening on HTTPS) and answers plain HTTP with a redirect, so it cannot be reached over cleartext at all. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443; a deliberate custom port is honoured exactly. Verified against the cube before it is applied — if the domain does not serve, the route is left on http.
+                         * @enum {string}
+                         */
+                        originScheme?: "http" | "https";
+                        /** @description Cube port the domain proxies to. */
+                        port: number;
+                        /** @description Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all. */
+                        requestHeaderOverrides?: {
+                            remove?: string[];
+                            set?: {
+                                [key: string]: string;
+                            };
+                        } | null;
+                        /** @description Edge gzip/zstd compression. Default false (domains behind a CDN are already compressed there). */
+                        responseCompression?: boolean;
+                        /** @description Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all. */
+                        responseHeaderOverrides?: {
+                            remove?: string[];
+                            set?: {
+                                [key: string]: string;
+                            };
+                        } | null;
+                        /** @description Seconds the app may take to send response headers (streaming unaffected). Default 60. */
+                        responseHeaderTimeoutSecs?: number;
+                        /**
+                         * @description enforced = proxy sets platform security headers (HSTS, X-Frame-Options, …); app_managed = the app's own headers pass through. Default enforced.
+                         * @enum {string}
+                         */
+                        securityHeadersMode?: "enforced" | "app_managed";
+                    };
+                };
+            };
+            responses: {
+                /** @description Domain attached */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            domain: components["schemas"]["Domain"];
+                            records: components["schemas"]["DnsRecord"][];
+                        };
+                    };
+                };
+                400: components["responses"]["BadRequest"];
+                429: components["responses"]["RateLimited"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceId}/cubes/{cubeId}/domains/{mappingId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Detach a custom domain */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    cubeId: string;
+                    mappingId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Detached */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            success: boolean;
+                        };
+                    };
+                };
+                404: components["responses"]["NotFound"];
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Update a custom domain's proxy settings
+         * @description Partial update — only the fields you send change; omitted fields are left as-is. The Basic Auth password is write-only and bcrypt-hashed server-side.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    cubeId: string;
+                    mappingId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Plaintext Basic Auth password — bcrypt-hashed server-side, never stored or returned. Required when setting basicAuthUser. */
+                        basicAuthPassword?: string;
+                        /** @description HTTP Basic Auth username. Null/empty clears Basic Auth. Setting it requires basicAuthPassword. */
+                        basicAuthUser?: string | null;
+                        /** @description Per-domain CORS policy, applied at the edge. Null (default) = CORS disabled and no Access-Control-* header is emitted anywhere. When set, the proxy answers OPTIONS preflight itself (204, the cube is never involved) and adds the headers to normal AND error responses, so a cross-origin request to a failing or stopped cube is never CORS-masked. */
+                        corsConfig?: {
+                            /** @description Send Access-Control-Allow-Credentials: true. Rejected together with the "*" origin. */
+                            allowCredentials?: boolean;
+                            /** @description Allowed request headers. Omitted/empty = echo the preflight's Access-Control-Request-Headers. */
+                            allowedHeaders?: string[];
+                            /** @description Allowed methods. Omitted = GET, POST, PUT, PATCH, DELETE, OPTIONS. */
+                            allowedMethods?: string[];
+                            /** @description Exact scheme://host[:port] origins (no path, query or trailing slash), or the single-element wildcard ["*"]. "*" and allowCredentials are mutually exclusive. */
+                            allowedOrigins: string[];
+                            /** @description Response headers exposed to JS. Omitted/empty = none. */
+                            exposedHeaders?: string[];
+                            /** @description Preflight cache TTL. Default 600; 86400 is Chromium's hard cap. */
+                            maxAgeSeconds?: number;
+                        } | null;
+                        /** @description Visitor IP/CIDR allow-list (v4+v6). Non-empty ⇒ only these reach the app. Null/empty = open. */
+                        ipAllowList?: string[] | null;
+                        /** @description Visitor IP/CIDR deny-list (v4+v6) → 403. Null/empty = none. */
+                        ipDenyList?: string[] | null;
+                        /** @description Max request body size (MB). Null = unlimited (default). */
+                        maxRequestBodyMb?: number | null;
+                        /**
+                         * @description Scheme the edge speaks to the CUBE on the backend hop. http (default) = cleartext. https = the cube terminates TLS itself (a control panel holding its own certificate, or an app listening on HTTPS) and answers plain HTTP with a redirect, so it cannot be reached over cleartext at all. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443; a deliberate custom port is honoured exactly. Verified against the cube before it is applied — if the domain does not serve, the route is left on http.
+                         * @enum {string}
+                         */
+                        originScheme?: "http" | "https";
+                        /** @description Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all. */
+                        requestHeaderOverrides?: {
+                            remove?: string[];
+                            set?: {
+                                [key: string]: string;
+                            };
+                        } | null;
+                        /** @description Edge gzip/zstd compression. Default false (domains behind a CDN are already compressed there). */
+                        responseCompression?: boolean;
+                        /** @description Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all. */
+                        responseHeaderOverrides?: {
+                            remove?: string[];
+                            set?: {
+                                [key: string]: string;
+                            };
+                        } | null;
+                        /** @description Seconds the app may take to send response headers (streaming unaffected). Default 60. */
+                        responseHeaderTimeoutSecs?: number;
+                        /**
+                         * @description enforced = proxy sets platform security headers (HSTS, X-Frame-Options, …); app_managed = the app's own headers pass through. Default enforced.
+                         * @enum {string}
+                         */
+                        securityHeadersMode?: "enforced" | "app_managed";
+                    };
+                };
+            };
+            responses: {
+                /** @description Settings updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            domain: components["schemas"]["Domain"];
+                        };
+                    };
+                };
+                400: components["responses"]["BadRequest"];
+                404: components["responses"]["NotFound"];
+                429: components["responses"]["RateLimited"];
+            };
+        };
+        trace?: never;
+    };
+    "/spaces/{spaceId}/cubes/{cubeId}/domains/{mappingId}/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * DNS records this domain needs, with their live status
+         * @description Every record required for the domain to work, each checked against live DNS. Poll this after publishing them.
+         *
+         *     `state` is per record: `found`, `missing` (not published yet — the expected state before you add it, never an error), `mismatch` (something else is there), or `unknown` (we could not check — never a statement about your DNS). `summary.complete` is true only when every record is `found`.
+         *
+         *     A wildcard needs three records; an exact host needs one. Each call performs live DNS lookups and is rate limited.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    cubeId: string;
+                    mappingId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Required records with live status */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: date-time */
+                            checkedAt: string;
+                            domain: string;
+                            isWildcard: boolean;
+                            records: components["schemas"]["DnsRecordStatus"][];
+                            summary: {
+                                complete: boolean;
+                                found: number;
+                                total: number;
+                            };
+                        };
+                    };
+                };
+                404: components["responses"]["NotFound"];
+                429: components["responses"]["RateLimited"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/spaces/{spaceId}/cubes/{cubeId}/power-off": {
@@ -528,45 +1212,6 @@ export interface paths {
             requestBody?: never;
             responses: {
                 /** @description Power off enqueued */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                404: components["responses"]["NotFound"];
-                429: components["responses"]["RateLimited"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/spaces/{spaceId}/cubes/{cubeId}/wake": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Start a stopped Cube */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: string;
-                    cubeId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Start enqueued */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -632,7 +1277,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/spaces/{spaceId}/cubes/{cubeId}/ssh-port": {
+    "/spaces/{spaceId}/cubes/{cubeId}/restore": {
         parameters: {
             query?: never;
             header?: never;
@@ -640,136 +1285,12 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * Change a Cube's SSH port
-         * @description Sets the port INSIDE the Cube that SSH is forwarded to — NOT the host port you connect to. The host port is allocated by Krova and is unchanged by this call. Pointing this at a port nothing is listening on inside the Cube will make SSH unreachable; the default is 22. The change is applied atomically (the old port mapping is replaced).
-         */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: string;
-                    cubeId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description The port inside the Cube that sshd listens on (default 22). This is the Cube side of the mapping, not the host port. */
-                        cubePort: number;
-                    };
-                };
-            };
-            responses: {
-                /** @description SSH port updated */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                400: components["responses"]["BadRequest"];
-                404: components["responses"]["NotFound"];
-                429: components["responses"]["RateLimited"];
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/spaces/{spaceId}/cubes/{cubeId}/ssh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get a Cube's SSH connection info
-         * @description `host` is the Cube's own stable SSH hostname, which survives migration to another server — it falls back to the server's public IPv4 when the Cube has no DNS record yet. Also returns the host SSH port, login user, and the Cube's captured SSH host public keys. **Use `user` rather than assuming a username** — it is `ubuntu` or `debian` on Cubes created from images that ship a default user, and `root` on Cubes created before that change or imported from a rootfs without one. `hostKeys` is empty only until the reachability cron makes its first capture; clients fall back to trust-on-first-use until then, and pin strictly afterwards.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: string;
-                    cubeId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description SSH connection info */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CubeSshInfo"];
-                    };
-                };
-                404: components["responses"]["NotFound"];
-            };
-        };
         put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/spaces/{spaceId}/cubes/{cubeId}/domains": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List custom domains attached to a Cube */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: string;
-                    cubeId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Domain list */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            domains: components["schemas"]["Domain"][];
-                        };
-                    };
-                };
-            };
-        };
-        put?: never;
-        /**
-         * Attach a custom domain to a Cube
-         * @description Attaches a domain and optionally configures any per-domain proxy settings at the same time. Settings can also be changed later via PATCH.
-         */
+        /** Restore a Cube from a snapshot */
         post: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description Optional unique key (max 255 chars). Replays return the original response and add header Idempotency-Replayed: true. Scoped per space; expires after 24h. */
-                    "Idempotency-Key"?: string;
-                };
+                header?: never;
                 path: {
                     spaceId: string;
                     cubeId: string;
@@ -779,174 +1300,12 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        /** @description The hostname to attach, e.g. app.example.com */
-                        domain: string;
-                        /** @description Cube port the domain proxies to. */
-                        port: number;
-                        /**
-                         * @description enforced = proxy sets platform security headers (HSTS, X-Frame-Options, …); app_managed = the app's own headers pass through. Default enforced.
-                         * @enum {string}
-                         */
-                        securityHeadersMode?: "enforced" | "app_managed";
-                        /** @description Seconds the app may take to send response headers (streaming unaffected). Default 60. */
-                        responseHeaderTimeoutSecs?: number;
-                        /** @description Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all. */
-                        responseHeaderOverrides?: {
-                            set?: {
-                                [key: string]: string;
-                            };
-                            remove?: string[];
-                        } | null;
-                        /** @description Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all. */
-                        requestHeaderOverrides?: {
-                            set?: {
-                                [key: string]: string;
-                            };
-                            remove?: string[];
-                        } | null;
-                        /** @description Max request body size (MB). Null = unlimited (default). */
-                        maxRequestBodyMb?: number | null;
-                        /** @description Per-domain CORS policy, applied at the edge. Null (default) = CORS disabled and no Access-Control-* header is emitted anywhere. When set, the proxy answers OPTIONS preflight itself (204, the cube is never involved) and adds the headers to normal AND error responses, so a cross-origin request to a failing or sleeping cube is never CORS-masked. */
-                        corsConfig?: {
-                            /** @description Exact scheme://host[:port] origins (no path, query or trailing slash), or the single-element wildcard ["*"]. "*" and allowCredentials are mutually exclusive. */
-                            allowedOrigins: string[];
-                            /** @description Allowed methods. Omitted = GET, POST, PUT, PATCH, DELETE, OPTIONS. */
-                            allowedMethods?: string[];
-                            /** @description Allowed request headers. Omitted/empty = echo the preflight's Access-Control-Request-Headers. */
-                            allowedHeaders?: string[];
-                            /** @description Response headers exposed to JS. Omitted/empty = none. */
-                            exposedHeaders?: string[];
-                            /** @description Send Access-Control-Allow-Credentials: true. Rejected together with the "*" origin. */
-                            allowCredentials?: boolean;
-                            /** @description Preflight cache TTL. Default 600; 86400 is Chromium's hard cap. */
-                            maxAgeSeconds?: number;
-                        } | null;
-                        /**
-                         * @description Scheme the edge speaks to the CUBE on the backend hop. http (default) = cleartext. https = the cube terminates TLS itself (a control panel holding its own certificate, or an app listening on HTTPS) and answers plain HTTP with a redirect, so it cannot be reached over cleartext at all. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443; a deliberate custom port is honoured exactly. Verified against the cube before it is applied — if the domain does not serve, the route is left on http.
-                         * @enum {string}
-                         */
-                        originScheme?: "http" | "https";
-                        /** @description Edge gzip/zstd compression. Default false (domains behind a CDN are already compressed there). */
-                        responseCompression?: boolean;
-                        /** @description Visitor IP/CIDR allow-list (v4+v6). Non-empty ⇒ only these reach the app. Null/empty = open. */
-                        ipAllowList?: string[] | null;
-                        /** @description Visitor IP/CIDR deny-list (v4+v6) → 403. Null/empty = none. */
-                        ipDenyList?: string[] | null;
-                        /** @description HTTP Basic Auth username. Null/empty clears Basic Auth. Setting it requires basicAuthPassword. */
-                        basicAuthUser?: string | null;
-                        /** @description Plaintext Basic Auth password — bcrypt-hashed server-side, never stored or returned. Required when setting basicAuthUser. */
-                        basicAuthPassword?: string;
+                        snapshotId: string;
                     };
                 };
             };
             responses: {
-                /** @description Domain attached */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            domain: components["schemas"]["Domain"];
-                            records: components["schemas"]["DnsRecord"][];
-                        };
-                    };
-                };
-                400: components["responses"]["BadRequest"];
-                429: components["responses"]["RateLimited"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/spaces/{spaceId}/cubes/{cubeId}/domains/{mappingId}/records": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * DNS records this domain needs, with their live status
-         * @description Every record required for the domain to work, each checked against live DNS. Poll this after publishing them.
-         *
-         *     `state` is per record: `found`, `missing` (not published yet — the expected state before you add it, never an error), `mismatch` (something else is there), or `unknown` (we could not check — never a statement about your DNS). `summary.complete` is true only when every record is `found`.
-         *
-         *     A wildcard needs three records; an exact host needs one. Each call performs live DNS lookups and is rate limited.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: string;
-                    cubeId: string;
-                    mappingId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Required records with live status */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            domain: string;
-                            isWildcard: boolean;
-                            records: components["schemas"]["DnsRecordStatus"][];
-                            summary: {
-                                found: number;
-                                total: number;
-                                complete: boolean;
-                            };
-                            /** Format: date-time */
-                            checkedAt: string;
-                        };
-                    };
-                };
-                404: components["responses"]["NotFound"];
-                429: components["responses"]["RateLimited"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/spaces/{spaceId}/cubes/{cubeId}/domains/{mappingId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Detach a custom domain */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: string;
-                    cubeId: string;
-                    mappingId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Detached */
+                /** @description Restore enqueued */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -960,230 +1319,7 @@ export interface paths {
                 404: components["responses"]["NotFound"];
             };
         };
-        options?: never;
-        head?: never;
-        /**
-         * Update a custom domain's proxy settings
-         * @description Partial update — only the fields you send change; omitted fields are left as-is. The Basic Auth password is write-only and bcrypt-hashed server-side.
-         */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: string;
-                    cubeId: string;
-                    mappingId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /**
-                         * @description enforced = proxy sets platform security headers (HSTS, X-Frame-Options, …); app_managed = the app's own headers pass through. Default enforced.
-                         * @enum {string}
-                         */
-                        securityHeadersMode?: "enforced" | "app_managed";
-                        /** @description Seconds the app may take to send response headers (streaming unaffected). Default 60. */
-                        responseHeaderTimeoutSecs?: number;
-                        /** @description Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all. */
-                        responseHeaderOverrides?: {
-                            set?: {
-                                [key: string]: string;
-                            };
-                            remove?: string[];
-                        } | null;
-                        /** @description Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all. */
-                        requestHeaderOverrides?: {
-                            set?: {
-                                [key: string]: string;
-                            };
-                            remove?: string[];
-                        } | null;
-                        /** @description Max request body size (MB). Null = unlimited (default). */
-                        maxRequestBodyMb?: number | null;
-                        /** @description Per-domain CORS policy, applied at the edge. Null (default) = CORS disabled and no Access-Control-* header is emitted anywhere. When set, the proxy answers OPTIONS preflight itself (204, the cube is never involved) and adds the headers to normal AND error responses, so a cross-origin request to a failing or sleeping cube is never CORS-masked. */
-                        corsConfig?: {
-                            /** @description Exact scheme://host[:port] origins (no path, query or trailing slash), or the single-element wildcard ["*"]. "*" and allowCredentials are mutually exclusive. */
-                            allowedOrigins: string[];
-                            /** @description Allowed methods. Omitted = GET, POST, PUT, PATCH, DELETE, OPTIONS. */
-                            allowedMethods?: string[];
-                            /** @description Allowed request headers. Omitted/empty = echo the preflight's Access-Control-Request-Headers. */
-                            allowedHeaders?: string[];
-                            /** @description Response headers exposed to JS. Omitted/empty = none. */
-                            exposedHeaders?: string[];
-                            /** @description Send Access-Control-Allow-Credentials: true. Rejected together with the "*" origin. */
-                            allowCredentials?: boolean;
-                            /** @description Preflight cache TTL. Default 600; 86400 is Chromium's hard cap. */
-                            maxAgeSeconds?: number;
-                        } | null;
-                        /**
-                         * @description Scheme the edge speaks to the CUBE on the backend hop. http (default) = cleartext. https = the cube terminates TLS itself (a control panel holding its own certificate, or an app listening on HTTPS) and answers plain HTTP with a redirect, so it cannot be reached over cleartext at all. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443; a deliberate custom port is honoured exactly. Verified against the cube before it is applied — if the domain does not serve, the route is left on http.
-                         * @enum {string}
-                         */
-                        originScheme?: "http" | "https";
-                        /** @description Edge gzip/zstd compression. Default false (domains behind a CDN are already compressed there). */
-                        responseCompression?: boolean;
-                        /** @description Visitor IP/CIDR allow-list (v4+v6). Non-empty ⇒ only these reach the app. Null/empty = open. */
-                        ipAllowList?: string[] | null;
-                        /** @description Visitor IP/CIDR deny-list (v4+v6) → 403. Null/empty = none. */
-                        ipDenyList?: string[] | null;
-                        /** @description HTTP Basic Auth username. Null/empty clears Basic Auth. Setting it requires basicAuthPassword. */
-                        basicAuthUser?: string | null;
-                        /** @description Plaintext Basic Auth password — bcrypt-hashed server-side, never stored or returned. Required when setting basicAuthUser. */
-                        basicAuthPassword?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Settings updated */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            domain: components["schemas"]["Domain"];
-                        };
-                    };
-                };
-                400: components["responses"]["BadRequest"];
-                404: components["responses"]["NotFound"];
-                429: components["responses"]["RateLimited"];
-            };
-        };
-        trace?: never;
-    };
-    "/spaces/{spaceId}/cubes/{cubeId}/tcp-mappings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List TCP port forwards for a Cube */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: string;
-                    cubeId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description TCP mapping list */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            tcpMappings: components["schemas"]["TcpMapping"][];
-                        };
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Create a TCP port forward */
-        post: {
-            parameters: {
-                query?: never;
-                header?: {
-                    /** @description Optional unique key (max 255 chars). Replays return the original response and add header Idempotency-Replayed: true. Scoped per space; expires after 24h. */
-                    "Idempotency-Key"?: string;
-                };
-                path: {
-                    spaceId: string;
-                    cubeId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        cubePort: number;
-                        /** @description Optional human label for the mapping. */
-                        label?: string;
-                        /**
-                         * @description Whether the mapping also forwards UDP traffic on the same host port, in addition to TCP. Optional; defaults to true when omitted.
-                         * @default true
-                         */
-                        udpEnabled?: boolean;
-                        /** @description IPs/CIDRs allowed to reach the published port. Omit or send an empty array to leave the port open to the internet. */
-                        whitelistedIps?: string[];
-                        /**
-                         * @deprecated
-                         * @description DEPRECATED alias for `whitelistedIps`, accepted for backwards compatibility. `whitelistedIps` wins if both are sent. Use `whitelistedIps` in new code.
-                         */
-                        whitelistIps?: string[];
-                    };
-                };
-            };
-            responses: {
-                /** @description Mapping created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            tcpMapping: components["schemas"]["TcpMapping"];
-                        };
-                    };
-                };
-                400: components["responses"]["BadRequest"];
-                429: components["responses"]["RateLimited"];
-            };
-        };
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/spaces/{spaceId}/cubes/{cubeId}/tcp-mappings/{mappingId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete a TCP port forward */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: string;
-                    cubeId: string;
-                    mappingId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Deleted */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            success: boolean;
-                        };
-                    };
-                };
-                404: components["responses"]["NotFound"];
-            };
-        };
         options?: never;
         head?: never;
         patch?: never;
@@ -1308,7 +1444,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/spaces/{spaceId}/cubes/{cubeId}/restore": {
+    "/spaces/{spaceId}/cubes/{cubeId}/ssh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a Cube's SSH connection info
+         * @description Host (server public IPv4), host SSH port, login user, and the Cube's captured SSH host public keys. **Use `user` rather than assuming a username** — it is `ubuntu` or `debian` on Cubes created from images that ship a default user, and `root` on Cubes created before that change or imported from a rootfs without one. `hostKeys` is empty only until the reachability cron makes its first capture; clients fall back to trust-on-first-use until then, and pin strictly afterwards.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    cubeId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description SSH connection info */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CubeSshInfo"];
+                    };
+                };
+                404: components["responses"]["NotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceId}/cubes/{cubeId}/ssh-port": {
         parameters: {
             query?: never;
             header?: never;
@@ -1316,9 +1495,11 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
-        /** Restore a Cube from a snapshot */
-        post: {
+        /**
+         * Change a Cube's SSH port
+         * @description Sets the port INSIDE the Cube that SSH is forwarded to — NOT the host port you connect to. The host port is allocated by Krova and is unchanged by this call. Pointing this at a port nothing is listening on inside the Cube will make SSH unreachable; the default is 22. The change is applied atomically (the old port mapping is replaced).
+         */
+        put: {
             parameters: {
                 query?: never;
                 header?: never;
@@ -1331,77 +1512,24 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        snapshotId: string;
+                        /** @description The port inside the Cube that sshd listens on (default 22). This is the Cube side of the mapping, not the host port. */
+                        cubePort: number;
                     };
                 };
             };
             responses: {
-                /** @description Restore enqueued */
+                /** @description SSH port updated */
                 200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            success: boolean;
-                        };
-                    };
-                };
-                404: components["responses"]["NotFound"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/spaces/{spaceId}/backups/{backupId}/download": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Generate a presigned download URL for a backup .cube archive */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: string;
-                    backupId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Presigned URL valid for 15 minutes */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            url?: string;
-                            filename?: string;
-                            sizeBytes?: number | null;
-                            /** Format: date-time */
-                            expiresAt?: string;
-                        };
-                    };
-                };
-                404: components["responses"]["NotFound"];
-                /** @description Backup is not in 'complete' status */
-                409: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
+                400: components["responses"]["BadRequest"];
+                404: components["responses"]["NotFound"];
+                429: components["responses"]["RateLimited"];
             };
         };
-        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1409,93 +1537,89 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/spaces/{spaceId}/cubes/imports": {
+    "/spaces/{spaceId}/cubes/{cubeId}/tcp-mappings": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
-        /** Initiate a .cube archive import (browser-side multipart upload) */
-        post: {
+        /** List TCP port forwards for a Cube */
+        get: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
                     spaceId: string;
+                    cubeId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description TCP mapping list */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            tcpMappings: components["schemas"]["TcpMapping"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a TCP port forward */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Optional unique key (max 255 chars). Replays return the original response and add header Idempotency-Replayed: true. Scoped per space; expires after 24h. */
+                    "Idempotency-Key"?: string;
+                };
+                path: {
+                    spaceId: string;
+                    cubeId: string;
                 };
                 cookie?: never;
             };
             requestBody: {
                 content: {
                     "application/json": {
-                        name: string;
-                        fileSizeBytes: number;
+                        cubePort: number;
+                        /** @description Optional human label for the mapping. */
+                        label?: string;
                         /**
-                         * @description What to do with SSH access on the imported rootfs. `replace` (default) writes `sshPublicKey` to the login user's authorized_keys and requires `sshPublicKey` to be set. `keep` leaves the image's own authorized_keys and sshd configuration completely untouched — nothing is written — so you must already hold a private key that the image accepts, or you will not be able to log in.
-                         * @default replace
-                         * @enum {string}
+                         * @description Also forward UDP on this port. Defaults to true. Always false for the platform SSH mapping. The allowlist, if you send one, applies to both protocols.
+                         * @default true
                          */
-                        sshKeyMode?: "replace" | "keep";
-                        /** @description Public key to install when `sshKeyMode` is `replace`. Written to the login user's `~/.ssh/authorized_keys` — which user that is comes from the imported rootfs itself, so an image without a Krova default user keeps logging in as root. Ignored when `sshKeyMode` is `keep`. */
-                        sshPublicKey?: string | null;
-                        region?: string | null;
-                        vcpusOverride?: number | null;
-                        ramMbOverride?: number | null;
-                        diskGbOverride?: number | null;
-                        userData?: string | null;
-                        expectedConfig?: {
-                            vcpus?: number;
-                            ramMb?: number;
-                            diskLimitGb?: number;
-                        } | null;
+                        udpEnabled?: boolean;
+                        /**
+                         * @deprecated
+                         * @description DEPRECATED alias for `whitelistedIps`, accepted for backwards compatibility. `whitelistedIps` wins if both are sent. Use `whitelistedIps` in new code.
+                         */
+                        whitelistIps?: string[];
+                        /** @description IPs/CIDRs allowed to reach the published port. Omit or send an empty array to leave the port open to the internet. */
+                        whitelistedIps?: string[];
                     };
                 };
             };
             responses: {
-                /** @description Import initiated; returns presigned part URLs */
+                /** @description Mapping created */
                 201: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": {
-                            importId?: string;
-                            uploadId?: string;
-                            key?: string;
-                            chunkSizeBytes?: number;
-                            parts?: {
-                                partNumber?: number;
-                                url?: string;
-                            }[];
-                            /** Format: date-time */
-                            expiresAt?: string;
+                            tcpMapping: components["schemas"]["TcpMapping"];
                         };
                     };
                 };
-                /** @description Invalid input */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Plan limit exceeded */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description No active storage backend */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
+                400: components["responses"]["BadRequest"];
+                429: components["responses"]["RateLimited"];
             };
         };
         delete?: never;
@@ -1504,66 +1628,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/spaces/{spaceId}/cubes/imports/{importId}": {
+    "/spaces/{spaceId}/cubes/{cubeId}/tcp-mappings/{mappingId}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get the current state of an import */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: string;
-                    importId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Current import state */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            import?: {
-                                id?: string;
-                                name?: string;
-                                /** @enum {string} */
-                                status?: "uploading" | "finalizing" | "provisioning" | "complete" | "failed" | "expired";
-                                cubeId?: string | null;
-                                error?: string | null;
-                                createdAt?: string;
-                                updatedAt?: string;
-                                completedAt?: string | null;
-                            };
-                        };
-                    };
-                };
-                404: components["responses"]["NotFound"];
-            };
-        };
+        get?: never;
         put?: never;
         post?: never;
-        /** Cancel an in-flight upload (only allowed in 'uploading' state) */
+        /** Delete a TCP port forward */
         delete: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
                     spaceId: string;
-                    importId: string;
+                    cubeId: string;
+                    mappingId: string;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Cancelled */
+                /** @description Deleted */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1575,13 +1664,6 @@ export interface paths {
                     };
                 };
                 404: components["responses"]["NotFound"];
-                /** @description Cannot cancel an import past the 'uploading' state */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
             };
         };
         options?: never;
@@ -1589,7 +1671,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/spaces/{spaceId}/cubes/imports/{importId}/complete": {
+    "/spaces/{spaceId}/cubes/{cubeId}/wake": {
         parameters: {
             query?: never;
             header?: never;
@@ -1598,84 +1680,28 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Finalize a .cube import: complete multipart upload + create cube row + enqueue provisioning */
+        /** Start a stopped Cube */
         post: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
                     spaceId: string;
-                    importId: string;
+                    cubeId: string;
                 };
                 cookie?: never;
             };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        parts: {
-                            partNumber: number;
-                            etag: string;
-                        }[];
-                        config: {
-                            vcpus: number;
-                            ramMb: number;
-                            diskLimitGb: number;
-                            imageId: string;
-                            userData?: string | null;
-                        };
-                    };
-                };
-            };
+            requestBody?: never;
             responses: {
-                /** @description Provisioning enqueued */
+                /** @description Start enqueued */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content: {
-                        "application/json": {
-                            importId?: string;
-                            cubeId?: string;
-                            /** @enum {string} */
-                            status?: "provisioning";
-                        };
-                    };
-                };
-                /** @description Invalid input */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
                     content?: never;
                 };
-                /** @description Plan limit exceeded */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Import not in 'uploading' state */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description S3 finalization failed */
-                502: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Storage backend unavailable */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
+                404: components["responses"]["NotFound"];
+                429: components["responses"]["RateLimited"];
             };
         };
         delete?: never;
@@ -1726,9 +1752,9 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
+                        events: ("cube.created" | "cube.running" | "cube.stopped" | "cube.error" | "cube.deleted" | "cube.cold_restarted" | "cube.transfer.started" | "cube.transfer.completed" | "cube.transfer.failed" | "cube.resize.started" | "cube.resize.completed" | "cube.resize.failed" | "resource.alert.memory" | "resource.alert.cpu" | "resource.alert.disk" | "domain.alert.error_4xx" | "domain.alert.error_5xx" | "cube.space_transferred" | "cube.space_transfer.requested" | "cube.space_transfer.accepted" | "cube.space_transfer.declined" | "cube.space_transfer.cancelled" | "cube.space_transfer.expired" | "snapshot.created" | "snapshot.restored" | "snapshot.deleted" | "snapshot.pinned" | "snapshot.promoted_to_backup" | "snapshot.exported" | "backup.created" | "backup.deleted" | "backup.redeployed" | "domain.added" | "domain.active" | "domain.removed" | "tcp_mapping.added" | "tcp_mapping.removed" | "tcp_mapping.updated" | "hosting.provisioned" | "hosting.suspended" | "hosting.unsuspended" | "hosting.deleted" | "hosting.plan_changed" | "hosting.renewed" | "hosting.cancellation_scheduled" | "hosting.suspended_for_non_payment" | "hosting.deleted_after_recovery" | "member.invited" | "member.joined" | "member.removed" | "member.role_changed")[];
                         /** Format: uri */
                         url: string;
-                        events: ("cube.created" | "cube.running" | "cube.stopped" | "cube.error" | "cube.deleted" | "cube.cold_restarted" | "cube.transfer.started" | "cube.transfer.completed" | "cube.transfer.failed" | "cube.resize.started" | "cube.resize.completed" | "cube.resize.failed" | "resource.alert.memory" | "resource.alert.cpu" | "resource.alert.disk" | "domain.alert.error_4xx" | "domain.alert.error_5xx" | "snapshot.created" | "snapshot.restored" | "snapshot.deleted" | "snapshot.pinned" | "snapshot.promoted_to_backup" | "snapshot.exported" | "backup.created" | "backup.deleted" | "backup.redeployed" | "domain.added" | "domain.active" | "domain.removed" | "tcp_mapping.added" | "tcp_mapping.removed" | "tcp_mapping.updated" | "hosting.provisioned" | "hosting.suspended" | "hosting.unsuspended" | "hosting.deleted" | "hosting.plan_changed" | "hosting.renewed" | "hosting.cancellation_scheduled" | "hosting.suspended_for_non_payment" | "hosting.deleted_after_recovery" | "member.invited" | "member.joined" | "member.removed" | "member.role_changed")[];
                     };
                 };
             };
@@ -1852,214 +1878,205 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        Space: {
-            id: string;
-            name: string;
-            tier: string;
+        Cube: {
+            costPerHour: number;
             /** Format: date-time */
             createdAt: string;
-        };
-        CubeSshInfo: {
-            host: string | null;
-            port: number;
-            user: string;
-            hostKeys: {
-                type: string;
-                key: string;
-            }[];
-        };
-        Cube: {
             id: string;
+            image: string;
             name: string;
-            /** @enum {string} */
-            state: "pending" | "booting" | "running" | "stopped" | "stopping" | "resizing" | "error" | "deleted";
             publicIpv4: string | null;
             resources: {
-                vcpu: number;
-                ramGb: number;
                 diskGb: number;
+                ramGb: number;
+                vcpu: number;
             };
-            image: string;
-            sshUser: string;
-            costPerHour: number;
-            /** @description The hostname of the server currently hosting this Cube (e.g. `mango.krova.cloud`). This is NOT the Cube's own SSH target — use `host` from GET .../ssh for that, which is the Cube's own stable hostname and survives migration to another server. Null when the Cube has no server assigned. Only present on the single-Cube GET; list and create responses omit it. */
+            /** @description The hostname of the server currently hosting this Cube (e.g. `mango.krova.cloud`), shared by every Cube on that server. This is NOT the Cube's own SSH target — use `host` from GET .../ssh for that, which is the Cube's own stable hostname and survives migration to another server. Null when the Cube has no server assigned. Only present on the single-Cube GET; list and create responses omit it. */
             serverDomain?: string | null;
-            /** @description Whether this Cube is locked against customer-initiated deletion. Per-Cube, opt-in, default `false`. Power-off, wake, restart, snapshot, and restore remain allowed regardless. The two audit fields are populated whenever the flag is on. */
+            sshUser: string;
+            /** @enum {string} */
+            state: "pending" | "booting" | "running" | "stopped" | "stopping" | "resizing" | "error" | "deleted";
+            /** @description Per-cube opt-in flag. When true, customer-initiated destroy paths return 409 with `error.code = "termination_protected"`. Power-off, wake, restart, restore, network-reset, and snapshot ops are NOT termination and remain allowed. Default false. */
             terminationProtection: boolean;
             /**
              * Format: date-time
-             * @description When `terminationProtection` last changed. `null` until the flag is first set, then tracked on every toggle.
+             * @description ISO8601 timestamp of the most recent toggle of `terminationProtection`. Null when the flag has never been turned on.
              */
-            terminationProtectionChangedAt?: string | null;
-            /** @description Who last changed `terminationProtection`. `"user:<id>"` for customer toggles, `"admin:<id>"` for operator changes. `null` until the flag is first set. */
-            terminationProtectionChangedBy?: string | null;
-            /** Format: date-time */
-            createdAt: string;
+            terminationProtectionChangedAt: string | null;
+            /** @description Identifies the actor that last toggled the flag: `"user:<id>"` for a customer, `"admin:<id>"` for an operator, `"system:<job-name>"` for a worker-driven write. Null when the flag has never been turned on. */
+            terminationProtectionChangedBy: string | null;
             /** Format: date-time */
             updatedAt: string;
         };
+        CubeSshInfo: {
+            host: string | null;
+            hostKeys: {
+                key: string;
+                type: string;
+            }[];
+            port: number;
+            user: string;
+        };
+        DnsRecord: {
+            host: string;
+            /** @enum {string} */
+            id: "ownership" | "routing" | "certificate";
+            mustBeGrey: boolean;
+            note?: string | null;
+            proxyOk: boolean;
+            /** @enum {string} */
+            purpose: "ownership" | "routing" | "certificate";
+            /** @enum {string} */
+            type: "CNAME" | "TXT" | "A";
+            value: string;
+        };
+        DnsRecordStatus: {
+            detail: string;
+            host: string;
+            id: string;
+            mustBeGrey?: boolean;
+            note?: string | null;
+            observed?: string[] | null;
+            proxyOk?: boolean;
+            purpose: string;
+            /** @enum {string} */
+            state: "found" | "missing" | "mismatch" | "unknown";
+            /** @enum {string} */
+            type: "CNAME" | "TXT" | "A";
+            value: string;
+        };
+        Domain: {
+            acmeDelegationTarget: string | null;
+            basicAuthEnabled: boolean;
+            basicAuthUser: string | null;
+            corsConfig: Record<string, never> | null;
+            /** Format: date-time */
+            createdAt: string;
+            cubeId: string;
+            domain: string;
+            id: string;
+            ingressStatus: string | null;
+            ipAllowList: string[] | null;
+            ipDenyList: string[] | null;
+            isWildcard: boolean;
+            maxRequestBodyMb: number | null;
+            port: number | null;
+            /** @description Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all. */
+            requestHeaderOverrides: {
+                remove?: string[];
+                set?: {
+                    [key: string]: string;
+                };
+            } | null;
+            responseCompression: boolean;
+            /** @description Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all. */
+            responseHeaderOverrides: {
+                remove?: string[];
+                set?: {
+                    [key: string]: string;
+                };
+            } | null;
+            responseHeaderTimeoutSecs: number;
+            /** @enum {string} */
+            securityHeadersMode: "enforced" | "app_managed";
+            status: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @enum {string|null} */
+            wildcardCertState: "pending_delegation" | "issuing" | "ready" | "failed" | null;
+        };
+        Error: {
+            error: string;
+        };
+        Image: {
+            defaultUser: string;
+            description: string;
+            id: string;
+            name: string;
+            version: string;
+        };
         Pagination: {
-            page: number;
             limit: number;
+            page: number;
             total: number;
             totalPages: number;
+        };
+        PricingTier: {
+            label: string;
+            maxVcpus: number | null;
+            minVcpus: number;
+            multiplier: number;
         };
         Region: {
             id: string;
             name: string;
             slug: string;
         };
-        Image: {
-            id: string;
-            name: string;
-            version: string;
-            description: string;
-            defaultUser: string;
-        };
-        PricingTier: {
-            minVcpus: number;
-            maxVcpus: number | null;
-            multiplier: number;
-            label: string;
-        };
-        DnsRecord: {
-            /** @enum {string} */
-            id: "ownership" | "routing" | "certificate";
-            /** @enum {string} */
-            type: "CNAME" | "TXT" | "A";
-            host: string;
-            value: string;
-            /** @enum {string} */
-            purpose: "ownership" | "routing" | "certificate";
-            note?: string | null;
-            mustBeGrey: boolean;
-            proxyOk: boolean;
-        };
-        DnsRecordStatus: {
-            id: string;
-            /** @enum {string} */
-            type: "CNAME" | "TXT" | "A";
-            host: string;
-            value: string;
-            purpose: string;
-            note?: string | null;
-            mustBeGrey?: boolean;
-            proxyOk?: boolean;
-            /** @enum {string} */
-            state: "found" | "missing" | "mismatch" | "unknown";
-            detail: string;
-            observed?: string[] | null;
-        };
-        Domain: {
-            id: string;
-            cubeId: string;
-            domain: string;
-            port: number | null;
-            status: string;
-            ingressStatus: string | null;
-            /** @enum {string} */
-            securityHeadersMode: "enforced" | "app_managed";
-            responseHeaderTimeoutSecs: number;
-            /** @description Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all. */
-            responseHeaderOverrides: {
-                set?: {
-                    [key: string]: string;
-                };
-                remove?: string[];
-            } | null;
-            /** @description Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all. */
-            requestHeaderOverrides: {
-                set?: {
-                    [key: string]: string;
-                };
-                remove?: string[];
-            } | null;
-            maxRequestBodyMb: number | null;
-            responseCompression: boolean;
-            ipAllowList: string[] | null;
-            ipDenyList: string[] | null;
-            basicAuthUser: string | null;
-            basicAuthEnabled: boolean;
-            corsConfig: Record<string, never> | null;
-            isWildcard: boolean;
-            /** @enum {string|null} */
-            wildcardCertState: "pending_delegation" | "issuing" | "ready" | "failed" | null;
-            acmeDelegationTarget: string | null;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        TcpMapping: {
-            id: string;
-            cubeId: string;
-            cubePort: number;
-            /** @description Where to connect for this mapping: `host:hostPort`. The Cube's own stable hostname, which survives migration to another server, falling back to the server's public IP when the Cube has no DNS record yet. Identical to `host` from GET .../ssh, and the same value for every mapping on a Cube. Null only when the Cube has no server assigned, in which case there is nowhere to connect. Do NOT use `serverDomain` from the Cube object — that is the current physical host and changes when the Cube moves. */
-            host: string | null;
-            hostPort: number;
-            label: string | null;
-            status: string;
-            isSsh: boolean;
-            /** @description Whether the mapping also forwards UDP traffic on the same host port, in addition to TCP. */
-            udpEnabled: boolean;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-            whitelistedIps: {
-                id: string;
-                cidr: string;
-            }[];
-        };
         Snapshot: {
-            id: string;
+            /** Format: date-time */
+            createdAt: string;
             cubeId: string;
+            id: string;
+            kind: string;
             name: string;
             sizeBytes: number | null;
             status: string;
-            kind: string;
-            /** Format: date-time */
-            createdAt: string;
         };
-        Webhook: {
-            id: string;
-            /** Format: uri */
-            url: string;
-            events: string[];
-            enabled: boolean;
+        Space: {
             /** Format: date-time */
             createdAt: string;
+            id: string;
+            name: string;
+            tier: string;
+        };
+        TcpMapping: {
+            /** Format: date-time */
+            createdAt: string;
+            cubeId: string;
+            cubePort: number;
+            /** @description Where to connect for this mapping: `host:hostPort`. The Cube's own stable hostname, which survives migration to another server, falling back to the server's public IP when the Cube has no DNS record yet. Identical to `host` from GET .../ssh, and the same value for every mapping on a Cube. Null only when the Cube has no server assigned, in which case there is nowhere to connect. Do NOT use `serverDomain` from the Cube object — that is the current physical host and changes when the Cube moves. */
+            host?: string | null;
+            hostPort: number;
+            id: string;
+            isSsh: boolean;
+            label: string | null;
+            status: string;
+            /** @description Whether this mapping also forwards UDP on the same host port. True means TCP and UDP; false means TCP only. Always false for the platform SSH mapping. */
+            udpEnabled: boolean;
             /** Format: date-time */
             updatedAt: string;
+            whitelistedIps: {
+                cidr: string;
+                id: string;
+            }[];
+        };
+        Webhook: {
+            /** Format: date-time */
+            createdAt: string;
+            enabled: boolean;
+            events: string[];
+            id: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: uri */
+            url: string;
         };
         WebhookDelivery: {
-            id: string;
-            event: string;
-            /** @enum {string} */
-            status: "pending" | "delivered" | "failed";
             attempts: number;
+            /** Format: date-time */
+            createdAt: string;
+            event: string;
+            id: string;
             /** Format: date-time */
             lastAttemptAt: string | null;
             responseStatus: number | null;
-            /** Format: date-time */
-            createdAt: string;
-        };
-        Error: {
-            error: string;
+            /** @enum {string} */
+            status: "pending" | "delivered" | "failed";
         };
     };
     responses: {
         /** @description Bad request */
         BadRequest: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Missing or invalid API key */
-        Unauthorized: {
             headers: {
                 [name: string]: unknown;
             };
@@ -2087,6 +2104,15 @@ export interface components {
         };
         /** @description Rate limit exceeded (10 mutations / 60s) */
         RateLimited: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Missing or invalid API key */
+        Unauthorized: {
             headers: {
                 [name: string]: unknown;
             };
