@@ -1,6 +1,31 @@
 packages:
   - packages/*
 
+# ⛔ `openapi-typescript` must see TypeScript 5, and this override is the only
+# thing keeping `pnpm --filter @krovacloud/sdk gen` alive.
+#
+# It declares `"peerDependencies": { "typescript": "^5.x" }` and calls
+# `ts.factory.createKeywordTypeNode` at module load. This repo is on
+# typescript@7, whose JS API does not expose `ts.factory`, so the generator
+# died on import with:
+#
+#   TypeError: Cannot read properties of undefined (reading 'createKeywordTypeNode')
+#
+# pnpm only WARNS on an unmet peer range, so the mismatch was invisible until
+# someone actually ran the generator — and because nothing in CI ran it, the
+# committed `src/generated/types.ts` silently froze at the API shape of
+# whenever it last worked. That is the real reason the SDK drifted, not
+# forgetfulness. `scripts/check-openapi-drift.mjs` now fails on that drift and
+# `packages/sdk/tests/generated-types-match-spec.test.ts` fails if the
+# generator is not re-run, so a regression here surfaces as a red build rather
+# than as wrong published types.
+#
+# 7.13.0 is the LATEST openapi-typescript (checked 2026-09-17) and still peers
+# on ^5.x, so upgrading out of this is not an option yet. Drop the override the
+# day it supports typescript 7, and not before — `pnpm gen` is the check.
+overrides:
+  "openapi-typescript>typescript": "5.9.3"
+
 # ⛔ pnpm 11 REQUIRES an explicit decision on every dependency that ships an
 # install script, and ERRORS every command until it gets one — pnpm 10 only
 # warned. So this block is not a behaviour change: all seven were already

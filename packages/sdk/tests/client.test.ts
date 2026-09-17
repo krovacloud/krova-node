@@ -317,6 +317,10 @@ test("list/get/catalog responses are typed (not unknown)", async () => {
     sshUser: "ubuntu",
     costPerHour: 0.01,
     terminationProtection: false,
+    // The API always sends both audit fields, null until the flag is first set.
+    // They became required in the spec, and `satisfies Cube` is what caught it.
+    terminationProtectionChangedAt: null,
+    terminationProtectionChangedBy: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
   } satisfies Cube;

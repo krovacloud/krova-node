@@ -58,6 +58,47 @@ rewrites them to the real published version at publish time.
 5. Open a pull request. The `ci` check must be green and conversations resolved
    before it can merge.
 
+## The SDK's types are generated — never edit them by hand
+
+`packages/sdk/src/generated/types.ts` is produced by `openapi-typescript` from
+`packages/sdk/openapi.json`, which is itself a snapshot of the spec Krova Cloud
+serves at `https://krova.cloud/api/v1/openapi.json`. Two checks keep the three
+in agreement, and both are part of `ci`:
+
+- `packages/sdk/tests/generated-types-match-spec.test.ts` regenerates from the
+  committed snapshot and fails if the committed types differ. No network.
+- `pnpm check:openapi-drift` fetches the live spec and fails if the snapshot no
+  longer matches it. It exits `1` on drift and `2` when the spec is unreachable,
+  so "could not check" is never reported as "checked and fine".
+
+When the API changes, refresh both in one step:
+
+```sh
+pnpm check:openapi-drift -- --write     # pull the live spec into the snapshot
+pnpm --filter @krovacloud/sdk gen       # regenerate the types
+```
+
+Both the check and `--write` read production by default. Set `KROVA_API_BASE`
+to point them at a staging deployment or a local dev server while an API change
+is still in flight:
+
+```sh
+KROVA_API_BASE=http://localhost:3000 pnpm check:openapi-drift
+```
+
+⛔ That override is for working on the API. Never put it in the SDK's README or
+anywhere else a consumer reads — `KrovaClient`'s own `baseUrl` option is the
+supported way for a caller to point somewhere else, and the default is the only
+base a customer should ever need to think about.
+
+Commit the snapshot and the regenerated types together. If a hand-written
+helper in `src/client.ts` stops compiling afterwards, that is the point — the
+API contract moved and the SDK was describing the old one.
+
+⛔ **If the live spec is missing an endpoint that exists in production, fix the
+spec in the API, not the snapshot here.** Editing `openapi.json` by hand is what
+made `TcpMapping.host` ship as a required field the API does not always send.
+
 ## Conventions
 
 - **TypeScript strict**, ESM-first, Node ≥20.
