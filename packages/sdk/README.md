@@ -10,7 +10,7 @@ The official TypeScript SDK for the [Krova Cloud](https://krova.cloud) API — a
 ## Highlights
 
 - **Fully typed** — request bodies, responses, and path params are generated from the Krova Cloud OpenAPI spec via [`openapi-typescript`](https://github.com/openapi-ts/openapi-typescript) + [`openapi-fetch`](https://github.com/openapi-ts/openapi-typescript/tree/main/packages/openapi-fetch).
-- **Ergonomic helpers** — `client.cubes.*` and `client.catalog.*` unwrap the response body and throw a typed `KrovaError` on failure.
+- **Ergonomic helpers** — `client.cubes`, `domains`, `snapshots`, `tcpMappings`, `imports`, `backups`, `webhooks` and `catalog` unwrap the response body and throw a typed `KrovaError` on failure.
 - **Full escape hatch** — `client.raw` exposes the underlying typed client for every operation in the bundled OpenAPI spec (Domains, TCP mappings, Snapshots, Backups, Imports, Webhooks, and more).
 - **Zero-config resilience** — automatic retries on `429` / `503`, honoring `Retry-After`.
 - **ESM + CJS** — ships both, with bundled `.d.ts` declarations. No runtime dependencies beyond `openapi-fetch`.
@@ -118,7 +118,8 @@ Ergonomic helpers for the Cube lifecycle. Each unwraps the response body and thr
 | `list` | `(spaceId: string)` | the Cube list body |
 | `create` | `(spaceId, body, opts?)` | the created `Cube` |
 | `get` | `(spaceId, cubeId)` | the Cube body |
-| `update` | `(spaceId, cubeId, body)` | updates the Cube's SSH port |
+| `update` | `(spaceId, cubeId, body)` | changes the port sshd listens on inside the Cube |
+| `setTerminationProtection` | `(spaceId, cubeId, enabled)` | the updated `Cube`. While protection is on, `delete` throws `TerminationProtectedError` (a `KrovaError` for the API's `409`) |
 | `delete` | `(spaceId, cubeId)` | enqueues deletion |
 | `powerOff` | `(spaceId, cubeId)` | enqueues a power-off |
 | `wake` | `(spaceId, cubeId)` | enqueues a start |
@@ -137,6 +138,7 @@ const cube = await krova.cubes.create(
     sshPublicKey: "ssh-ed25519 AAAA... you@host",
     region: "us",                // optional — slug from catalog.regions()
     userData: "#cloud-config\n",  // optional — cloud-init (max 16 KB)
+    terminationProtection: true, // optional — refuse deletes until turned off
   },
   { idempotencyKey: "deploy-2026-07-01" },
 );
@@ -145,8 +147,11 @@ const cube = await krova.cubes.create(
 const one = await krova.cubes.get("space_123", cube.id);
 const all = await krova.cubes.list("space_123");
 
-// update — the only mutable Cube field over the public API is the SSH port
+// update — the port sshd listens on inside the Cube
 await krova.cubes.update("space_123", cube.id, { cubePort: 2222 });
+
+// termination protection — delete is refused until it is turned off
+await krova.cubes.setTerminationProtection("space_123", cube.id, false);
 
 // lifecycle — powerOff, wake, delete are asynchronous (enqueued)
 await krova.cubes.powerOff("space_123", cube.id);
@@ -165,10 +170,11 @@ The `Cube` type is exported for your own signatures:
 import type { Cube } from "@krovacloud/sdk";
 // {
 //   id: string; name: string;
-//   state: "pending" | "booting" | "running" | "stopped" | "stopping" | "error" | "deleted";
+//   state: "pending" | "booting" | "running" | "stopped" | "stopping" | "resizing" | "error" | "deleted";
 //   publicIpv4: string | null;
 //   resources: { vcpu: number; ramGb: number; diskGb: number };
 //   image: string; costPerHour: number;
+//   terminationProtection: boolean;
 //   createdAt: string; updatedAt: string;
 // }
 ```
@@ -261,18 +267,35 @@ const status = await krova.imports.get("space_123", start.importId);
 const dl = await krova.backups.download("space_123", "backup_123");
 ```
 
-### `client.raw` — every endpoint
+### Webhooks
 
-The helpers cover Cubes, the catalog, domains, snapshots, TCP mappings, imports, and backups. For anything else — e.g. Webhooks — use `client.raw`, the fully typed [`openapi-fetch`](https://github.com/openapi-ts/openapi-typescript/tree/main/packages/openapi-fetch) client. It returns `{ data, error, response }` and **never throws**:
+`client.webhooks` manages a space's webhook endpoints. `create` is the only call that returns the signing secret, so store it straight away. To verify deliveries, use [`@krovacloud/webhook`](https://www.npmjs.com/package/@krovacloud/webhook).
 
 ```ts
-const { data, error } = await krova.raw.POST("/spaces/{spaceId}/webhooks", {
-  params: { path: { spaceId: "space_123" } },
-  body: { url: "https://example.com/hook", events: ["cube.running"] },
+const endpoint = await krova.webhooks.create("space_123", {
+  url: "https://example.com/hook",
+  events: ["cube.running", "cube.stopped"],
+  description: "deploy notifier", // optional
+});
+// endpoint.secret is returned only here: store it now
+
+await krova.webhooks.list("space_123");
+await krova.webhooks.get("space_123", endpoint.id);
+await krova.webhooks.deliveries("space_123", endpoint.id, { limit: 20 }); // last 30 days
+await krova.webhooks.delete("space_123", endpoint.id);
+```
+
+### `client.raw` — every endpoint
+
+The helpers cover Cubes, the catalog, domains, snapshots, TCP mappings, imports, backups, and webhooks. When you would rather handle the error yourself than catch an exception, use `client.raw`, the fully typed [`openapi-fetch`](https://github.com/openapi-ts/openapi-typescript/tree/main/packages/openapi-fetch) client. It returns `{ data, error, response }` and **never throws**:
+
+```ts
+const { data, error } = await krova.raw.GET("/spaces/{spaceId}/cubes/{cubeId}", {
+  params: { path: { spaceId: "space_123", cubeId: "cube_123" } },
 });
 
 if (error) {
-  console.error("Webhook create failed:", error.error);
+  console.error("Cube lookup failed:", error.error);
 } else {
   console.log(data);
 }
@@ -287,7 +310,7 @@ type Domain = components["schemas"]["Domain"];
 
 ### `KrovaError`
 
-Thrown by the `cubes.*` / `catalog.*` helpers on any non-2xx response. (`client.raw` never throws — it returns the error in `{ error }`.)
+Thrown by every helper on any non-2xx response. (`client.raw` never throws — it returns the error in `{ error }`.)
 
 | Field | Type | Source |
 | --- | --- | --- |
