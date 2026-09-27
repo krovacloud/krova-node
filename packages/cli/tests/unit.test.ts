@@ -25,7 +25,7 @@ import { mappingConnectTarget } from "../src/lib/output.js";
 import { flattenRows } from "../src/commands/catalog.js";
 import { cubesCommand } from "../src/commands/cubes.js";
 import { parseListenAddr } from "../src/commands/webhooks.js";
-import { domainsCommand, parseOriginScheme } from "../src/commands/domains.js";
+import { domainsCommand, parseOriginScheme, parseProxyProtocol } from "../src/commands/domains.js";
 import { tcpCommand } from "../src/commands/tcp.js";
 
 test("parseListenAddr handles host:port, bare host, bare port, and IPv6", () => {
@@ -310,7 +310,7 @@ test("domains exposes set-origin so an attached domain can be switched to HTTPS"
   // before anyone noticed has to be fixable without detaching and re-adding it.
   const domains = domainsCommand();
   const names = domains.commands.map((c) => c.name()).sort();
-  assert.deepEqual(names, ["add", "list", "records", "rm", "set-origin"]);
+  assert.deepEqual(names, ["add", "list", "records", "rm", "set-origin", "set-proxy-protocol"]);
 
   // `records` exists because attaching a domain does nothing until its DNS
   // records are published, and for a wildcard two of the three were not
@@ -329,6 +329,42 @@ test("domains exposes set-origin so an attached domain can be switched to HTTPS"
   assert.ok(
     add.options.some((o) => o.long === "--origin-scheme"),
     "add must take the scheme too, so a TLS-terminating Cube works on first attach",
+  );
+});
+
+test("parseProxyProtocol accepts v1, v2 and off, and nothing else", () => {
+  assert.equal(parseProxyProtocol("v1"), "v1");
+  assert.equal(parseProxyProtocol("v2"), "v2");
+  // "off" is an explicit choice: it is sent as null, which clears the setting.
+  assert.equal(parseProxyProtocol("off"), null);
+
+  // Omitted means "leave the field off the request", like --origin-scheme.
+  assert.equal(parseProxyProtocol(undefined), undefined);
+  assert.equal(parseProxyProtocol(""), undefined);
+  assert.equal(parseProxyProtocol(null), undefined);
+
+  for (const bad of ["V2", "v3", "2", "on", "none", 1]) {
+    assert.throws(() => parseProxyProtocol(bad), /must be "v1", "v2" or "off"/, `rejects ${String(bad)}`);
+  }
+});
+
+test("domains exposes the PROXY protocol on add and as set-proxy-protocol", () => {
+  // An app reads the visitor from the connection only if every domain on its
+  // port sends the same setting, so both paths also take the confirmation the
+  // API asks for when a save would mix them.
+  const domains = domainsCommand();
+  const add = domains.commands.find((c) => c.name() === "add");
+  assert.ok(add, "domains must expose `add`");
+  for (const flag of ["--proxy-protocol", "--confirm-mixed-proxy-protocol"]) {
+    assert.ok(add.options.some((o) => o.long === flag), `add must take ${flag}`);
+  }
+
+  const set = domains.commands.find((c) => c.name() === "set-proxy-protocol");
+  assert.ok(set, "domains must expose `set-proxy-protocol`");
+  assert.equal(set.registeredArguments.length, 3, "cube, mapping id, version");
+  assert.ok(
+    set.options.some((o) => o.long === "--confirm-mixed-proxy-protocol"),
+    "set-proxy-protocol must take the mixed-port confirmation",
   );
 });
 

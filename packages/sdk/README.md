@@ -373,9 +373,28 @@ await krova.domains.update(spaceId, cubeId, mappingId, {
 ```
 
 The dial port is derived: `https` on the default port 80 connects on 443, and a
-deliberate custom port is honoured exactly. The setting is verified against the
-Cube before it is applied — if the domain does not serve, the route is left on
-`http`.
+deliberate custom port is honored exactly. The setting applies as saved, with no
+check: if nothing in the Cube answers HTTPS for the domain, visitors get an
+error page until you set it back to `http`.
+
+## Custom domains: the visitor's address on the connection
+
+The edge always passes the visitor's address in the `X-Real-IP` and
+`X-Forwarded-For` headers. For software that reads it from the TCP connection
+instead, set `proxyProtocol` to `"v1"` (a line of text) or `"v2"` (binary): the
+edge then sends a PROXY protocol header naming the visitor at the start of every
+connection to the Cube. `null` turns it off.
+
+```ts
+await krova.domains.update(spaceId, cubeId, mappingId, { proxyProtocol: "v2" });
+```
+
+The app must accept the PROXY protocol on that port before you turn it on, or
+every request to the domain fails. An app accepts it per port, so every domain
+mapped to the same Cube port needs the same setting: a create or update that
+would mix them is rejected with a `409` whose message names the other domains.
+Send `confirmMixedProxyProtocol: true` to save anyway, when the app handles both
+on that port.
 
 ## License
 

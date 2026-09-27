@@ -917,6 +917,8 @@ export interface paths {
                         basicAuthPassword?: string;
                         /** @description HTTP Basic Auth username. Null/empty clears Basic Auth. Setting it requires basicAuthPassword. */
                         basicAuthUser?: string | null;
+                        /** @description Accept a save that leaves domains on the same cube port with different proxyProtocol settings (for an app that handles both on one port, or mid-migration). Not stored. */
+                        confirmMixedProxyProtocol?: boolean;
                         /** @description Per-domain CORS policy, applied at the edge. Null (default) = CORS disabled and no Access-Control-* header is emitted anywhere. When set, the proxy answers OPTIONS preflight itself (204, the cube is never involved) and adds the headers to normal AND error responses, so a cross-origin request to a failing or stopped cube is never CORS-masked. */
                         corsConfig?: {
                             /** @description Send Access-Control-Allow-Credentials: true. Rejected together with the "*" origin. */
@@ -941,12 +943,17 @@ export interface paths {
                         /** @description Max request body size (MB). Null = unlimited (default). */
                         maxRequestBodyMb?: number | null;
                         /**
-                         * @description Scheme the edge speaks to the CUBE on the backend hop. http (default) = cleartext. https = the cube terminates TLS itself (a control panel holding its own certificate, or an app listening on HTTPS) and answers plain HTTP with a redirect, so it cannot be reached over cleartext at all. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443; a deliberate custom port is honoured exactly. Verified against the cube before it is applied — if the domain does not serve, the route is left on http.
+                         * @description Scheme the edge speaks to the CUBE on the backend hop. http (default) = cleartext. https = the cube terminates TLS itself (a control panel holding its own certificate, or an app listening on HTTPS) and answers plain HTTP with a redirect, so it cannot be reached over cleartext at all. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443; a deliberate custom port is honored exactly. Applied as saved: if the cube does not serve this hostname over HTTPS, requests to the domain fail until you set it back to http.
                          * @enum {string}
                          */
                         originScheme?: "http" | "https";
                         /** @description Cube port the domain proxies to. */
                         port: number;
+                        /**
+                         * @description Send a PROXY protocol header (v1 text or v2 binary) at the start of every connection to the cube, so the app reads the visitor's address from the connection itself, as on a plain VPS. Null (default) = off. The app must accept PROXY protocol on this port, or every request to the domain fails; it is applied as saved. Every domain on the same cube port must use the same setting: a save that would mix them is refused with 409 unless confirmMixedProxyProtocol is true.
+                         * @enum {string|null}
+                         */
+                        proxyProtocol?: "v1" | "v2" | null;
                         /** @description Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all. */
                         requestHeaderOverrides?: {
                             remove?: string[];
@@ -987,6 +994,13 @@ export interface paths {
                     };
                 };
                 400: components["responses"]["BadRequest"];
+                /** @description Refused. Among other reasons (the domain is in use, or is being removed): the save would leave domains on the same cube port with different proxyProtocol settings. Then `errorMeta.code` is `proxy_protocol_port_mismatch`, with `errorMeta.port` and `errorMeta.domains` naming the other domains. Change them together, or resend with confirmMixedProxyProtocol: true. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
                 429: components["responses"]["RateLimited"];
             };
         };
@@ -1058,6 +1072,8 @@ export interface paths {
                         basicAuthPassword?: string;
                         /** @description HTTP Basic Auth username. Null/empty clears Basic Auth. Setting it requires basicAuthPassword. */
                         basicAuthUser?: string | null;
+                        /** @description Accept a save that leaves domains on the same cube port with different proxyProtocol settings (for an app that handles both on one port, or mid-migration). Not stored. */
+                        confirmMixedProxyProtocol?: boolean;
                         /** @description Per-domain CORS policy, applied at the edge. Null (default) = CORS disabled and no Access-Control-* header is emitted anywhere. When set, the proxy answers OPTIONS preflight itself (204, the cube is never involved) and adds the headers to normal AND error responses, so a cross-origin request to a failing or stopped cube is never CORS-masked. */
                         corsConfig?: {
                             /** @description Send Access-Control-Allow-Credentials: true. Rejected together with the "*" origin. */
@@ -1080,10 +1096,15 @@ export interface paths {
                         /** @description Max request body size (MB). Null = unlimited (default). */
                         maxRequestBodyMb?: number | null;
                         /**
-                         * @description Scheme the edge speaks to the CUBE on the backend hop. http (default) = cleartext. https = the cube terminates TLS itself (a control panel holding its own certificate, or an app listening on HTTPS) and answers plain HTTP with a redirect, so it cannot be reached over cleartext at all. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443; a deliberate custom port is honoured exactly. Verified against the cube before it is applied — if the domain does not serve, the route is left on http.
+                         * @description Scheme the edge speaks to the CUBE on the backend hop. http (default) = cleartext. https = the cube terminates TLS itself (a control panel holding its own certificate, or an app listening on HTTPS) and answers plain HTTP with a redirect, so it cannot be reached over cleartext at all. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443; a deliberate custom port is honored exactly. Applied as saved: if the cube does not serve this hostname over HTTPS, requests to the domain fail until you set it back to http.
                          * @enum {string}
                          */
                         originScheme?: "http" | "https";
+                        /**
+                         * @description Send a PROXY protocol header (v1 text or v2 binary) at the start of every connection to the cube, so the app reads the visitor's address from the connection itself, as on a plain VPS. Null (default) = off. The app must accept PROXY protocol on this port, or every request to the domain fails; it is applied as saved. Every domain on the same cube port must use the same setting: a save that would mix them is refused with 409 unless confirmMixedProxyProtocol is true.
+                         * @enum {string|null}
+                         */
+                        proxyProtocol?: "v1" | "v2" | null;
                         /** @description Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all. */
                         requestHeaderOverrides?: {
                             remove?: string[];
@@ -1124,6 +1145,13 @@ export interface paths {
                 };
                 400: components["responses"]["BadRequest"];
                 404: components["responses"]["NotFound"];
+                /** @description Refused. Among other reasons (the domain is in use, or is being removed): the save would leave domains on the same cube port with different proxyProtocol settings. Then `errorMeta.code` is `proxy_protocol_port_mismatch`, with `errorMeta.port` and `errorMeta.domains` naming the other domains. Change them together, or resend with confirmMixedProxyProtocol: true. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
                 429: components["responses"]["RateLimited"];
             };
         };
@@ -1960,7 +1988,11 @@ export interface components {
             ipDenyList: string[] | null;
             isWildcard: boolean;
             maxRequestBodyMb: number | null;
+            /** @enum {string} */
+            originScheme: "http" | "https";
             port: number | null;
+            /** @enum {string|null} */
+            proxyProtocol: "v1" | "v2" | null;
             /** @description Header rewrites: `set` adds/overwrites, `remove` deletes. Null clears all. */
             requestHeaderOverrides: {
                 remove?: string[];

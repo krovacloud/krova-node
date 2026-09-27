@@ -596,8 +596,78 @@ export class Krova implements INodeType {
 					{ name: 'HTTP', value: 'http', description: 'Cleartext to the Cube (default)' },
 					{ name: 'HTTPS', value: 'https', description: 'The Cube terminates TLS itself' },
 				],
-				displayOptions: { show: { resource: ['domain'], operation: ['create', 'update'] } },
+				displayOptions: { show: { resource: ['domain'], operation: ['create'] } },
 				routing: { send: { type: 'body', property: 'originScheme' } },
+			},
+
+			{
+				// Same parameter name as the create field above, so a saved Update keeps
+				// its value. The default stays HTTP: n8n saves only values that differ
+				// from the default, so a saved Update that relied on it must keep
+				// sending http. "Leave Unchanged" sends nothing (undefined is dropped
+				// from the JSON body), so an Update can change only the PROXY setting.
+				displayName: 'Origin Scheme',
+				name: 'originScheme',
+				type: 'options',
+				default: 'http',
+				description:
+					'The transport the edge uses to reach the Cube. Choose Leave Unchanged to change only other settings; HTTP here switches a Cube that terminates TLS itself back to cleartext.',
+				options: [
+					{ name: 'HTTP', value: 'http', description: 'Cleartext to the Cube (default)' },
+					{ name: 'HTTPS', value: 'https', description: 'The Cube terminates TLS itself' },
+					{ name: 'Leave Unchanged', value: 'unchanged', description: 'Do not send the origin scheme' },
+				],
+				displayOptions: { show: { resource: ['domain'], operation: ['update'] } },
+				routing: {
+					send: {
+						type: 'body',
+						property: 'originScheme',
+						value: '={{ $value === "unchanged" ? undefined : $value }}',
+					},
+				},
+			},
+
+			{
+				// A collection, so a field is sent only when it is added: an Update
+				// that existed before these fields sends exactly what it sent then.
+				displayName: 'Additional Fields',
+				name: 'domainAdditionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: { show: { resource: ['domain'], operation: ['create', 'update'] } },
+				options: [
+					{
+						displayName: 'PROXY Protocol',
+						name: 'proxyProtocol',
+						type: 'options',
+						default: 'off',
+						description:
+							'Send a PROXY protocol header naming the visitor at the start of every connection to the Cube, so the app reads the visitor address from the connection itself. The app must accept PROXY protocol on this port first, or every request to the domain fails. Every domain on the same Cube port needs the same setting.',
+						options: [
+							{ name: 'Off', value: 'off', description: 'No header (the default)' },
+							{ name: 'V1', value: 'v1', description: 'PROXY protocol v1, a line of text' },
+							{ name: 'V2', value: 'v2', description: 'PROXY protocol v2, binary' },
+						],
+						routing: {
+							send: {
+								type: 'body',
+								property: 'proxyProtocol',
+								// "Off" is sent as null, which clears the setting.
+								value: '={{ $value === "off" ? null : $value }}',
+							},
+						},
+					},
+					{
+						displayName: 'Confirm Mixed PROXY Protocol',
+						name: 'confirmMixedProxyProtocol',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to save even though other domains on the same Cube port use a different PROXY protocol setting. Without it such a save fails with 409, naming the other domains.',
+						routing: { send: { type: 'body', property: 'confirmMixedProxyProtocol' } },
+					},
+				],
 			},
 
 			{
