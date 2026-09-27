@@ -2,6 +2,16 @@
 
 All notable changes to `@krovacloud/cli` are documented here.
 
+## Unreleased
+
+### Added
+
+- `krova domains add --proxy-protocol <v1|v2>` and
+  `krova domains set-proxy-protocol <cube> <domain-id> <v1|v2|off>`: send a
+  PROXY protocol header naming the visitor on each connection to the Cube. Both
+  take `--confirm-mixed-proxy-protocol` to save a setting that differs from
+  other domains on the same Cube port.
+
 
 
 ## 0.6.2

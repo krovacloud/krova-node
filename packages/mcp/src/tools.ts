@@ -90,6 +90,20 @@ const cubeIdField = {
   cubeId: z.string().min(1).describe("The Cube id to operate on."),
 };
 
+/** A domain's PROXY protocol setting. "off" is sent as `null`, which clears it. */
+const proxyProtocolField = z
+  .enum(["v1", "v2", "off"])
+  .describe(
+    "PROXY protocol header the edge sends at the start of every connection to the Cube, naming the visitor, so an app reads the visitor's address from the connection itself (as on a plain VPS) instead of X-Real-IP / X-Forwarded-For. \"v1\" is a line of text, \"v2\" is binary, \"off\" (the default) sends none. The app must accept PROXY protocol on this port before it is turned on, or every request to the domain fails; it is applied as saved, with no check. Every domain on the same Cube port needs the same setting: a save that would mix them is refused with 409 unless confirmMixedProxyProtocol is true.",
+  );
+
+const confirmMixedProxyProtocolField = z
+  .boolean()
+  .optional()
+  .describe(
+    "Set true only when the user confirms that the app handles both settings on this port (or is mid-migration): it lets a save go ahead that leaves domains on the same Cube port with different proxyProtocol settings. The 409 that asks for it names the other domains; relay them before asking.",
+  );
+
 const endpointIdField = {
   endpointId: z
     .string()
@@ -378,21 +392,27 @@ export const TOOLS: ToolDef[] = [
         .enum(["http", "https"])
         .optional()
         .describe(
-          "Scheme the edge speaks to the Cube on. \"http\" (default) is cleartext. Use \"https\" only when the Cube terminates TLS itself — a control panel holding its own certificate, or an app listening on HTTPS — because such an app answers plain HTTP with a redirect and cannot be reached over cleartext. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443. Verified against the Cube before it is applied; if the domain does not serve, the route is left on http."
+          "Scheme the edge speaks to the Cube on. \"http\" (default) is cleartext. Use \"https\" only when the Cube terminates TLS itself — a control panel holding its own certificate, or an app listening on HTTPS — because such an app answers plain HTTP with a redirect and cannot be reached over cleartext. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443. Applied as saved, with no check: if nothing in the Cube answers HTTPS for this domain, visitors get an error page until it is set back to http."
         ),
+      proxyProtocol: proxyProtocolField.optional(),
+      confirmMixedProxyProtocol: confirmMixedProxyProtocolField,
     },
     handler: (client, args, ctx) =>
       client.domains.create(resolveSpaceId(args.spaceId, ctx), args.cubeId, {
         domain: args.domain,
         port: args.port,
         ...(args.originScheme ? { originScheme: args.originScheme } : {}),
+        ...(args.proxyProtocol && args.proxyProtocol !== "off"
+          ? { proxyProtocol: args.proxyProtocol }
+          : {}),
+        ...(args.confirmMixedProxyProtocol ? { confirmMixedProxyProtocol: true } : {}),
       }),
   }),
   defineTool({
     name: "update_domain",
     title: "Update Domain Settings",
     description:
-      "Change a custom domain's proxy settings. Currently exposes the origin scheme — the transport the edge uses to reach the Cube.",
+      "Change a custom domain's proxy settings: the origin scheme (the transport the edge uses to reach the Cube) and the PROXY protocol header. Pass at least one; a setting you leave out keeps its current value.",
     annotations: { readOnlyHint: false, idempotentHint: true, openWorldHint: true },
     inputSchema: {
       ...spaceIdField,
@@ -400,17 +420,25 @@ export const TOOLS: ToolDef[] = [
       mappingId: z.string().min(1).describe("The domain mapping id (see list_domains)."),
       originScheme: z
         .enum(["http", "https"])
+        .optional()
         .describe(
-          "Scheme the edge speaks to the Cube on. \"http\" (default) is cleartext. Use \"https\" only when the Cube terminates TLS itself — a control panel holding its own certificate, or an app listening on HTTPS — because such an app answers plain HTTP with a redirect and cannot be reached over cleartext. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443. Verified against the Cube before it is applied; if the domain does not serve, the route is left on http."
+          "Scheme the edge speaks to the Cube on. \"http\" (default) is cleartext. Use \"https\" only when the Cube terminates TLS itself — a control panel holding its own certificate, or an app listening on HTTPS — because such an app answers plain HTTP with a redirect and cannot be reached over cleartext. Visitors are on HTTPS either way. The dial port is derived: https on the default port 80 connects on 443. Applied as saved, with no check: if nothing in the Cube answers HTTPS for this domain, visitors get an error page until it is set back to http."
         ),
+      proxyProtocol: proxyProtocolField.optional(),
+      confirmMixedProxyProtocol: confirmMixedProxyProtocolField,
     },
-    handler: (client, args, ctx) =>
-      client.domains.update(
-        resolveSpaceId(args.spaceId, ctx),
-        args.cubeId,
-        args.mappingId,
-        { originScheme: args.originScheme }
-      ),
+    handler: (client, args, ctx) => {
+      if (args.originScheme === undefined && args.proxyProtocol === undefined) {
+        throw new Error("Pass originScheme, proxyProtocol, or both: there is nothing to change.");
+      }
+      return client.domains.update(resolveSpaceId(args.spaceId, ctx), args.cubeId, args.mappingId, {
+        ...(args.originScheme ? { originScheme: args.originScheme } : {}),
+        ...(args.proxyProtocol !== undefined
+          ? { proxyProtocol: args.proxyProtocol === "off" ? null : args.proxyProtocol }
+          : {}),
+        ...(args.confirmMixedProxyProtocol ? { confirmMixedProxyProtocol: true } : {}),
+      });
+    },
   }),
   defineTool({
     name: "delete_domain",

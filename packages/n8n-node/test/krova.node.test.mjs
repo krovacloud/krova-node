@@ -87,20 +87,51 @@ test('Update routes to PATCH on the mapping, and carries the origin scheme', () 
 	assert.equal(update.method, 'PATCH');
 	assert.match(update.url, /\/domains\/.+$/);
 
-	const field = propertyByName('originScheme');
-	assert.equal(field.type, 'options');
+	// One parameter name, two definitions: create offers the two schemes the API
+	// accepts; update adds "Leave Unchanged" so an Update can change only the
+	// PROXY setting. Same name, so a saved Update keeps its value.
+	const fields = desc.properties.filter((p) => p.name === 'originScheme');
+	assert.equal(fields.length, 2);
+	const createField = fields.find((f) => f.displayOptions.show.operation.includes('create'));
+	const updateField = fields.find((f) => f.displayOptions.show.operation.includes('update'));
+	assert.deepEqual(createField.displayOptions.show.operation, ['create']);
+	assert.deepEqual(updateField.displayOptions.show.operation, ['update']);
 	assert.deepEqual(
-		field.options.map((o) => o.value).sort(),
+		createField.options.map((o) => o.value).sort(),
 		['http', 'https'],
-		'only the two schemes the API accepts may be offered',
+		'only the two schemes the API accepts may be offered on create',
 	);
-	assert.equal(field.default, 'http', 'cleartext stays the default');
-	assert.deepEqual(
-		field.displayOptions.show.operation.sort(),
-		['create', 'update'],
-		'settable when attaching a domain and changeable afterwards',
-	);
-	assert.equal(field.routing.send.property, 'originScheme');
+	assert.deepEqual(updateField.options.map((o) => o.value).sort(), ['http', 'https', 'unchanged']);
+	// ⛔ The update default stays http: n8n saves only non-default values, so a
+	// saved Update that relied on the default must keep sending http.
+	assert.equal(createField.default, 'http', 'cleartext stays the default');
+	assert.equal(updateField.default, 'http', 'a saved Update keeps sending what it sent');
+	for (const f of fields) assert.equal(f.routing.send.property, 'originScheme');
+});
+
+test('Domain create and update take the PROXY protocol as an added field only', () => {
+	// A collection is sent only when the user adds it (n8n-core routing-node,
+	// `type === 'collection'`), so an Update saved before this field existed
+	// sends exactly what it sent then.
+	const extra = propertyByName('domainAdditionalFields');
+	assert.equal(extra.type, 'collection');
+	assert.deepEqual(extra.default, {});
+	assert.deepEqual(extra.displayOptions.show.operation.sort(), ['create', 'update']);
+
+	const pp = extra.options.find((o) => o.name === 'proxyProtocol');
+	assert.ok(pp, 'proxyProtocol is offered');
+	assert.deepEqual(pp.options.map((o) => o.value).sort(), ['off', 'v1', 'v2']);
+	assert.equal(pp.routing.send.property, 'proxyProtocol');
+	// "Off" must reach the API as null (checked against n8n-workflow's expression
+	// engine: the expression below yields null for "off" and the version string
+	// otherwise).
+	assert.equal(pp.routing.send.value, '={{ $value === "off" ? null : $value }}');
+
+	const confirm = extra.options.find((o) => o.name === 'confirmMixedProxyProtocol');
+	assert.ok(confirm, 'the mixed-port confirmation is offered');
+	assert.equal(confirm.type, 'boolean');
+	assert.equal(confirm.default, false);
+	assert.equal(confirm.routing.send.property, 'confirmMixedProxyProtocol');
 });
 
 test('Snapshot resource has list/create/delete/restore operations', () => {

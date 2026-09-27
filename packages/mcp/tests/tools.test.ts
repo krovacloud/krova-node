@@ -468,9 +468,10 @@ describe("origin scheme", () => {
     }
   });
 
-  it("is optional on create and required on update", () => {
-    // Create without it keeps today's cleartext default; an update naming no
-    // field at all would be a no-op request.
+  it("is optional on create and on update", () => {
+    // Create without it keeps today's cleartext default. On update it became
+    // optional when update_domain gained proxyProtocol: a call may change
+    // either setting, and the handler refuses one that names neither.
     const create = TOOLS.find((t) => t.name === "create_domain");
     const update = TOOLS.find((t) => t.name === "update_domain");
     // ⛔ Assert the tools exist BEFORE indexing their schema. This used to read
@@ -487,6 +488,6 @@ describe("origin scheme", () => {
     assert.ok(createField, "create_domain must expose originScheme");
     assert.ok(updateField, "update_domain must expose originScheme");
     assert.equal(createField.isOptional?.(), true, "optional on create");
-    assert.equal(updateField.isOptional?.(), false, "required on update");
+    assert.equal(updateField.isOptional?.(), true, "optional on update");
   });
 });

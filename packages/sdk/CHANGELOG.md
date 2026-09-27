@@ -7,7 +7,18 @@ All notable changes to `@krovacloud/sdk` are documented here. This project adher
 
 ## Unreleased
 
+### Added
+
+- `proxyProtocol` (`"v1"`, `"v2"` or `null`) on `domains.create()` and
+  `domains.update()`, and on every returned `Domain`, which now also carries
+  `originScheme`. `confirmMixedProxyProtocol: true` saves a setting that differs
+  from other domains on the same Cube port; without it that save is a `409`
+  naming them. Types regenerated from the API's spec.
+
 ### Changed
+
+- The README no longer says HTTPS to the Cube is verified before it applies: the
+  API now applies it as saved.
 
 - **BREAKING** — `KrovaErrorBody` no longer has an open `[key: string]: unknown`
   index signature; only `error?: string` is part of the public shape. The

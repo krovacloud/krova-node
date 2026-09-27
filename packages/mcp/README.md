@@ -130,8 +130,8 @@ All 23 tools, their parameters, and what they do. Every tool's `spaceId` is opti
 | `get_pricing` | — | Get per-resource hourly rates and volume pricing tiers. |
 | `list_domains` | `spaceId?`, `cubeId` | List the custom domains attached to a Cube. |
 | `get_domain_records` | `spaceId?`, `cubeId`, `mappingId` | The DNS records a domain needs, each checked against live DNS — `missing` means not published yet (expected before the user creates them, never an error), and `summary.complete` turns true once every record is found. Performs real DNS lookups; rate limited. |
-| `create_domain` | `spaceId?`, `cubeId`, `domain`, `port`, `originScheme?` | Attach a custom domain to a Cube. Returns the domain **and** the DNS records to publish — relay them verbatim. |
-| `update_domain` | `spaceId?`, `cubeId`, `mappingId`, `originScheme` | Change a domain's proxy settings. |
+| `create_domain` | `spaceId?`, `cubeId`, `domain`, `port`, `originScheme?`, `proxyProtocol?`, `confirmMixedProxyProtocol?` | Attach a custom domain to a Cube. Returns the domain **and** the DNS records to publish — relay them verbatim. |
+| `update_domain` | `spaceId?`, `cubeId`, `mappingId`, `originScheme?`, `proxyProtocol?`, `confirmMixedProxyProtocol?` | Change a domain's proxy settings: the origin scheme, and the PROXY protocol header (`v1`, `v2` or `off`) that names the visitor on each connection to the Cube. Pass at least one; what you leave out keeps its value. |
 | `delete_domain` | `spaceId?`, `cubeId`, `mappingId` | Detach a custom domain. **Destructive.** |
 | `list_snapshots` | `spaceId?`, `cubeId` | List a Cube's disk snapshots. |
 | `create_snapshot` | `spaceId?`, `cubeId`, `name?` | Snapshot a Cube's disk. Asynchronous. |

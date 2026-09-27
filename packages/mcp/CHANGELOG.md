@@ -4,6 +4,20 @@ All notable changes to `@krovacloud/mcp` are documented here. The format is base
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- `proxyProtocol` (`v1`, `v2` or `off`) and `confirmMixedProxyProtocol` on
+  `create_domain` and `update_domain`.
+
+### Changed
+
+- `update_domain` takes `originScheme` or `proxyProtocol` (at least one), so it
+  can change one setting without touching the other.
+- The `originScheme` description no longer says it is verified against the Cube
+  before it applies: the API now applies it as saved.
+
 
 
 ## 0.3.2

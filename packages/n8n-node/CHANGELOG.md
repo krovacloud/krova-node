@@ -4,6 +4,16 @@ All notable changes to `n8n-nodes-krova` are documented here. The format is base
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Domain **Create** and **Update** take **PROXY Protocol** (Off, V1, V2) and
+  **Confirm Mixed PROXY Protocol** as Additional Fields, sent only when added.
+- Domain **Update** offers **Leave Unchanged** for Origin Scheme, so it can change
+  only the PROXY setting. The default stays **HTTP**, so a saved Update sends
+  what it sent before.
+
 
 
 

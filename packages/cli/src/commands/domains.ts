@@ -15,6 +15,18 @@ export function parseOriginScheme(value: unknown): "http" | "https" | undefined 
   throw new Error(`--origin-scheme must be "http" or "https" (got "${String(value)}").`);
 }
 
+/**
+ * Narrow a `--proxy-protocol` / positional version to what the API accepts:
+ * "v1" or "v2", or "off" for none (sent as `null`). Returns undefined when the
+ * flag was omitted, so `add` leaves the field off the request entirely.
+ */
+export function parseProxyProtocol(value: unknown): "v1" | "v2" | null | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (value === "v1" || value === "v2") return value;
+  if (value === "off") return null;
+  throw new Error(`--proxy-protocol must be "v1", "v2" or "off" (got "${String(value)}").`);
+}
+
 type PrintableRecord = {
   type: string;
   host: string;
@@ -86,6 +98,8 @@ export function domainsCommand(): Command {
     .requiredOption("--domain <domain>", "the domain name to attach")
     .requiredOption("--port <n>", "the in-Cube port to route to")
     .option("--origin-scheme <scheme>", "transport the edge uses to reach the Cube: http (default) or https when the Cube terminates TLS itself")
+    .option("--proxy-protocol <version>", "send a PROXY protocol header (v1 or v2) naming the visitor on each connection to the Cube; your app must accept it on this port. Off by default")
+    .option("--confirm-mixed-proxy-protocol", "attach even though other domains on the same Cube port use a different PROXY protocol setting")
     .description("attach a custom domain to a Cube")
     .action(async (cubeRef: string, opts, c: Command) => {
       const rt = getRuntime(c);
@@ -97,10 +111,13 @@ export function domainsCommand(): Command {
         throw new Error(`--port must be a valid port (got "${opts.port}").`);
       }
       const originScheme = parseOriginScheme(opts.originScheme);
+      const proxyProtocol = parseProxyProtocol(opts.proxyProtocol);
       const { domain, records } = await client.domains.create(space, id, {
         domain: opts.domain,
         port,
         ...(originScheme ? { originScheme } : {}),
+        ...(proxyProtocol ? { proxyProtocol } : {}),
+        ...(opts.confirmMixedProxyProtocol ? { confirmMixedProxyProtocol: true } : {}),
       });
       if (rt.json) return printJSON({ domain, records });
       process.stdout.write(`Attached ${domain.domain} (${domain.id}) — status ${domain.status}\n`);
@@ -153,6 +170,34 @@ export function domainsCommand(): Command {
       const domain = await client.domains.update(space, id, mappingId, { originScheme });
       if (rt.json) return printJSON(domain);
       process.stdout.write(`${domain.domain} now reached over ${originScheme}\n`);
+    });
+
+  cmd
+    .command("set-proxy-protocol")
+    .argument("<cube>", "cube name or ID")
+    .argument("<domain-id>", "the domain mapping ID (see `krova domains list`)")
+    .argument("<version>", "v1, v2 or off")
+    .option("--confirm-mixed-proxy-protocol", "save even though other domains on the same Cube port use a different setting")
+    .description("send a PROXY protocol header naming the visitor on each connection to the Cube, or stop")
+    .action(async (cubeRef: string, mappingId: string, version: string, opts, c: Command) => {
+      const rt = getRuntime(c);
+      const client = makeClient(rt.res);
+      const space = await resolveSpace(rt);
+      const id = await resolveCube(client, space, cubeRef);
+      const proxyProtocol = parseProxyProtocol(version);
+      if (proxyProtocol === undefined) {
+        throw new Error(`version must be "v1", "v2" or "off" (got "${version}").`);
+      }
+      const domain = await client.domains.update(space, id, mappingId, {
+        proxyProtocol,
+        ...(opts.confirmMixedProxyProtocol ? { confirmMixedProxyProtocol: true } : {}),
+      });
+      if (rt.json) return printJSON(domain);
+      process.stdout.write(
+        proxyProtocol
+          ? `${domain.domain} now sends a PROXY protocol ${proxyProtocol} header to the Cube\n`
+          : `${domain.domain} no longer sends a PROXY protocol header\n`,
+      );
     });
 
   cmd

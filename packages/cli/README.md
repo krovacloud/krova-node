@@ -91,6 +91,13 @@ krova domains rm <cube> <domain-id>
 krova domains add <cube> --domain panel.example.com --port 443 --origin-scheme https
 krova domains set-origin <cube> <domain-id> https
 
+# Send a PROXY protocol header naming the visitor on each connection to the
+# Cube, for an app that reads the visitor from the connection. The app must
+# accept it on that port first. Every domain on the same Cube port needs the
+# same setting; add --confirm-mixed-proxy-protocol to save a mix anyway.
+krova domains add <cube> --domain app.example.com --port 8080 --proxy-protocol v2
+krova domains set-proxy-protocol <cube> <domain-id> v2    # or v1, or off
+
 # Snapshots + restore
 krova snapshots list <cube>
 krova snapshots create <cube> --name nightly
