@@ -28,6 +28,10 @@ All notable changes to `@krovacloud/sdk` are documented here. This project adher
   arbitrary record should narrow to `body?.error` (or cast the body to a
   concrete shape they actually expect).
 
+### Documentation
+
+- README documents `cubes.setTerminationProtection` (and `TerminationProtectedError`), `terminationProtection` on `cubes.create()` and on `Cube`, the `resizing` state, and `client.webhooks`. It no longer says webhooks need `client.raw`.
+
 ## 0.4.2
 
 ### Changed

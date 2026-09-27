@@ -14,6 +14,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   only the PROXY setting. The default stays **HTTP**, so a saved Update sends
   what it sent before.
 
+### Fixed
+
+- Webhook **Create**'s Events hint suggested `cube.started`, which is not an event Krova sends. It now says `cube.running, cube.stopped`.
+
 
 
 

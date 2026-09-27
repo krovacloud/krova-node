@@ -1018,7 +1018,7 @@ export class Krova implements INodeType {
 				required: true,
 				default: '',
 				description:
-					'Comma-separated list of webhook event names to subscribe to, e.g. cube.started, cube.stopped',
+					'Comma-separated list of webhook event names to subscribe to, e.g. cube.running, cube.stopped',
 				displayOptions: { show: { resource: ['webhook'], operation: ['create'] } },
 				routing: {
 					send: {
