@@ -9,6 +9,8 @@ All notable changes to `@krovacloud/sdk` are documented here. This project adher
 
 ### Added
 
+- Backups and sharing them between spaces: `backups.list()`, `backups.get()` and `backups.share()` (with an optional `idempotencyKey`), and a new `backupShares` group with `list()`, `accept()`, `decline()` and `cancel()`. New exported types `Backup`, `BackupShare`, `BackupShareList` and `AcceptedBackupShare`. These endpoints read the Backups permissions (`backup.view`, `backup.manage`), not the Cube ones. The OpenAPI snapshot is refreshed from the live API and the types regenerated.
+
 - `proxyProtocol` (`"v1"`, `"v2"` or `null`) on `domains.create()` and
   `domains.update()`, and on every returned `Domain`, which now also carries
   `originScheme`. `confirmMixedProxyProtocol: true` saves a setting that differs

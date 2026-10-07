@@ -104,6 +104,14 @@ const confirmMixedProxyProtocolField = z
     "Set true only when the user confirms that the app handles both settings on this port (or is mid-migration): it lets a save go ahead that leaves domains on the same Cube port with different proxyProtocol settings. The 409 that asks for it names the other domains; relay them before asking.",
   );
 
+const backupIdField = {
+  backupId: z.string().min(1).describe("The backup id (see list_backups)."),
+};
+
+const shareIdField = {
+  shareId: z.string().min(1).describe("The backup share id (see list_backup_shares)."),
+};
+
 const endpointIdField = {
   endpointId: z
     .string()
@@ -507,6 +515,87 @@ export const TOOLS: ToolDef[] = [
     },
     handler: (client, args, ctx) =>
       client.cubes.restore(resolveSpaceId(args.spaceId, ctx), args.cubeId, args.snapshotId),
+  }),
+
+  // ── Backups + backup shares ────────────────────────────────────────────────
+  //
+  // ⛔ No download tool, deliberately. The SDK's `backups.download` returns a
+  // presigned link that downloads the whole disk with no further
+  // authentication. Handing it to a model puts a live credential into the
+  // conversation transcript, so the MCP server does not offer it; the CLI's
+  // `krova backups download` prints it to the user's own terminal instead.
+  defineTool({
+    name: "list_backups",
+    title: "List Backups",
+    description:
+      "List the space's backups, newest first: each is a Cube's disk and configuration kept after the Cube is gone, redeployable as a new Cube. `sharedFromBackupId` is set on a copy another space shared with this one. Needs the View Backups permission.",
+    annotations: { readOnlyHint: true, openWorldHint: true },
+    inputSchema: { ...spaceIdField },
+    handler: (client, args, ctx) => client.backups.list(resolveSpaceId(args.spaceId, ctx)),
+  }),
+  defineTool({
+    name: "get_backup",
+    title: "Get Backup",
+    description: "Get one backup by id. Needs the View Backups permission.",
+    annotations: { readOnlyHint: true, openWorldHint: true },
+    inputSchema: { ...spaceIdField, ...backupIdField },
+    handler: (client, args, ctx) =>
+      client.backups.get(resolveSpaceId(args.spaceId, ctx), args.backupId),
+  }),
+  defineTool({
+    name: "share_backup",
+    title: "Share Backup",
+    description:
+      "Offer a copy of a backup to another space. The copy holds the backup's whole disk, so confirm the destination space with the user first. Nothing is copied until the destination accepts (its owner, or a member there with Manage Backups) within 48 hours; the accepted copy is the destination's own and is billed to it, and this space's backup and bill are unchanged. Always a pending request through the API, even when the user owns both spaces. Needs the Manage Backups permission.",
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
+    inputSchema: {
+      ...spaceIdField,
+      ...backupIdField,
+      destinationSpaceId: z.string().min(1).describe("The space to offer a copy to."),
+    },
+    handler: (client, args, ctx) =>
+      client.backups.share(resolveSpaceId(args.spaceId, ctx), args.backupId, {
+        destinationSpaceId: args.destinationSpaceId,
+      }),
+  }),
+  defineTool({
+    name: "list_backup_shares",
+    title: "List Backup Shares",
+    description:
+      "Pending, unexpired backup shares into this space (`incoming`, waiting for this space to accept or decline) and out of it (`outgoing`). `counterpartySpaceName` is the other space. Needs the View Backups permission.",
+    annotations: { readOnlyHint: true, openWorldHint: true },
+    inputSchema: { ...spaceIdField },
+    handler: (client, args, ctx) => client.backupShares.list(resolveSpaceId(args.spaceId, ctx)),
+  }),
+  defineTool({
+    name: "accept_backup_share",
+    title: "Accept Backup Share",
+    description:
+      "Accept a backup another space shared with this one. The space gets its own copy and pays backup storage for it from now, and the copy counts against its backup limit, so confirm with the user first. Only the space's owner, or a member with Manage Backups, may accept. Refused with 422 when the space cannot take it (no card or credit, owner not verified, an open abuse notice, or no backup allowance left on its plan). Returns the share and the new backup.",
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
+    inputSchema: { ...spaceIdField, ...shareIdField },
+    handler: (client, args, ctx) =>
+      client.backupShares.accept(resolveSpaceId(args.spaceId, ctx), args.shareId),
+  }),
+  defineTool({
+    name: "decline_backup_share",
+    title: "Decline Backup Share",
+    description:
+      "Decline a backup another space shared with this one. Nothing is copied or billed. Same permission as accept_backup_share.",
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+    inputSchema: { ...spaceIdField, ...shareIdField },
+    handler: (client, args, ctx) =>
+      client.backupShares.decline(resolveSpaceId(args.spaceId, ctx), args.shareId),
+  }),
+  defineTool({
+    name: "cancel_backup_share",
+    title: "Cancel Backup Share",
+    description:
+      "Withdraw a pending share this space offered, before the destination answers. Allowed for the space's owner, a member with Manage Backups, or the member who raised it.",
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+    inputSchema: { ...spaceIdField, ...shareIdField },
+    handler: (client, args, ctx) =>
+      client.backupShares.cancel(resolveSpaceId(args.spaceId, ctx), args.shareId),
   }),
 
   // ── TCP port mappings ──────────────────────────────────────────────────────

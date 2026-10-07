@@ -8,6 +8,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Backup** resource: Get, Get Download Link, List and Share (with an optional Idempotency Key). **Backup Share** resource: Accept, Cancel, Decline and List. Get Download Link returns a presigned URL that works for anyone holding it for 15 minutes, so treat its output as a secret.
+
 - Domain **Create** and **Update** take **PROXY Protocol** (Off, V1, V2) and
   **Confirm Mixed PROXY Protocol** as Additional Fields, sent only when added.
 - Domain **Update** offers **Leave Unchanged** for Origin Scheme, so it can change

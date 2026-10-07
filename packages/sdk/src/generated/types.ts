@@ -306,6 +306,298 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/spaces/{spaceId}/backup-shares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List pending backup shares into and out of this space */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description `incoming` asks this space to accept a copy; `outgoing` was offered by this space */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            incoming: components["schemas"]["BackupShare"][];
+                            outgoing: components["schemas"]["BackupShare"][];
+                        };
+                    };
+                };
+                403: components["responses"]["Forbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceId}/backup-shares/{shareId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept a backup share offered to this space
+         * @description Requires an API key of this space's owner, or of a member with `backup.manage`. Creates this space's own copy of the backup, billed for storage from now. Refused with 422 when the space cannot take it (no card, unverified owner, open abuse notice, no credit, or no backup allowance left on its plan).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    shareId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The share and the new copy */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            backup: components["schemas"]["Backup"];
+                            share: components["schemas"]["BackupShare"];
+                        };
+                    };
+                };
+                403: components["responses"]["Forbidden"];
+                /** @description The request is no longer pending, has expired, or this space already has a copy */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description This space cannot take the copy right now */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                429: components["responses"]["RateLimited"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceId}/backup-shares/{shareId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw a pending backup share offered by this space
+         * @description Allowed for an API key of this space's owner, of a member with `backup.manage`, or of the member who raised the request.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    shareId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Canceled */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            share: components["schemas"]["BackupShare"];
+                        };
+                    };
+                };
+                403: components["responses"]["Forbidden"];
+                /** @description The request is no longer pending */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                429: components["responses"]["RateLimited"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceId}/backup-shares/{shareId}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decline a backup share offered to this space
+         * @description Requires an API key of this space's owner, or of a member with `backup.manage`.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    shareId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Declined */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            share: components["schemas"]["BackupShare"];
+                        };
+                    };
+                };
+                403: components["responses"]["Forbidden"];
+                /** @description The request is no longer pending */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                429: components["responses"]["RateLimited"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceId}/backups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the space's backups, newest first (shared copies included) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Backups */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            backups: components["schemas"]["Backup"][];
+                        };
+                    };
+                };
+                403: components["responses"]["Forbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceId}/backups/{backupId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one backup */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    backupId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The backup */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            backup: components["schemas"]["Backup"];
+                        };
+                    };
+                };
+                404: components["responses"]["NotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/spaces/{spaceId}/backups/{backupId}/download": {
         parameters: {
             query?: never;
@@ -353,6 +645,70 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceId}/backups/{backupId}/shares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Offer a copy of this backup to another space
+         * @description Requires `backup.manage`. Creates a pending share request that the destination space accepts within 48 hours: its owner, or a member there with `backup.manage`, in the dashboard or with an API key of their own. On acceptance the destination gets its own copy of the backup and pays backup storage for it from that moment; this space's backup is unchanged. A request made with an API key never completes immediately, even when the key's user owns both spaces.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Optional unique key (max 255 chars). Replays return the original response and add header Idempotency-Replayed: true. Scoped per space; expires after 24h. */
+                    "Idempotency-Key"?: string;
+                };
+                path: {
+                    spaceId: string;
+                    backupId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        destinationSpaceId: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Share requested */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            share: components["schemas"]["BackupShare"];
+                        };
+                    };
+                };
+                400: components["responses"]["BadRequest"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
+                /** @description The backup is not complete, is being deleted, is already in that space, or already has a pending share request for it */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                429: components["responses"]["RateLimited"];
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -994,7 +1350,7 @@ export interface paths {
                     };
                 };
                 400: components["responses"]["BadRequest"];
-                /** @description Refused. Among other reasons (the domain is in use, or is being removed): the save would leave domains on the same cube port with different proxyProtocol settings. Then `errorMeta.code` is `proxy_protocol_port_mismatch`, with `errorMeta.port` and `errorMeta.domains` naming the other domains. Change them together, or resend with confirmMixedProxyProtocol: true. */
+                /** @description Refused. Among other reasons (the domain is in use or is being removed; or, temporarily, the Cube is in the last stretch of a move to another server, refused with the error "This cube is being moved to another server. Try again in a minute." and accepted once the move ends): the save would leave domains on the same cube port with different proxyProtocol settings. Then `errorMeta.code` is `proxy_protocol_port_mismatch`, with `errorMeta.port` and `errorMeta.domains` naming the other domains. Change them together, or resend with confirmMixedProxyProtocol: true. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -1046,6 +1402,13 @@ export interface paths {
                     };
                 };
                 404: components["responses"]["NotFound"];
+                /** @description Refused because the change conflicts with the Cube's current state, for example the port is already in use or the mapping is already being removed. One such conflict is temporary: in the last stretch of a move of the Cube to another server the change is refused with the error "This cube is being moved to another server. Try again in a minute." Nothing was changed then, and the same request is accepted once the move ends. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
         options?: never;
@@ -1145,7 +1508,7 @@ export interface paths {
                 };
                 400: components["responses"]["BadRequest"];
                 404: components["responses"]["NotFound"];
-                /** @description Refused. Among other reasons (the domain is in use, or is being removed): the save would leave domains on the same cube port with different proxyProtocol settings. Then `errorMeta.code` is `proxy_protocol_port_mismatch`, with `errorMeta.port` and `errorMeta.domains` naming the other domains. Change them together, or resend with confirmMixedProxyProtocol: true. */
+                /** @description Refused. Among other reasons (the domain is in use or is being removed; or, temporarily, the Cube is in the last stretch of a move to another server, refused with the error "This cube is being moved to another server. Try again in a minute." and accepted once the move ends): the save would leave domains on the same cube port with different proxyProtocol settings. Then `errorMeta.code` is `proxy_protocol_port_mismatch`, with `errorMeta.port` and `errorMeta.domains` naming the other domains. Change them together, or resend with confirmMixedProxyProtocol: true. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -1555,6 +1918,13 @@ export interface paths {
                 };
                 400: components["responses"]["BadRequest"];
                 404: components["responses"]["NotFound"];
+                /** @description Refused because the change conflicts with the Cube's current state, for example the port is already in use or the mapping is already being removed. One such conflict is temporary: in the last stretch of a move of the Cube to another server the change is refused with the error "This cube is being moved to another server. Try again in a minute." Nothing was changed then, and the same request is accepted once the move ends. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
                 429: components["responses"]["RateLimited"];
             };
         };
@@ -1647,6 +2017,13 @@ export interface paths {
                     };
                 };
                 400: components["responses"]["BadRequest"];
+                /** @description Refused because the change conflicts with the Cube's current state, for example the port is already in use or the mapping is already being removed. One such conflict is temporary: in the last stretch of a move of the Cube to another server the change is refused with the error "This cube is being moved to another server. Try again in a minute." Nothing was changed then, and the same request is accepted once the move ends. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
                 429: components["responses"]["RateLimited"];
             };
         };
@@ -1692,6 +2069,13 @@ export interface paths {
                     };
                 };
                 404: components["responses"]["NotFound"];
+                /** @description Refused because the change conflicts with the Cube's current state, for example the port is already in use or the mapping is already being removed. One such conflict is temporary: in the last stretch of a move of the Cube to another server the change is refused with the error "This cube is being moved to another server. Try again in a minute." Nothing was changed then, and the same request is accepted once the move ends. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
         options?: never;
@@ -1780,7 +2164,7 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        events: ("cube.created" | "cube.running" | "cube.stopped" | "cube.error" | "cube.deleted" | "cube.cold_restarted" | "cube.transfer.started" | "cube.transfer.completed" | "cube.transfer.failed" | "cube.resize.started" | "cube.resize.completed" | "cube.resize.failed" | "resource.alert.memory" | "resource.alert.cpu" | "resource.alert.disk" | "domain.alert.error_4xx" | "domain.alert.error_5xx" | "cube.space_transferred" | "cube.space_transfer.requested" | "cube.space_transfer.accepted" | "cube.space_transfer.declined" | "cube.space_transfer.cancelled" | "cube.space_transfer.expired" | "snapshot.created" | "snapshot.restored" | "snapshot.deleted" | "snapshot.pinned" | "snapshot.promoted_to_backup" | "snapshot.exported" | "backup.created" | "backup.deleted" | "backup.redeployed" | "domain.added" | "domain.active" | "domain.removed" | "tcp_mapping.added" | "tcp_mapping.removed" | "tcp_mapping.updated" | "hosting.provisioned" | "hosting.suspended" | "hosting.unsuspended" | "hosting.deleted" | "hosting.plan_changed" | "hosting.renewed" | "hosting.cancellation_scheduled" | "hosting.suspended_for_non_payment" | "hosting.deleted_after_recovery" | "member.invited" | "member.joined" | "member.removed" | "member.role_changed")[];
+                        events: ("cube.created" | "cube.running" | "cube.stopped" | "cube.error" | "cube.deleted" | "cube.cold_restarted" | "cube.transfer.started" | "cube.transfer.completed" | "cube.transfer.failed" | "cube.resize.started" | "cube.resize.completed" | "cube.resize.failed" | "resource.alert.memory" | "resource.alert.cpu" | "resource.alert.disk" | "domain.alert.error_4xx" | "domain.alert.error_5xx" | "cube.space_transferred" | "cube.space_transfer.requested" | "cube.space_transfer.accepted" | "cube.space_transfer.declined" | "cube.space_transfer.cancelled" | "cube.space_transfer.expired" | "snapshot.created" | "snapshot.restored" | "snapshot.deleted" | "snapshot.pinned" | "snapshot.promoted_to_backup" | "snapshot.exported" | "backup.created" | "backup.deleted" | "backup.redeployed" | "backup.share.requested" | "backup.share.accepted" | "backup.share.declined" | "backup.share.canceled" | "backup.share.expired" | "domain.added" | "domain.active" | "domain.removed" | "tcp_mapping.added" | "tcp_mapping.removed" | "tcp_mapping.updated" | "hosting.provisioned" | "hosting.suspended" | "hosting.unsuspended" | "hosting.deleted" | "hosting.plan_changed" | "hosting.renewed" | "hosting.cancellation_scheduled" | "hosting.suspended_for_non_payment" | "hosting.deleted_after_recovery" | "member.invited" | "member.joined" | "member.removed" | "member.role_changed")[];
                         /** Format: uri */
                         url: string;
                     };
@@ -1906,6 +2290,58 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Backup: {
+            /** Format: date-time */
+            completedAt: string | null;
+            /** @description The Cube configuration captured with the backup, used by redeploy. A shared copy carries no domains. */
+            config: {
+                diskLimitGb: number | null;
+                domains: {
+                    domain: string;
+                    port: number;
+                }[];
+                imageId: string | null;
+                ramMb: number | null;
+                regionId: string | null;
+                regionName: string | null;
+                tcpPorts: {
+                    cubePort: number;
+                    label: string | null;
+                }[];
+                vcpus: number | null;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            diskSizeGb: number;
+            id: string;
+            name: string;
+            originalCubeId: string;
+            originalCubeName: string;
+            redeployedCubeId: string | null;
+            /** @description Set on a shared copy: the backup it was shared from, which may since have been deleted. Null for a backup this space made itself. */
+            sharedFromBackupId: string | null;
+            sizeBytes: number | null;
+            /** @enum {string} */
+            status: "pending" | "creating" | "complete" | "failed";
+        };
+        BackupShare: {
+            /** @description The SOURCE backup being shared. */
+            backupId: string;
+            backupName: string;
+            /** @description The destination space's own copy, once the share is accepted. */
+            copyBackupId: string | null;
+            /** @description The other space in this share: the destination on an outgoing share, the source on an incoming one. */
+            counterpartySpaceName: string;
+            /** Format: date-time */
+            createdAt: string;
+            destinationSpaceId: string;
+            /** Format: date-time */
+            expiresAt: string;
+            id: string;
+            sourceSpaceId: string;
+            /** @enum {string} */
+            status: "pending" | "accepted" | "declined" | "canceled" | "expired";
+        };
         Cube: {
             costPerHour: number;
             /** Format: date-time */

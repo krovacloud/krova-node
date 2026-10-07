@@ -1,6 +1,7 @@
 import { Command } from "commander";
 
 import { authCommand } from "./commands/auth.js";
+import { backupsCommand } from "./commands/backups.js";
 import { imagesCommand, pricingCommand, regionsCommand } from "./commands/catalog.js";
 import { contextCommand } from "./commands/context.js";
 import { cubesCommand, rootGetCommand, rootListCommand } from "./commands/cubes.js";
@@ -29,6 +30,7 @@ program.addCommand(whoamiCommand());
 program.addCommand(cubesCommand());
 program.addCommand(domainsCommand());
 program.addCommand(snapshotsCommand());
+program.addCommand(backupsCommand());
 program.addCommand(tcpCommand());
 program.addCommand(sshCommand());
 program.addCommand(rootListCommand()); // `krova list` (alias `ls`)

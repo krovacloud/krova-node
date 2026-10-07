@@ -8,11 +8,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Backup tools: `list_backups`, `get_backup`, `share_backup`, `list_backup_shares`, `accept_backup_share`, `decline_backup_share` and `cancel_backup_share`. `share_backup` and `accept_backup_share` are marked destructive, so a client asks before handing a copy of a disk to another space or adding a storage bill. There is deliberately no download tool: the presigned link fetches the whole disk with no further authentication and must not land in a model transcript. Use the CLI or SDK for downloads.
+
 - `proxyProtocol` (`v1`, `v2` or `off`) and `confirmMixedProxyProtocol` on
   `create_domain` and `update_domain`.
 
 ### Changed
 
+- README: the tool table now lists every registered tool (37), including the termination protection and webhook tools it had been missing.
 - `update_domain` takes `originScheme` or `proxyProtocol` (at least one), so it
   can change one setting without touching the other.
 - The `originScheme` description no longer says it is verified against the Cube

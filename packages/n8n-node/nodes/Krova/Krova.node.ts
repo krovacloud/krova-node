@@ -46,6 +46,14 @@ export class Krova implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Backup',
+						value: 'backup',
+					},
+					{
+						name: 'Backup Share',
+						value: 'backupShare',
+					},
+					{
 						name: 'Catalog',
 						value: 'catalog',
 					},
@@ -678,6 +686,198 @@ export class Krova implements INodeType {
 				default: '',
 				description: 'The domain mapping ID from the List operation',
 				displayOptions: { show: { resource: ['domain'], operation: ['delete', 'update'] } },
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: { show: { resource: ['backup'] } },
+				options: [
+					{
+						name: 'Get',
+						value: 'get',
+						action: 'Get backup',
+						description: 'Get one backup',
+						routing: {
+							request: {
+								method: 'GET',
+								url: '=/spaces/{{ encodeURIComponent($parameter["spaceId"]) }}/backups/{{ encodeURIComponent($parameter["backupId"]) }}',
+							},
+						},
+					},
+					{
+						name: 'Get Download Link',
+						value: 'getDownloadLink',
+						action: 'Get backup download link',
+						description:
+							'Get a link to download the backup .cube archive. It is valid for 15 minutes and needs no further authentication, so treat it as a secret.',
+						routing: {
+							request: {
+								method: 'GET',
+								url: '=/spaces/{{ encodeURIComponent($parameter["spaceId"]) }}/backups/{{ encodeURIComponent($parameter["backupId"]) }}/download',
+							},
+						},
+					},
+					{
+						name: 'List',
+						value: 'list',
+						action: 'List backups',
+						description: 'List the space backups, newest first, including copies shared into it',
+						routing: {
+							request: {
+								method: 'GET',
+								url: '=/spaces/{{ encodeURIComponent($parameter["spaceId"]) }}/backups',
+							},
+						},
+					},
+					{
+						name: 'Share',
+						value: 'share',
+						action: 'Share backup',
+						description:
+							'Offer a copy of a backup to another space. Nothing is copied until it accepts, within 48 hours; the copy is then its own and billed to it.',
+						routing: {
+							request: {
+								method: 'POST',
+								url: '=/spaces/{{ encodeURIComponent($parameter["spaceId"]) }}/backups/{{ encodeURIComponent($parameter["backupId"]) }}/shares',
+							},
+						},
+					},
+				],
+				default: 'list',
+			},
+
+			{
+				displayName: 'Space ID',
+				name: 'spaceId',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'The ID of the Space that holds the backups. The API key needs the View Backups permission to read and Manage Backups to share.',
+				displayOptions: { show: { resource: ['backup'] } },
+			},
+
+			{
+				displayName: 'Backup ID',
+				name: 'backupId',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'The backup ID from the List operation',
+				displayOptions: { show: { resource: ['backup'], operation: ['get', 'getDownloadLink', 'share'] } },
+			},
+
+			{
+				displayName: 'Destination Space ID',
+				name: 'destinationSpaceId',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'The space to offer a copy to. Its owner, or a member there who can manage backups, accepts it.',
+				displayOptions: { show: { resource: ['backup'], operation: ['share'] } },
+				routing: { send: { type: 'body', property: 'destinationSpaceId' } },
+			},
+
+			{
+				displayName: 'Additional Fields',
+				name: 'backupShareAdditionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: { show: { resource: ['backup'], operation: ['share'] } },
+				options: [
+					{
+						displayName: 'Idempotency Key',
+						name: 'idempotencyKey',
+						type: 'string',
+						default: '',
+						description:
+							'A unique key (max 255 characters). Running the share again with the same key returns the original request instead of making a new one.',
+						routing: { request: { headers: { 'Idempotency-Key': '={{ $value }}' } } },
+					},
+				],
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: { show: { resource: ['backupShare'] } },
+				options: [
+					{
+						name: 'Accept',
+						value: 'accept',
+						action: 'Accept backup share',
+						description:
+							'Accept a backup shared with this space. The space pays backup storage for its copy from now. Needs the owner or Manage Backups.',
+						routing: {
+							request: {
+								method: 'POST',
+								url: '=/spaces/{{ encodeURIComponent($parameter["spaceId"]) }}/backup-shares/{{ encodeURIComponent($parameter["shareId"]) }}/accept',
+							},
+						},
+					},
+					{
+						name: 'Cancel',
+						value: 'cancel',
+						action: 'Cancel backup share',
+						description: 'Withdraw a pending share this space offered',
+						routing: {
+							request: {
+								method: 'POST',
+								url: '=/spaces/{{ encodeURIComponent($parameter["spaceId"]) }}/backup-shares/{{ encodeURIComponent($parameter["shareId"]) }}/cancel',
+							},
+						},
+					},
+					{
+						name: 'Decline',
+						value: 'decline',
+						action: 'Decline backup share',
+						description: 'Decline a backup shared with this space. Nothing is copied.',
+						routing: {
+							request: {
+								method: 'POST',
+								url: '=/spaces/{{ encodeURIComponent($parameter["spaceId"]) }}/backup-shares/{{ encodeURIComponent($parameter["shareId"]) }}/decline',
+							},
+						},
+					},
+					{
+						name: 'List',
+						value: 'list',
+						action: 'List backup shares',
+						description: 'List pending backup shares into (incoming) and out of (outgoing) this space',
+						routing: {
+							request: {
+								method: 'GET',
+								url: '=/spaces/{{ encodeURIComponent($parameter["spaceId"]) }}/backup-shares',
+							},
+						},
+					},
+				],
+				default: 'list',
+			},
+
+			{
+				displayName: 'Space ID',
+				name: 'spaceId',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'The ID of the Space whose shares to list or answer',
+				displayOptions: { show: { resource: ['backupShare'] } },
+			},
+
+			{
+				displayName: 'Share ID',
+				name: 'shareId',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'The backup share ID from the List operation',
+				displayOptions: { show: { resource: ['backupShare'], operation: ['accept', 'cancel', 'decline'] } },
 			},
 
 			{

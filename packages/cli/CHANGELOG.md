@@ -6,6 +6,8 @@ All notable changes to `@krovacloud/cli` are documented here.
 
 ### Added
 
+- `krova backups`: `list`, `get <backup>`, `download <backup>`, `share <backup> <destination-space-id> [--idempotency-key <key>]`, `shares`, `accept <share-id>`, `decline <share-id>` and `cancel <share-id>`. A backup can be named or given by ID. `download` warns on stderr that the printed link works for anyone who has it until it expires. These need the Backups permissions on the key's member (View Backups to read, Manage Backups for the rest).
+
 - `krova domains add --proxy-protocol <v1|v2>` and
   `krova domains set-proxy-protocol <cube> <domain-id> <v1|v2|off>`: send a
   PROXY protocol header naming the visitor on each connection to the Cube. Both
