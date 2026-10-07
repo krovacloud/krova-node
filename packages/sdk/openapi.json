@@ -53,6 +53,208 @@
       }
     },
     "schemas": {
+      "Backup": {
+        "properties": {
+          "completedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "config": {
+            "description": "The Cube configuration captured with the backup, used by redeploy. A shared copy carries no domains.",
+            "properties": {
+              "diskLimitGb": {
+                "nullable": true,
+                "type": "integer"
+              },
+              "domains": {
+                "items": {
+                  "properties": {
+                    "domain": {
+                      "type": "string"
+                    },
+                    "port": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "domain",
+                    "port"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "imageId": {
+                "nullable": true,
+                "type": "string"
+              },
+              "ramMb": {
+                "nullable": true,
+                "type": "integer"
+              },
+              "regionId": {
+                "nullable": true,
+                "type": "string"
+              },
+              "regionName": {
+                "nullable": true,
+                "type": "string"
+              },
+              "tcpPorts": {
+                "items": {
+                  "properties": {
+                    "cubePort": {
+                      "type": "integer"
+                    },
+                    "label": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "cubePort",
+                    "label"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "vcpus": {
+                "nullable": true,
+                "type": "number"
+              }
+            },
+            "required": [
+              "vcpus",
+              "ramMb",
+              "diskLimitGb",
+              "imageId",
+              "regionId",
+              "regionName",
+              "domains",
+              "tcpPorts"
+            ],
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "diskSizeGb": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "originalCubeId": {
+            "type": "string"
+          },
+          "originalCubeName": {
+            "type": "string"
+          },
+          "redeployedCubeId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "sharedFromBackupId": {
+            "description": "Set on a shared copy: the backup it was shared from, which may since have been deleted. Null for a backup this space made itself.",
+            "nullable": true,
+            "type": "string"
+          },
+          "sizeBytes": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "creating",
+              "complete",
+              "failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "originalCubeId",
+          "originalCubeName",
+          "sizeBytes",
+          "diskSizeGb",
+          "config",
+          "sharedFromBackupId",
+          "redeployedCubeId",
+          "completedAt",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "BackupShare": {
+        "properties": {
+          "backupId": {
+            "description": "The SOURCE backup being shared.",
+            "type": "string"
+          },
+          "backupName": {
+            "type": "string"
+          },
+          "copyBackupId": {
+            "description": "The destination space's own copy, once the share is accepted.",
+            "nullable": true,
+            "type": "string"
+          },
+          "counterpartySpaceName": {
+            "description": "The other space in this share: the destination on an outgoing share, the source on an incoming one.",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "destinationSpaceId": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "sourceSpaceId": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "accepted",
+              "declined",
+              "canceled",
+              "expired"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "backupId",
+          "backupName",
+          "sourceSpaceId",
+          "destinationSpaceId",
+          "counterpartySpaceName",
+          "copyBackupId",
+          "expiresAt",
+          "createdAt"
+        ],
+        "type": "object"
+      },
       "Cube": {
         "properties": {
           "costPerHour": {
@@ -1116,6 +1318,325 @@
         ]
       }
     },
+    "/spaces/{spaceId}/backup-shares": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "incoming": {
+                      "items": {
+                        "$ref": "#/components/schemas/BackupShare"
+                      },
+                      "type": "array"
+                    },
+                    "outgoing": {
+                      "items": {
+                        "$ref": "#/components/schemas/BackupShare"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "incoming",
+                    "outgoing"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "`incoming` asks this space to accept a copy; `outgoing` was offered by this space"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "summary": "List pending backup shares into and out of this space",
+        "tags": [
+          "Backups"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/backup-shares/{shareId}/accept": {
+      "post": {
+        "description": "Requires an API key of this space's owner, or of a member with `backup.manage`. Creates this space's own copy of the backup, billed for storage from now. Refused with 422 when the space cannot take it (no card, unverified owner, open abuse notice, no credit, or no backup allowance left on its plan).",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "shareId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "backup": {
+                      "$ref": "#/components/schemas/Backup"
+                    },
+                    "share": {
+                      "$ref": "#/components/schemas/BackupShare"
+                    }
+                  },
+                  "required": [
+                    "share",
+                    "backup"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The share and the new copy"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "description": "The request is no longer pending, has expired, or this space already has a copy"
+          },
+          "422": {
+            "description": "This space cannot take the copy right now"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "Accept a backup share offered to this space",
+        "tags": [
+          "Backups"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/backup-shares/{shareId}/cancel": {
+      "post": {
+        "description": "Allowed for an API key of this space's owner, of a member with `backup.manage`, or of the member who raised the request.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "shareId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "share": {
+                      "$ref": "#/components/schemas/BackupShare"
+                    }
+                  },
+                  "required": [
+                    "share"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Canceled"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "description": "The request is no longer pending"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "Withdraw a pending backup share offered by this space",
+        "tags": [
+          "Backups"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/backup-shares/{shareId}/decline": {
+      "post": {
+        "description": "Requires an API key of this space's owner, or of a member with `backup.manage`.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "shareId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "share": {
+                      "$ref": "#/components/schemas/BackupShare"
+                    }
+                  },
+                  "required": [
+                    "share"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Declined"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "description": "The request is no longer pending"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "Decline a backup share offered to this space",
+        "tags": [
+          "Backups"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/backups": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "backups": {
+                      "items": {
+                        "$ref": "#/components/schemas/Backup"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "backups"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Backups"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "summary": "List the space's backups, newest first (shared copies included)",
+        "tags": [
+          "Backups"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/backups/{backupId}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "backupId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "backup": {
+                      "$ref": "#/components/schemas/Backup"
+                    }
+                  },
+                  "required": [
+                    "backup"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The backup"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "summary": "Get one backup",
+        "tags": [
+          "Backups"
+        ]
+      }
+    },
     "/spaces/{spaceId}/backups/{backupId}/download": {
       "get": {
         "parameters": [
@@ -1171,6 +1692,96 @@
           }
         },
         "summary": "Generate a presigned download URL for a backup .cube archive",
+        "tags": [
+          "Backups"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/backups/{backupId}/shares": {
+      "post": {
+        "description": "Requires `backup.manage`. Creates a pending share request that the destination space accepts within 48 hours: its owner, or a member there with `backup.manage`, in the dashboard or with an API key of their own. On acceptance the destination gets its own copy of the backup and pays backup storage for it from that moment; this space's backup is unchanged. A request made with an API key never completes immediately, even when the key's user owns both spaces.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "backupId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional unique key (max 255 chars). Replays return the original response and add header Idempotency-Replayed: true. Scoped per space; expires after 24h.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "destinationSpaceId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "destinationSpaceId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "share": {
+                      "$ref": "#/components/schemas/BackupShare"
+                    }
+                  },
+                  "required": [
+                    "share"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Share requested"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "The backup is not complete, is being deleted, is already in that space, or already has a pending share request for it"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "Offer a copy of this backup to another space",
         "tags": [
           "Backups"
         ]
@@ -2267,7 +2878,7 @@
             "$ref": "#/components/responses/BadRequest"
           },
           "409": {
-            "description": "Refused. Among other reasons (the domain is in use, or is being removed): the save would leave domains on the same cube port with different proxyProtocol settings. Then `errorMeta.code` is `proxy_protocol_port_mismatch`, with `errorMeta.port` and `errorMeta.domains` naming the other domains. Change them together, or resend with confirmMixedProxyProtocol: true."
+            "description": "Refused. Among other reasons (the domain is in use or is being removed; or, temporarily, the Cube is in the last stretch of a move to another server, refused with the error \"This cube is being moved to another server. Try again in a minute.\" and accepted once the move ends): the save would leave domains on the same cube port with different proxyProtocol settings. Then `errorMeta.code` is `proxy_protocol_port_mismatch`, with `errorMeta.port` and `errorMeta.domains` naming the other domains. Change them together, or resend with confirmMixedProxyProtocol: true."
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -2328,6 +2939,9 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Refused because the change conflicts with the Cube's current state, for example the port is already in use or the mapping is already being removed. One such conflict is temporary: in the last stretch of a move of the Cube to another server the change is refused with the error \"This cube is being moved to another server. Try again in a minute.\" Nothing was changed then, and the same request is accepted once the move ends."
           }
         },
         "summary": "Detach a custom domain",
@@ -2565,7 +3179,7 @@
             "$ref": "#/components/responses/NotFound"
           },
           "409": {
-            "description": "Refused. Among other reasons (the domain is in use, or is being removed): the save would leave domains on the same cube port with different proxyProtocol settings. Then `errorMeta.code` is `proxy_protocol_port_mismatch`, with `errorMeta.port` and `errorMeta.domains` naming the other domains. Change them together, or resend with confirmMixedProxyProtocol: true."
+            "description": "Refused. Among other reasons (the domain is in use or is being removed; or, temporarily, the Cube is in the last stretch of a move to another server, refused with the error \"This cube is being moved to another server. Try again in a minute.\" and accepted once the move ends): the save would leave domains on the same cube port with different proxyProtocol settings. Then `errorMeta.code` is `proxy_protocol_port_mismatch`, with `errorMeta.port` and `errorMeta.domains` naming the other domains. Change them together, or resend with confirmMixedProxyProtocol: true."
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -3091,6 +3705,9 @@
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
+          "409": {
+            "description": "Refused because the change conflicts with the Cube's current state, for example the port is already in use or the mapping is already being removed. One such conflict is temporary: in the last stretch of a move of the Cube to another server the change is refused with the error \"This cube is being moved to another server. Try again in a minute.\" Nothing was changed then, and the same request is accepted once the move ends."
+          },
           "429": {
             "$ref": "#/components/responses/RateLimited"
           }
@@ -3243,6 +3860,9 @@
           "400": {
             "$ref": "#/components/responses/BadRequest"
           },
+          "409": {
+            "description": "Refused because the change conflicts with the Cube's current state, for example the port is already in use or the mapping is already being removed. One such conflict is temporary: in the last stretch of a move of the Cube to another server the change is refused with the error \"This cube is being moved to another server. Try again in a minute.\" Nothing was changed then, and the same request is accepted once the move ends."
+          },
           "429": {
             "$ref": "#/components/responses/RateLimited"
           }
@@ -3302,6 +3922,9 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Refused because the change conflicts with the Cube's current state, for example the port is already in use or the mapping is already being removed. One such conflict is temporary: in the last stretch of a move of the Cube to another server the change is refused with the error \"This cube is being moved to another server. Try again in a minute.\" Nothing was changed then, and the same request is accepted once the move ends."
           }
         },
         "summary": "Delete a TCP port forward",
@@ -3420,6 +4043,11 @@
                         "backup.created",
                         "backup.deleted",
                         "backup.redeployed",
+                        "backup.share.requested",
+                        "backup.share.accepted",
+                        "backup.share.declined",
+                        "backup.share.canceled",
+                        "backup.share.expired",
                         "domain.added",
                         "domain.active",
                         "domain.removed",
@@ -3620,7 +4248,7 @@
       "name": "Snapshots"
     },
     {
-      "description": "Portable .cube archives — download an existing backup as a single file",
+      "description": "Portable .cube archives — list backups, download one as a single file, and share a copy with another space",
       "name": "Backups"
     },
     {

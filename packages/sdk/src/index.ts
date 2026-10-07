@@ -10,7 +10,11 @@
  * ```
  */
 export {
+  type AcceptedBackupShare,
   type AuthScheme,
+  type Backup,
+  type BackupShare,
+  type BackupShareList,
   type CreateCubeInput,
   type CreateDomainInput,
   type CreateTcpMappingInput,

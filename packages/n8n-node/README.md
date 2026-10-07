@@ -111,6 +111,28 @@ Snapshot and restore a Cube's disk.
 | **Delete** | Space ID, Cube ID, Snapshot ID | Delete a snapshot | `DELETE /spaces/{spaceId}/cubes/{cubeId}/snapshots/{snapshotId}` |
 | **Restore** | Space ID, Cube ID, Snapshot ID | Restore the Cube's disk from a snapshot (replaces the disk) | `POST /spaces/{spaceId}/cubes/{cubeId}/restore` |
 
+### Backup
+
+A Cube's disk and configuration, kept after the Cube is gone. The API key's member needs **View Backups** to read and **Manage Backups** for Get Download Link and Share.
+
+| Operation | Fields | Description | Endpoint |
+| --- | --- | --- | --- |
+| **List** | Space ID | List the space's backups, newest first (shared copies included) | `GET /spaces/{spaceId}/backups` |
+| **Get** | Space ID, Backup ID | Retrieve a single backup | `GET /spaces/{spaceId}/backups/{backupId}` |
+| **Get Download Link** | Space ID, Backup ID | A presigned URL for the backup's `.cube` archive, valid for 15 minutes. Anyone holding it can download the disk, so keep it out of logs and messages | `GET /spaces/{spaceId}/backups/{backupId}/download` |
+| **Share** | Space ID, Backup ID, Destination Space ID; optional Idempotency Key | Offer another space its own copy. It has 48 hours to accept and pays for its copy from then; your backup is unchanged | `POST /spaces/{spaceId}/backups/{backupId}/shares` |
+
+### Backup Share
+
+Answer or withdraw a backup offered between spaces. Accept and Decline need the destination space's owner, or a member there with **Manage Backups**.
+
+| Operation | Fields | Description | Endpoint |
+| --- | --- | --- | --- |
+| **List** | Space ID | Pending shares into (`incoming`) and out of (`outgoing`) the space | `GET /spaces/{spaceId}/backup-shares` |
+| **Accept** | Space ID, Share ID | Create this space's own copy, billed for storage from now | `POST /spaces/{spaceId}/backup-shares/{shareId}/accept` |
+| **Decline** | Space ID, Share ID | Decline a share offered to this space | `POST /spaces/{spaceId}/backup-shares/{shareId}/decline` |
+| **Cancel** | Space ID, Share ID | Withdraw a pending share this space offered | `POST /spaces/{spaceId}/backup-shares/{shareId}/cancel` |
+
 ### TCP Mapping
 
 Expose a Cube TCP port on the host.

@@ -110,6 +110,25 @@ krova tcp add <cube> --port 5432 --whitelist 203.0.113.4/32
 krova tcp rm <cube> <mapping-id>
 ```
 
+## Backups
+
+A backup is a Cube's disk and configuration, kept after the Cube is gone. A backup is named or given by ID.
+
+```sh
+krova backups list
+krova backups get nightly
+krova backups download nightly     # prints a link valid for 15 minutes; anyone holding it can download the disk
+
+# Offer another space its own copy. It has 48 hours to accept, and pays for its copy from then.
+krova backups share nightly <destination-space-id>
+krova backups shares               # pending shares into and out of this space
+krova backups accept <share-id>    # in the destination space
+krova backups decline <share-id>
+krova backups cancel <share-id>    # withdraw one this space offered
+```
+
+These need the Backups permissions on the key's member: View Backups for `list`, `get` and `shares`, Manage Backups for the rest. Accepting or declining also works for the destination space's owner.
+
 ## Catalog
 
 ```sh

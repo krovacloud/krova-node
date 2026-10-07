@@ -56,6 +56,33 @@ export type Snapshot = components["schemas"]["Snapshot"];
 /** A TCP port mapping exposing a Cube port on the host. */
 export type TcpMapping = components["schemas"]["TcpMapping"];
 
+/**
+ * A backup: a Cube's disk and configuration, kept after the Cube is gone and
+ * redeployable as a new Cube. `sharedFromBackupId` is set on a copy another
+ * space shared with this one.
+ */
+export type Backup = components["schemas"]["Backup"];
+
+/**
+ * A request to give another space its own copy of a backup.
+ *
+ * `counterpartySpaceName` is the other side: the destination on an outgoing
+ * share, the source on an incoming one. `copyBackupId` is set once accepted.
+ */
+export type BackupShare = components["schemas"]["BackupShare"];
+
+/** Pending, unexpired backup shares into and out of a space. */
+export interface BackupShareList {
+  incoming: BackupShare[];
+  outgoing: BackupShare[];
+}
+
+/** An accepted share, and the destination space's new copy. */
+export interface AcceptedBackupShare {
+  share: BackupShare;
+  backup: Backup;
+}
+
 /** Request body for attaching a custom domain to a Cube. */
 export type CreateDomainInput = NonNullable<
   paths["/spaces/{spaceId}/cubes/{cubeId}/domains"]["post"]["requestBody"]
@@ -808,7 +835,32 @@ export class KrovaClient {
     },
   };
 
+  // ⛔ Every backup call reads the Backups permissions (`backup.view` to
+  // read, `backup.manage` for everything else), not the Cube ones. A key whose
+  // member holds only Cube permissions gets a 403 here.
+
   readonly backups = {
+    /** List the space's backups, newest first, including copies shared into it. */
+    list: async (spaceId: string): Promise<Backup[]> => {
+      const { data, error, response } = await this.raw.GET("/spaces/{spaceId}/backups", {
+        params: { path: { spaceId } },
+      });
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return data?.backups ?? [];
+    },
+
+    /** Get one backup. */
+    get: async (spaceId: string, backupId: string): Promise<Backup> => {
+      const { data, error, response } = await this.raw.GET(
+        "/spaces/{spaceId}/backups/{backupId}",
+        { params: { path: { spaceId, backupId } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      if (!data?.backup)
+        throw krovaErrorFrom(response, { error: "Get backup response had no `backup`." });
+      return data.backup;
+    },
+
     /** Get a time-limited download URL for a backup `.cube` archive. */
     download: async (spaceId: string, backupId: string) => {
       const { data, error, response } = await this.raw.GET(
@@ -817,6 +869,107 @@ export class KrovaClient {
       );
       if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
       return data;
+    },
+
+    /**
+     * Offer a copy of a backup to another space. Returns the pending
+     * {@link BackupShare}.
+     *
+     * Nothing is copied until the destination accepts: its owner, or a member
+     * there with `backup.manage`, within 48 hours. The accepted copy is the
+     * destination's own and is billed to it; this space's backup and bill are
+     * unchanged. Through the API a share is always a request, even when your
+     * user owns both spaces.
+     *
+     * A refusal at this step never says anything about the destination's
+     * billing or verification; those are checked when it accepts.
+     *
+     * @param spaceId The space that holds the backup.
+     * @param backupId The backup to share.
+     * @param body `{ destinationSpaceId }`.
+     * @param opts Optional `idempotencyKey` (max 255 chars, scoped per space).
+     */
+    share: async (
+      spaceId: string,
+      backupId: string,
+      body: { destinationSpaceId: string },
+      opts?: { idempotencyKey?: string },
+    ): Promise<BackupShare> => {
+      const { data, error, response } = await this.raw.POST(
+        "/spaces/{spaceId}/backups/{backupId}/shares",
+        {
+          params: {
+            path: { spaceId, backupId },
+            ...(opts?.idempotencyKey ? { header: { "Idempotency-Key": opts.idempotencyKey } } : {}),
+          },
+          body,
+        },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      if (!data?.share)
+        throw krovaErrorFrom(response, { error: "Share backup response had no `share`." });
+      return data.share;
+    },
+  };
+
+  readonly backupShares = {
+    /** Pending, unexpired shares into (`incoming`) and out of (`outgoing`) a space. */
+    list: async (spaceId: string): Promise<BackupShareList> => {
+      const { data, error, response } = await this.raw.GET("/spaces/{spaceId}/backup-shares", {
+        params: { path: { spaceId } },
+      });
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      return { incoming: data?.incoming ?? [], outgoing: data?.outgoing ?? [] };
+    },
+
+    /**
+     * Accept a share offered to this space. Returns the share and the space's
+     * new copy of the backup.
+     *
+     * The copy is billed to this space from now, so only a key of the space's
+     * owner, or of a member holding `backup.manage`, may accept. A space that
+     * cannot take the copy (no card or credit, owner not verified, an open abuse
+     * notice, or no backup allowance left on its plan) is refused with a 422.
+     */
+    accept: async (spaceId: string, shareId: string): Promise<AcceptedBackupShare> => {
+      const { data, error, response } = await this.raw.POST(
+        "/spaces/{spaceId}/backup-shares/{shareId}/accept",
+        { params: { path: { spaceId, shareId } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      if (!data?.share || !data.backup)
+        throw krovaErrorFrom(response, {
+          error: "Accept backup share response had no `share` or `backup`.",
+        });
+      return { share: data.share, backup: data.backup };
+    },
+
+    /** Decline a share offered to this space. Same permission as {@link accept}. */
+    decline: async (spaceId: string, shareId: string): Promise<BackupShare> => {
+      const { data, error, response } = await this.raw.POST(
+        "/spaces/{spaceId}/backup-shares/{shareId}/decline",
+        { params: { path: { spaceId, shareId } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      if (!data?.share)
+        throw krovaErrorFrom(response, { error: "Decline backup share response had no `share`." });
+      return data.share;
+    },
+
+    /**
+     * Withdraw a pending share this space offered. Allowed for a key of the
+     * space's owner, of a member holding `backup.manage`, or of the member who
+     * raised the request.
+     */
+    cancel: async (spaceId: string, shareId: string): Promise<BackupShare> => {
+      const { data, error, response } = await this.raw.POST(
+        "/spaces/{spaceId}/backup-shares/{shareId}/cancel",
+        { params: { path: { spaceId, shareId } } },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      if (!data?.share)
+        throw krovaErrorFrom(response, { error: "Cancel backup share response had no `share`." });
+      return data.share;
     },
   };
 

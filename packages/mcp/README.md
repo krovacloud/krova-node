@@ -113,7 +113,7 @@ The server is configured entirely through environment variables:
 
 ## Tools
 
-All 23 tools, their parameters, and what they do. Every tool's `spaceId` is optional when `KROVA_SPACE_ID` is set.
+All 37 tools, their parameters, and what they do. Every tool's `spaceId` is optional when `KROVA_SPACE_ID` is set.
 
 | Tool | Parameters | Description |
 | --- | --- | --- |
@@ -125,6 +125,8 @@ All 23 tools, their parameters, and what they do. Every tool's `spaceId` is opti
 | `wake_cube` | `spaceId?`, `cubeId` | Start a stopped Cube. Asynchronous. |
 | `restart_cube` | `spaceId?`, `cubeId` | Restart a **running** Cube. This is a COLD restart — the Cube boots against the host's current kernel, so it is the only way to pick up a refreshed guest kernel (a `reboot` issued inside the Cube cannot, and reports no error). Disk state is preserved. Asynchronous; a concurrent restart is rejected, not queued. |
 | `delete_cube` | `spaceId?`, `cubeId` | Delete a Cube. Asynchronous — deletion is enqueued. **Destructive.** |
+| `protect_cube` | `spaceId?`, `cubeId` | Turn on termination protection: `delete_cube` is refused with 409 until it is turned off. Power-off, wake, restart, snapshot and restore stay allowed. Idempotent. |
+| `unprotect_cube` | `spaceId?`, `cubeId` | Turn termination protection off, so `delete_cube` works again. Idempotent. |
 | `list_regions` | — | List regions with available capacity. |
 | `list_images` | — | List available OS images for new Cubes. |
 | `get_pricing` | — | Get per-resource hourly rates and volume pricing tiers. |
@@ -137,11 +139,25 @@ All 23 tools, their parameters, and what they do. Every tool's `spaceId` is opti
 | `create_snapshot` | `spaceId?`, `cubeId`, `name?` | Snapshot a Cube's disk. Asynchronous. |
 | `delete_snapshot` | `spaceId?`, `cubeId`, `snapshotId` | Delete a snapshot. **Destructive.** |
 | `restore_cube` | `spaceId?`, `cubeId`, `snapshotId` | Restore a Cube's disk from a snapshot — **replaces the disk. Destructive.** |
+| `list_backups` | `spaceId?` | List the space's backups, newest first. `sharedFromBackupId` is set on a copy another space shared with this one. |
+| `get_backup` | `spaceId?`, `backupId` | Get one backup. |
+| `share_backup` | `spaceId?`, `backupId`, `destinationSpaceId` | Offer a copy of a backup to another space. Nothing is copied until the destination accepts within 48 hours; the copy is then its own and billed to it. **Destructive** (it hands a copy of the disk to another space). |
+| `list_backup_shares` | `spaceId?` | Pending shares into (`incoming`) and out of (`outgoing`) the space. |
+| `accept_backup_share` | `spaceId?`, `shareId` | Accept a backup shared with the space. The space pays backup storage for its copy from now. **Destructive** (it adds a bill). |
+| `decline_backup_share` | `spaceId?`, `shareId` | Decline a backup shared with the space. Nothing is copied. |
+| `cancel_backup_share` | `spaceId?`, `shareId` | Withdraw a pending share the space offered. |
 | `list_tcp_mappings` | `spaceId?`, `cubeId` | List a Cube's TCP port mappings. |
 | `create_tcp_mapping` | `spaceId?`, `cubeId`, `cubePort`, `whitelistedIps?` | Expose a Cube TCP port on the host. `whitelistIps` is still accepted as a deprecated alias. |
 | `delete_tcp_mapping` | `spaceId?`, `cubeId`, `mappingId` | Remove a TCP port mapping. **Destructive.** |
+| `list_webhooks` | `spaceId?` | List the webhook endpoints in the space, with their events and whether each is enabled. |
+| `get_webhook` | `spaceId?`, `endpointId` | Get one webhook endpoint. The signing secret is never returned here. |
+| `create_webhook` | `spaceId?`, `url`, `events`, `description?` | Create a webhook endpoint. The signing secret is returned only in this response; persist it immediately. |
+| `delete_webhook` | `spaceId?`, `endpointId` | Delete a webhook endpoint and its delivery history. **Destructive.** |
+| `list_webhook_deliveries` | `spaceId?`, `endpointId`, `limit?` | The last 30 days of delivery attempts for an endpoint, newest first (max 100). |
 
-Every tool advertises MCP **annotations** so your client can treat them appropriately: the **ten** read tools (`list_cubes`, `get_cube`, `get_cube_ssh`, `list_regions`, `list_images`, `get_pricing`, `list_domains`, `get_domain_records`, `list_snapshots`, `list_tcp_mappings`) are marked read-only, while the **six** destructive tools (`create_cube`, `delete_cube`, `delete_domain`, `delete_snapshot`, `restore_cube`, `delete_tcp_mapping`) are marked **destructive**. `update_domain` mutates but is idempotent and reversible, so it is not. Most MCP clients surface a confirmation prompt before running a destructive tool — keep that confirmation on, since an LLM driven by untrusted content could be induced to call one.
+Every tool advertises MCP **annotations** so your client can treat them appropriately: the **sixteen** read tools (`list_cubes`, `get_cube`, `get_cube_ssh`, `list_regions`, `list_images`, `get_pricing`, `list_domains`, `get_domain_records`, `list_snapshots`, `list_backups`, `get_backup`, `list_backup_shares`, `list_tcp_mappings`, `list_webhooks`, `get_webhook`, `list_webhook_deliveries`) are marked read-only, while the **nine** destructive tools (`create_cube`, `delete_cube`, `delete_domain`, `delete_snapshot`, `restore_cube`, `share_backup`, `accept_backup_share`, `delete_tcp_mapping`, `delete_webhook`) are marked **destructive**. `update_domain` mutates but is idempotent and reversible, so it is not. Most MCP clients surface a confirmation prompt before running a destructive tool — keep that confirmation on, since an LLM driven by untrusted content could be induced to call one.
+
+The backup tools need the **Backups** permissions on the API key's member: View Backups to read, Manage Backups to share and answer shares. There is deliberately no download tool: the download link fetches the whole disk with no further authentication, and a model's conversation is the wrong place for it. Use `krova backups download` from the CLI.
 
 ### `create_cube` parameters
 

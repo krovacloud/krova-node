@@ -56,7 +56,16 @@ test('exposes all resources', () => {
 	const resourceProp = desc.properties.find((p) => p.name === 'resource');
 	assert.ok(resourceProp, 'resource selector exists');
 	const values = resourceProp.options.map((o) => o.value);
-	assert.deepEqual(values.sort(), ['catalog', 'cube', 'domain', 'snapshot', 'tcpMapping', 'webhook']);
+	assert.deepEqual(values.sort(), [
+		'backup',
+		'backupShare',
+		'catalog',
+		'cube',
+		'domain',
+		'snapshot',
+		'tcpMapping',
+		'webhook',
+	]);
 });
 
 test('Cube resource has the expected operations', () => {
@@ -141,6 +150,24 @@ test('Snapshot resource has list/create/delete/restore operations', () => {
 		'list',
 		'restore',
 	]);
+});
+
+test('Backup resource has get/getDownloadLink/list/share operations', () => {
+	assert.deepEqual(operationsForResource('backup').sort(), ['get', 'getDownloadLink', 'list', 'share']);
+	assert.equal(operationRouting('backup', 'share').method, 'POST');
+	// The download link needs no further auth; the operation must say so.
+	const download = desc.properties
+		.find((p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes('backup'))
+		.options.find((o) => o.value === 'getDownloadLink');
+	assert.match(download.description, /secret/);
+});
+
+test('Backup Share resource has accept/cancel/decline/list operations, all but list as POST', () => {
+	assert.deepEqual(operationsForResource('backupShare').sort(), ['accept', 'cancel', 'decline', 'list']);
+	for (const op of ['accept', 'cancel', 'decline']) {
+		assert.equal(operationRouting('backupShare', op).method, 'POST', `${op} is a POST`);
+	}
+	assert.equal(operationRouting('backupShare', 'list').method, 'GET');
 });
 
 test('TCP Mapping resource has list/create/delete operations', () => {

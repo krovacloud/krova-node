@@ -119,6 +119,13 @@ describe("tool registry", () => {
       "create_webhook",
       "delete_webhook",
       "list_webhook_deliveries",
+      "list_backups",
+      "get_backup",
+      "share_backup",
+      "list_backup_shares",
+      "accept_backup_share",
+      "decline_backup_share",
+      "cancel_backup_share",
     ].sort();
     assert.deepEqual(TOOLS.map((t) => t.name).sort(), expected);
 

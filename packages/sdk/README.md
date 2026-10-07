@@ -267,6 +267,35 @@ const status = await krova.imports.get("space_123", start.importId);
 const dl = await krova.backups.download("space_123", "backup_123");
 ```
 
+The download URL is valid for 15 minutes and needs no further authentication. Anyone holding it can fetch the whole disk, so treat it as a secret.
+
+### Backups and sharing them with another space
+
+A backup is a Cube's disk and configuration, kept after the Cube is gone. You can offer another space its own copy: nothing is copied until that space accepts, within 48 hours, and from then the copy is the destination's own and billed to it. Your backup and bill are unchanged, and deleting either copy leaves the other alone.
+
+```ts
+const backups = await krova.backups.list("space_123");
+const backup = await krova.backups.get("space_123", backups[0]!.id);
+
+// Offer a copy. Always a pending request through the API, even when your user owns both spaces.
+const share = await krova.backups.share(
+  "space_123",
+  backup.id,
+  { destinationSpaceId: "space_456" },
+  { idempotencyKey: "share-nightly-2026-10-07" },
+);
+
+// In the destination space: list what is waiting, then accept or decline.
+const { incoming, outgoing } = await krova.backupShares.list("space_456");
+const { backup: copy } = await krova.backupShares.accept("space_456", share.id);
+// copy.sharedFromBackupId === backup.id
+
+// Or: krova.backupShares.decline("space_456", share.id)
+// The source can withdraw it before then: krova.backupShares.cancel("space_123", share.id)
+```
+
+These calls need the **Backups** permissions on the key's member: View Backups to list and get, Manage Backups for everything else. Only the destination space's owner, or a member there with Manage Backups, can accept or decline. `accept` throws a `KrovaError` with status `422` when the destination cannot take the copy (no card or credit, owner not verified, an open abuse notice, or no backup allowance left on its plan).
+
 ### Webhooks
 
 `client.webhooks` manages a space's webhook endpoints. `create` is the only call that returns the signing secret, so store it straight away. To verify deliveries, use [`@krovacloud/webhook`](https://www.npmjs.com/package/@krovacloud/webhook).
@@ -352,7 +381,7 @@ const krova = new KrovaClient({
 
 ## TypeScript
 
-The package ships its own type declarations — no `@types/*` install needed. `Cube`, `KrovaError`, `KrovaClientOptions`, `AuthScheme`, and the generated `paths` / `components` are all exported.
+The package ships its own type declarations — no `@types/*` install needed. `Cube`, `Backup`, `BackupShare`, `KrovaError`, `KrovaClientOptions`, `AuthScheme`, and the generated `paths` / `components` are all exported.
 
 ## Related packages
 
