@@ -20,6 +20,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   can change one setting without touching the other.
 - The `originScheme` description no longer says it is verified against the Cube
   before it applies: the API now applies it as saved.
+- Dependencies: `@modelcontextprotocol/sdk` 1.30.0 to 1.32.2 and `zod` 4.4.3 to 4.6.7. The server uses stdio only, so the SDK's HTTP redirect and OAuth changes do not apply.
 
 
 
