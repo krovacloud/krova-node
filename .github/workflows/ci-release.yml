@@ -31,7 +31,7 @@ jobs:
       # shelled the registry call out to npm, which needs >= 11.5.1 to mint an
       # OIDC credential — without it publishes died with ENEEDAUTH.
       #
-      # pnpm 11 does the OIDC exchange itself, so npm is no longer in the
+      # pnpm 11 and 12 do the OIDC exchange themselves, so npm is no longer in the
       # publish path and the global install is dead weight. If this repo is
       # ever pinned back below pnpm 11, that npm upgrade has to come back or
       # releases break — the pin in package.json#packageManager is what keeps
@@ -57,7 +57,7 @@ jobs:
       # SNAPSHOT of the spec krova-cloud serves. Nothing pushes that spec here,
       # so it only moves when a human copies it, and for a long stretch nobody
       # could: `pnpm gen` was dead on a peer-dependency mismatch (see the
-      # override in pnpm-workspace.yaml). The published SDK ended up declaring
+      # hook in .pnpmfile.cjs). The published SDK ended up declaring
       # `TcpMapping.host` required when the live API does not send it.
       #
       # `pnpm -r test` already proves the committed types match the committed
