@@ -133,7 +133,7 @@ export const TOOLS: ToolDef[] = [
     name: "list_cubes",
     title: "List Cubes",
     description: "List all Cubes (Firecracker microVMs) in a Krova Cloud Space.",
-    annotations: { readOnlyHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     inputSchema: { ...spaceIdField },
     handler: (client, args, ctx) => client.cubes.list(resolveSpaceId(args.spaceId, ctx)),
   }),
@@ -141,7 +141,7 @@ export const TOOLS: ToolDef[] = [
     name: "get_cube",
     title: "Get Cube",
     description: "Get details for a single Cube by id.",
-    annotations: { readOnlyHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     inputSchema: { ...spaceIdField, ...cubeIdField },
     handler: (client, args, ctx) =>
       client.cubes.get(resolveSpaceId(args.spaceId, ctx), args.cubeId),
@@ -151,7 +151,7 @@ export const TOOLS: ToolDef[] = [
     title: "Get Cube SSH Info",
     description:
       "Everything needed to SSH into a Cube: host, port, the login USER, and any pinned host keys. Call this rather than guessing a username — it is `ubuntu` or `debian` on Cubes created from images that ship a default user, and `root` on older Cubes, so it cannot be derived from the image id. The returned user has passwordless sudo; `sudo su` reaches root.",
-    annotations: { readOnlyHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     inputSchema: { ...spaceIdField, ...cubeIdField },
     handler: (client, args, ctx) =>
       client.cubes.ssh(resolveSpaceId(args.spaceId, ctx), args.cubeId),
@@ -334,7 +334,7 @@ export const TOOLS: ToolDef[] = [
     name: "list_regions",
     title: "List Regions",
     description: "List Krova Cloud regions with available capacity.",
-    annotations: { readOnlyHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     inputSchema: {},
     handler: (client) => client.catalog.regions(),
   }),
@@ -342,7 +342,7 @@ export const TOOLS: ToolDef[] = [
     name: "list_images",
     title: "List Images",
     description: "List available OS images for new Cubes.",
-    annotations: { readOnlyHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     inputSchema: {},
     handler: (client) => client.catalog.images(),
   }),
@@ -350,7 +350,7 @@ export const TOOLS: ToolDef[] = [
     name: "get_pricing",
     title: "Get Pricing",
     description: "Get per-resource hourly rates and volume pricing tiers.",
-    annotations: { readOnlyHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     inputSchema: {},
     handler: (client) => client.catalog.pricing(),
   }),
@@ -360,7 +360,7 @@ export const TOOLS: ToolDef[] = [
     name: "list_domains",
     title: "List Domains",
     description: "List the custom domains attached to a Cube.",
-    annotations: { readOnlyHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     inputSchema: { ...spaceIdField, ...cubeIdField },
     handler: (client, args, ctx) =>
       client.domains.list(resolveSpaceId(args.spaceId, ctx), args.cubeId),
@@ -370,7 +370,7 @@ export const TOOLS: ToolDef[] = [
     title: "Domain DNS Records",
     description:
       "The DNS records a domain needs, each checked against live DNS. Use this to answer \"what DNS do I add?\" and to check progress after the user publishes them. Every record carries its own state: found; missing, which means NOT PUBLISHED YET and is the expected state before the user creates it — never report it as an error; mismatch, meaning something else is there; and unknown, meaning KROVA could not complete the lookup, which is never a statement about the user's DNS. summary.complete is true only once every record is found. Each call performs real DNS lookups and is rate limited, so do not poll it in a tight loop.",
-    annotations: { readOnlyHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     inputSchema: {
       ...spaceIdField,
       ...cubeIdField,
@@ -390,7 +390,7 @@ export const TOOLS: ToolDef[] = [
     title: "Attach Domain",
     description:
       "Attach a custom domain to a Cube, routing it to an in-Cube port. Returns the domain AND the DNS records the user must publish — tell them the records verbatim, host and value, because the domain does nothing until those exist. An ordinary subdomain needs one CNAME; a wildcard needs three. Any record with mustBeGrey must be DNS-only (grey cloud) on Cloudflare; a proxied one hides the record and certificate issuance fails.",
-    annotations: { readOnlyHint: false, idempotentHint: false, openWorldHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     inputSchema: {
       ...spaceIdField,
       ...cubeIdField,
@@ -421,7 +421,7 @@ export const TOOLS: ToolDef[] = [
     title: "Update Domain Settings",
     description:
       "Change a custom domain's proxy settings: the origin scheme (the transport the edge uses to reach the Cube) and the PROXY protocol header. Pass at least one; a setting you leave out keeps its current value.",
-    annotations: { readOnlyHint: false, idempotentHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
     inputSchema: {
       ...spaceIdField,
       ...cubeIdField,
@@ -467,7 +467,7 @@ export const TOOLS: ToolDef[] = [
     name: "list_snapshots",
     title: "List Snapshots",
     description: "List a Cube's disk snapshots.",
-    annotations: { readOnlyHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     inputSchema: { ...spaceIdField, ...cubeIdField },
     handler: (client, args, ctx) =>
       client.snapshots.list(resolveSpaceId(args.spaceId, ctx), args.cubeId),
@@ -476,7 +476,7 @@ export const TOOLS: ToolDef[] = [
     name: "create_snapshot",
     title: "Create Snapshot",
     description: "Create a snapshot of a Cube's disk. Asynchronous — the snapshot is enqueued.",
-    annotations: { readOnlyHint: false, idempotentHint: false, openWorldHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     inputSchema: {
       ...spaceIdField,
       ...cubeIdField,
@@ -529,7 +529,7 @@ export const TOOLS: ToolDef[] = [
     title: "List Backups",
     description:
       "List the space's backups, newest first: each is a Cube's disk and configuration kept after the Cube is gone, redeployable as a new Cube. `sharedFromBackupId` is set on a copy another space shared with this one. Needs the View Backups permission.",
-    annotations: { readOnlyHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     inputSchema: { ...spaceIdField },
     handler: (client, args, ctx) => client.backups.list(resolveSpaceId(args.spaceId, ctx)),
   }),
@@ -537,7 +537,7 @@ export const TOOLS: ToolDef[] = [
     name: "get_backup",
     title: "Get Backup",
     description: "Get one backup by id. Needs the View Backups permission.",
-    annotations: { readOnlyHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     inputSchema: { ...spaceIdField, ...backupIdField },
     handler: (client, args, ctx) =>
       client.backups.get(resolveSpaceId(args.spaceId, ctx), args.backupId),
@@ -563,7 +563,7 @@ export const TOOLS: ToolDef[] = [
     title: "List Backup Shares",
     description:
       "Pending, unexpired backup shares into this space (`incoming`, waiting for this space to accept or decline) and out of it (`outgoing`). `counterpartySpaceName` is the other space. Needs the View Backups permission.",
-    annotations: { readOnlyHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     inputSchema: { ...spaceIdField },
     handler: (client, args, ctx) => client.backupShares.list(resolveSpaceId(args.spaceId, ctx)),
   }),
@@ -603,7 +603,7 @@ export const TOOLS: ToolDef[] = [
     name: "list_tcp_mappings",
     title: "List TCP Mappings",
     description: "List a Cube's TCP port mappings.",
-    annotations: { readOnlyHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     inputSchema: { ...spaceIdField, ...cubeIdField },
     handler: (client, args, ctx) =>
       client.tcpMappings.list(resolveSpaceId(args.spaceId, ctx), args.cubeId),
@@ -612,7 +612,7 @@ export const TOOLS: ToolDef[] = [
     name: "create_tcp_mapping",
     title: "Create TCP Mapping",
     description: "Expose a Cube TCP port on the host, optionally restricted to specific IPs/CIDRs.",
-    annotations: { readOnlyHint: false, idempotentHint: false, openWorldHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     inputSchema: {
       ...spaceIdField,
       ...cubeIdField,
@@ -682,7 +682,7 @@ export const TOOLS: ToolDef[] = [
     title: "List Webhooks",
     description:
       "List the webhook endpoints registered against a Space — each one is an HTTPS URL Krova delivers events to, with the events it subscribes to and whether it is enabled.",
-    annotations: { readOnlyHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     inputSchema: { ...spaceIdField },
     handler: async (client, args, ctx) => {
       const { data, error, response } = await client.raw.GET(
@@ -698,7 +698,7 @@ export const TOOLS: ToolDef[] = [
     title: "Get Webhook",
     description:
       "Get a single webhook endpoint by id, including the URL, subscribed events, and enabled flag. The signing secret is never returned — it is only available at create time.",
-    annotations: { readOnlyHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     inputSchema: { ...spaceIdField, ...endpointIdField },
     handler: async (client, args, ctx) => {
       const { data, error, response } = await client.raw.GET(
@@ -721,7 +721,7 @@ export const TOOLS: ToolDef[] = [
     title: "Create Webhook",
     description:
       "Create a webhook endpoint and subscribe it to one or more events. The signing secret is returned only in this response. Persist it immediately.",
-    annotations: { readOnlyHint: false, idempotentHint: false, openWorldHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     inputSchema: {
       ...spaceIdField,
       url: z
@@ -787,7 +787,7 @@ export const TOOLS: ToolDef[] = [
     title: "List Webhook Deliveries",
     description:
       "The last 30 days of delivery attempts for a webhook endpoint — newest first, capped at the supplied limit (max 100). Useful for diagnosing why an endpoint never received (or never acknowledged) an event.",
-    annotations: { readOnlyHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     inputSchema: {
       ...spaceIdField,
       ...endpointIdField,

@@ -13,9 +13,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `proxyProtocol` (`v1`, `v2` or `off`) and `confirmMixedProxyProtocol` on
   `create_domain` and `update_domain`.
 
+- The server info now carries the Krova logo (`icons`) and `websiteUrl`, so MCP clients that display server icons show Krova's.
+- Every tool now declares `readOnlyHint`, `destructiveHint` and `openWorldHint` explicitly. `create_domain`, `create_snapshot`, `create_tcp_mapping` and `create_webhook` are marked not destructive (a missing `destructiveHint` means destructive under the MCP spec), and `update_domain` is marked destructive because it overwrites existing settings.
+
 ### Changed
 
 - README: the tool table now lists every registered tool (37), including the termination protection and webhook tools it had been missing.
+- Docs: README covers the remote server at https://krova.cloud/mcp.
 - `update_domain` takes `originScheme` or `proxyProtocol` (at least one), so it
   can change one setting without touching the other.
 - The `originScheme` description no longer says it is verified against the Cube

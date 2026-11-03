@@ -21,6 +21,32 @@ KROVA_API_KEY=kro_... npx -y @krovacloud/mcp
 
 The server speaks MCP over **stdio**, so you normally don't run it by hand — your MCP client launches it with that command. Pick your client below.
 
+## Remote server (no install)
+
+Krova Cloud also hosts this server at `https://krova.cloud/mcp` over Streamable HTTP. It exposes the same tools as this package, so there is nothing to install.
+
+### ChatGPT and Claude.ai
+
+Add a custom connector with the URL `https://krova.cloud/mcp`. Sign in to Krova, pick a Space, and approve the connection. Access is limited to that Space, with your permissions in it.
+
+Setup guides: [Claude](https://claude.com/docs/connectors/custom/add-unlisted.md) and [ChatGPT](https://developers.openai.com/api/docs/guides/custom-mcp-server).
+
+### Claude Code (remote)
+
+With an API key:
+
+```bash
+claude mcp add --transport http krova https://krova.cloud/mcp --header "Authorization: Bearer kro_..."
+```
+
+Leave out `--header` to sign in with OAuth instead.
+
+### Other MCP clients
+
+Send your API key in an `Authorization: Bearer kro_...` header on each request to `https://krova.cloud/mcp`.
+
+The local stdio setup below is unchanged and still supported.
+
 ## Client setup
 
 All clients use the same launch command (`npx -y @krovacloud/mcp`) and the same environment variables. Set at least `KROVA_API_KEY`; set `KROVA_SPACE_ID` too if you want the Cube tools to default to one Space.

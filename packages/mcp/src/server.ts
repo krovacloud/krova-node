@@ -13,6 +13,12 @@ export const SERVER_INFO = {
   name: "krova-mcp",
   version: pkg.version,
   title: "Krova Cloud",
+  // MCP spec 2025-11-25 `Implementation.icons` and `websiteUrl` let clients show the logo.
+  websiteUrl: "https://krova.cloud",
+  icons: [
+    { src: "https://krova.cloud/icon-192.png", mimeType: "image/png", sizes: ["192x192"] },
+    { src: "https://krova.cloud/icon-512.png", mimeType: "image/png", sizes: ["512x512"] },
+  ],
 };
 
 /**
