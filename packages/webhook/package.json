@@ -63,8 +63,8 @@
     "prepublishOnly": "pnpm typecheck && pnpm build && pnpm test"
   },
   "devDependencies": {
-    "@types/node": "^26.6.5",
-    "tsdown": "0.23.1",
+    "@types/node": "^26.6.6",
+    "tsdown": "0.23.4",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   },
