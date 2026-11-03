@@ -1009,6 +1009,26 @@
         "in": "header",
         "name": "X-API-KEY",
         "type": "apiKey"
+      },
+      "BearerAuth": {
+        "description": "An API key (kro_...) or an OAuth access token, sent as Authorization: Bearer <token>. Sending X-API-KEY as well makes the API ignore this header.",
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "OAuth2": {
+        "description": "OAuth 2.0 authorization code with PKCE (S256). Clients identify themselves with a Client ID Metadata Document URL. Each grant is bound to one space the person picks at sign-in. Server metadata: /.well-known/oauth-authorization-server.",
+        "flows": {
+          "authorizationCode": {
+            "authorizationUrl": "https://krova.cloud/api/auth/oauth2/authorize",
+            "refreshUrl": "https://krova.cloud/api/auth/oauth2/token",
+            "scopes": {
+              "api": "Act in the chosen space with the approving member's permissions",
+              "offline_access": "Receive a refresh token"
+            },
+            "tokenUrl": "https://krova.cloud/api/auth/oauth2/token"
+          }
+        },
+        "type": "oauth2"
       }
     }
   },
@@ -1022,7 +1042,7 @@
       "name": "Krova Cloud Support",
       "url": "https://krova.cloud/contact"
     },
-    "description": "Programmatic access to Krova Cloud. Authenticate with the X-API-KEY header. Keys are scoped per Space and inherit the permissions of the membership that created them. Mutating POST / DELETE endpoints are rate-limited to 10 requests per 60 seconds per client IP.",
+    "description": "Programmatic access to Krova Cloud. Authenticate with the X-API-KEY header, the same key as an Authorization: Bearer token, or an OAuth 2.0 access token. Keys are scoped per Space and inherit the permissions of the membership that created them; an OAuth token is bound to the Space its holder chose. Mutating POST / DELETE endpoints are rate-limited to 10 requests per 60 seconds per client IP.",
     "termsOfService": "https://krova.cloud/terms",
     "title": "Krova Cloud API",
     "version": "1.0.0",
@@ -4213,6 +4233,14 @@
   "security": [
     {
       "ApiKeyAuth": []
+    },
+    {
+      "BearerAuth": []
+    },
+    {
+      "OAuth2": [
+        "api"
+      ]
     }
   ],
   "servers": [
