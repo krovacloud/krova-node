@@ -16,6 +16,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - README: the tool table now lists every registered tool (37), including the termination protection and webhook tools it had been missing.
+- Docs: README covers the remote server at https://krova.cloud/mcp.
 - `update_domain` takes `originScheme` or `proxyProtocol` (at least one), so it
   can change one setting without touching the other.
 - The `originScheme` description no longer says it is verified against the Cube
