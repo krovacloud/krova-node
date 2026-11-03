@@ -13,6 +13,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `proxyProtocol` (`v1`, `v2` or `off`) and `confirmMixedProxyProtocol` on
   `create_domain` and `update_domain`.
 
+- The server info now carries the Krova logo (`icons`) and `websiteUrl`, so MCP clients that display server icons show Krova's.
+
 ### Changed
 
 - README: the tool table now lists every registered tool (37), including the termination protection and webhook tools it had been missing.

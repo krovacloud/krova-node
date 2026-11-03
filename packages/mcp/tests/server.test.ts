@@ -100,4 +100,12 @@ describe("MCP server (in-memory transport)", () => {
     const pkg = JSON.parse(readFileSync(fileURLToPath(pkgUrl), "utf8")) as { version: string };
     assert.equal(SERVER_INFO.version, pkg.version);
   });
+
+  it("advertises the Krova logo and website in the server info", () => {
+    assert.equal(SERVER_INFO.websiteUrl, "https://krova.cloud");
+    assert.deepEqual(SERVER_INFO.icons, [
+      { src: "https://krova.cloud/icon-192.png", mimeType: "image/png", sizes: ["192x192"] },
+      { src: "https://krova.cloud/icon-512.png", mimeType: "image/png", sizes: ["512x512"] },
+    ]);
+  });
 });
