@@ -14,6 +14,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `create_domain` and `update_domain`.
 
 - The server info now carries the Krova logo (`icons`) and `websiteUrl`, so MCP clients that display server icons show Krova's.
+- Every tool now declares `readOnlyHint`, `destructiveHint` and `openWorldHint` explicitly. `create_domain`, `create_snapshot`, `create_tcp_mapping` and `create_webhook` are marked not destructive (a missing `destructiveHint` means destructive under the MCP spec), and `update_domain` is marked destructive because it overwrites existing settings.
 
 ### Changed
 

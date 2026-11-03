@@ -498,3 +498,15 @@ describe("origin scheme", () => {
     assert.equal(updateField.isOptional?.(), true, "optional on update");
   });
 });
+
+// ChatGPT's app review requires readOnlyHint, destructiveHint and openWorldHint as explicit booleans on every tool, and the MCP spec reads a missing destructiveHint as true, so an additive write tool without one is treated as destructive.
+it("every tool declares readOnlyHint, destructiveHint and openWorldHint explicitly", () => {
+  for (const tool of TOOLS) {
+    for (const hint of ["readOnlyHint", "destructiveHint", "openWorldHint"] as const) {
+      assert.equal(typeof tool.annotations[hint], "boolean", `${tool.name} is missing ${hint}`);
+    }
+    if (tool.annotations.readOnlyHint) {
+      assert.equal(tool.annotations.destructiveHint, false, `${tool.name} is read-only but marked destructive`);
+    }
+  }
+});
