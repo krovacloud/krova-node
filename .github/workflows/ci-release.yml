@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  ci:
+  test:
     # Node 22 is the oldest supported release (engines.node >= 22) and 24 is the
     # current LTS. Both run build, typecheck and tests. Everything that publishes
     # or talks to the network stays on ONE leg (22), so a release happens once.
@@ -146,3 +146,16 @@ jobs:
           curl -sL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
           ./mcp-publisher login dns --domain krova.cloud --private-key "$KEY"
           MCP_PUBLISHER_BIN="$PWD/mcp-publisher" node scripts/publish-mcp-registry.mjs
+
+  # ⛔ Branch protection on main requires a check named exactly `ci`. The matrix
+  # job above reports as `test (22)` and `test (24)`, so this job is the one
+  # stable name: it passes only when every matrix leg passed. Keep its name.
+  ci:
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every Node version must have passed
+        run: |
+          echo "test result: ${{ needs.test.result }}"
+          [ "${{ needs.test.result }}" = "success" ]
