@@ -20,6 +20,13 @@ concurrency:
 
 jobs:
   ci:
+    # Node 22 is the oldest supported release (engines.node >= 22) and 24 is the
+    # current LTS. Both run build, typecheck and tests. Everything that publishes
+    # or talks to the network stays on ONE leg (22), so a release happens once.
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -43,7 +50,7 @@ jobs:
       # minting an OIDC credential.
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
@@ -70,6 +77,7 @@ jobs:
       # different codes so this step can never report "could not check" as
       # "checked and fine".
       - name: Check the SDK's OpenAPI snapshot against the live API
+        if: matrix.node == 22
         run: |
           # `set +e` is required: Actions runs this with `bash -e`, which would
           # abort on the non-zero exit before the status could be inspected.
@@ -83,7 +91,7 @@ jobs:
           fi
           exit "$status"
       - name: Release changed packages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.node == 22
         # npm auth is OIDC trusted publishing (id-token: write above) — each
         # package's npmjs.com settings trust THIS repo + workflow. No npm
         # token exists to leak or revoke.
@@ -111,7 +119,7 @@ jobs:
       # Skips silently until MCP_PRIVATE_KEY exists, so merging this cannot
       # break a release.
       - name: Publish MCP server to the official registry
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.node == 22
         env:
           MCP_PRIVATE_KEY: ${{ secrets.MCP_PRIVATE_KEY }}
         run: |

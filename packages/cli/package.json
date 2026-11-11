@@ -36,7 +36,7 @@
     "CHANGELOG.md"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "build": "tsdown",
@@ -48,11 +48,11 @@
   "dependencies": {
     "@krovacloud/sdk": "workspace:*",
     "@krovacloud/webhook": "workspace:*",
-    "commander": "^15.0.0"
+    "commander": "^15.1.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
-    "tsdown": "0.23.4",
+    "tsdown": "0.23.7",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }

@@ -55,7 +55,7 @@
     "CHANGELOG.md"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "scripts": {
     "gen": "openapi-typescript openapi.json -o src/generated/types.ts",
@@ -70,7 +70,7 @@
   "devDependencies": {
     "@types/node": "^26.6.6",
     "openapi-typescript": "^7.13.0",
-    "tsdown": "0.23.4",
+    "tsdown": "0.23.7",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }

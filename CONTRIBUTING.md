@@ -14,7 +14,7 @@ pnpm -r build   # build every package
 pnpm -r test    # test every package
 ```
 
-Requirements: **Node.js 20+** and [pnpm](https://pnpm.io/) (the version is pinned
+Requirements: **Node.js 22+** and [pnpm](https://pnpm.io/) (the version is pinned
 via the root `packageManager` field — `corepack enable` will use it automatically).
 
 ## Repository layout
