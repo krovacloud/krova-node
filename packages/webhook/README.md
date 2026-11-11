@@ -21,7 +21,7 @@ npm install @krovacloud/webhook
 # or: pnpm add @krovacloud/webhook  /  yarn add @krovacloud/webhook
 ```
 
-Requires Node.js 18 or newer.
+Requires Node.js 22 or newer.
 
 ## How Krova Cloud signs a webhook
 
@@ -283,7 +283,7 @@ Other official Krova Cloud libraries:
 
 ## Requirements
 
-- **Node.js 18 or newer.** The library uses `node:crypto`
+- **Node.js 22 or newer.** The library uses `node:crypto`
   (`createHmac`, `timingSafeEqual`) and has no other runtime dependencies.
 - Works in both **ESM** and **CommonJS** projects; TypeScript declarations are
   bundled.

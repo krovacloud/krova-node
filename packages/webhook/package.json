@@ -1,6 +1,6 @@
 {
   "name": "@krovacloud/webhook",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "Verify Krova Cloud outbound webhook signatures — HMAC-SHA256, constant-time comparison, replay protection. Express, Next.js & Fastify helpers. Zero runtime dependencies.",
   "type": "module",
   "license": "MIT",
@@ -54,7 +54,7 @@
     "CHANGELOG.md"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "scripts": {
     "build": "tsdown",
@@ -64,7 +64,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
-    "tsdown": "0.23.4",
+    "tsdown": "0.23.7",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   },

@@ -34,3 +34,8 @@ allowBuilds:
   eslint-plugin-n8n-nodes-base: false
   isolated-vm: false
   ssh2: false
+
+
+# Security override, scoped to the one vulnerable version. `n8n-core` (a devDependency of n8n-node, used for TYPES ONLY and never executed here) pulls @aws-sdk/core 3.808.0, which pins `fast-xml-parser` to exactly 4.4.1 (critical GHSA-m7jm-9gc2-mpf2, highs GHSA-jmr7-xgp7-cmfj and GHSA-8gc5-j5rx-235r, fixed in 4.5.5). Bumping n8n-core to 2.46.6 does not help: its @n8n/blob-storage still pins @aws-sdk/client-s3 3.808.0. Stay on 4.5.x, the next major (5.x) is not a drop-in for the AWS SDK. Remove this once n8n-core moves @aws-sdk/client-s3 past 3.808.0.
+overrides:
+  "fast-xml-parser@4.4.1": 4.5.7

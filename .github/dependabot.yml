@@ -24,10 +24,11 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     ignore:
-      # ESLint is intentionally pinned to 8.x for the n8n package: its required
-      # lint plugin (eslint-plugin-n8n-nodes-base) targets the legacy .eslintrc
-      # config that ESLint 9/10 removed, and that lint runs at publish time.
-      # Don't propose ESLint majors until the n8n toolchain supports flat config.
+      # ESLint's major is held at 10.x for the n8n package. Its required lint
+      # plugin (eslint-plugin-n8n-nodes-base) ships only legacy eslintrc-style
+      # configs, which eslint.config.mjs loads through FlatCompat, so the plugin
+      # and the @typescript-eslint family set the ceiling. Don't propose the next
+      # ESLint major until that toolchain supports it.
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
 
