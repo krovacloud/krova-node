@@ -14,6 +14,7 @@ export const ENV = {
   spaceId: "KROVA_SPACE_ID",
   baseUrl: "KROVA_BASE_URL",
   context: "KROVA_CONTEXT",
+  npmRegistry: "KROVA_NPM_REGISTRY",
 } as const;
 
 export interface Context {

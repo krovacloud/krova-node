@@ -14,6 +14,7 @@ import { cpCommand, execCommand } from "./commands/exec.js";
 import { sshCommand } from "./commands/ssh.js";
 import { connectCommand, tunnelCommand } from "./commands/tunnel.js";
 import { tcpCommand } from "./commands/tcp.js";
+import { updateCommand } from "./commands/update.js";
 import { CLI_VERSION, versionCommand } from "./commands/version.js";
 import { webhooksCommand } from "./commands/webhooks.js";
 import { whoamiCommand } from "./commands/whoami.js";
@@ -55,6 +56,7 @@ program.addCommand(imagesCommand());
 program.addCommand(pricingCommand());
 program.addCommand(webhooksCommand());
 program.addCommand(versionCommand());
+program.addCommand(updateCommand());
 program.addCommand(completionCommand());
 
 // cobra-style persistent flags: usable on any command, before or after it.

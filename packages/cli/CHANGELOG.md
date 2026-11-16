@@ -6,6 +6,8 @@ All notable changes to `@krovacloud/cli` are documented here.
 
 ### Added
 
+- `krova update`: asks the npm registry for the latest `@krovacloud/cli` and compares it with the installed version. It never installs anything: it prints `krova <latest> is available (you have <current>). Update with: npm install -g @krovacloud/cli@latest`, or `krova <version> is the latest version.` when there is nothing newer. `--json` prints `{ "current", "latest", "updateAvailable", "command" }`. A registry failure exits 1. `KROVA_NPM_REGISTRY` overrides the registry base URL for mirrors.
+
 - `krova tunnel <cube> [localPort:]cubePort` and `krova connect <cube> --port <cubePort> [--local-port <n>]`: a private SSH tunnel to a port inside a Cube, bound to `127.0.0.1` only, over the same pinned host keys and strict host-key checking as `krova ssh`. `connect` picks a free local port and prints the endpoint (`--json` prints `host`, `port`, `cube` and `cubePort`). Both accept `-i, --identity`. Prefer them to a public `krova tcp add` mapping for databases.
 
 - `krova psql`, `krova redis` and `krova mysql`: open a private tunnel on a free local port, run `psql`, `redis-cli` or `mysql` against it, close the tunnel when the client exits, and exit with the client's code. Flags: `--user`, `--db`, `--port`, `-i`. Passwords are never taken as flags. A missing client is reported before anything connects.
