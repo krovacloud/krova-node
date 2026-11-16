@@ -195,7 +195,7 @@ Available on every command (flag > env var > context):
 | `-o, --output <format>` | | `table` (default) or `json`; `-o json` is the same as `--json` |
 | `--timeout <dur>` | | per-request timeout (e.g. `30s`); defaults to `30s` |
 
-When a command fails, `krova` prints the error and, for an API error or a connection failure, one line on what to try next. With `--json` (or `-o json`) errors stay exactly as they are, with no extra line.
+When a command fails, `krova` prints the error and, for a 401, 403, 404, 409, 429, 5xx or a connection failure, one line on what to try next. With `--json` (or `-o json`) errors stay exactly as they are, with no extra line.
 
 ## Shell completion
 

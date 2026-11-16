@@ -28,7 +28,7 @@ All notable changes to `@krovacloud/cli` are documented here.
 
 - Global `-o, --output <format>` (`table` by default, or `json`). `-o json` is the same as `--json`; any other value fails with a one-line error.
 
-- API errors and connection failures now print one extra line on what to try next, for example `Your API key was rejected. Run krova login, or check krova whoami.` for a 401 and `Could not reach <base URL>. Check your connection or KROVA_BASE_URL.` when the server cannot be reached. Nothing changes with `--json`.
+- Errors with a status of 401, 403, 404, 409, 429 or 5xx, and connection failures, now print one extra line on what to try next, for example `Your API key was rejected. Run krova login, or check krova whoami.` for a 401 and `Could not reach <base URL>. Check your connection or KROVA_BASE_URL.` when the server cannot be reached. Nothing changes with `--json`.
 
 - `krova login` and `krova cubes create` show a spinner on stderr while they wait, only in an interactive terminal and never with `--json`.
 
