@@ -6,8 +6,15 @@ import { appendFileSync, chmodSync, mkdirSync, readFileSync, writeFileSync } fro
 import { isIP } from "node:net";
 import { dirname } from "node:path";
 
+import { constants as osConstants } from "node:os";
+
+import type { Command } from "commander";
+
+import { rawRequest } from "./client.js";
 import { configDir } from "./config.js";
 import { join } from "node:path";
+import { resolveCube } from "./resolve.js";
+import { getRuntime, makeClient, resolveSpace } from "./runtime.js";
 
 export interface SshHostKey {
   type: string;
@@ -21,6 +28,8 @@ export interface SshInfo {
 }
 
 export interface SshOptions {
+  /** Extra ssh flags placed before everything else (for example `-N`, `-T`). */
+  preArgs?: string[];
   identity?: string;
   localFwd?: string[];
   remoteFwd?: string[];
@@ -124,7 +133,7 @@ export function writeKnownHosts(info: SshInfo): string {
 /** Build the ssh argv. `--` is placed immediately before the destination —
  *  the primary option-injection guard (with the validators above). */
 export function buildSSHArgs(info: SshInfo, o: SshOptions): string[] {
-  const args: string[] = [];
+  const args: string[] = [...(o.preArgs ?? [])];
   if (o.knownHosts) {
     args.push("-o", `UserKnownHostsFile=${o.knownHosts}`, "-o", "StrictHostKeyChecking=yes");
   }
@@ -146,4 +155,160 @@ export function execSSH(args: string[]): Promise<number> {
     child.on("error", reject);
     child.on("exit", (code) => resolve(code ?? 0));
   });
+}
+
+/** Map a child's (code, signal) to a shell-style exit code. */
+export function exitCodeFor(code: number | null, signal: NodeJS.Signals | null): number {
+  if (code !== null) return code;
+  if (signal) return 128 + (osConstants.signals[signal] ?? 0);
+  return 1;
+}
+
+/** Exec a binary with inherited stdio and resolve to its exit code. A signal
+ *  death maps to 128 + the signal number; a missing binary names itself. */
+export function execInherit(bin: string, args: string[]): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(bin, args, { stdio: "inherit" });
+    child.on("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "ENOENT") reject(new Error(`\`${bin}\` was not found on your PATH`));
+      else reject(err);
+    });
+    child.on("exit", (code, signal) => resolve(exitCodeFor(code, signal)));
+  });
+}
+
+export interface SshTarget {
+  cubeId: string;
+  info: SshInfo;
+  /** Path of the pinned known_hosts file, or "" when the server sent no host keys. */
+  knownHosts: string;
+}
+
+/** Resolve a Cube (name or ID) to its validated SSH endpoint and pin its host
+ *  keys. Shared by `ssh`, `tunnel`, `connect`, `psql`, `redis`, `mysql`, `exec`
+ *  and `cp`, so every one of them keeps the same strict host-key checking. */
+export async function resolveSshTarget(cmd: Command, cubeRef: string): Promise<SshTarget> {
+  const rt = getRuntime(cmd);
+  const client = makeClient(rt.res);
+  const space = await resolveSpace(rt);
+  const id = await resolveCube(client, space, cubeRef);
+
+  const { status, data } = await rawRequest<SshInfo>({
+    method: "GET",
+    baseUrl: rt.res.baseUrl,
+    path: `/spaces/${space}/cubes/${id}/ssh`,
+    apiKey: rt.res.apiKey,
+    timeoutMs: rt.timeoutMs,
+  });
+  if (status === 404) {
+    throw new Error(
+      `SSH info isn't available on this server yet — try \`krova cubes get ${cubeRef}\` for the Cube's IP and ssh manually`
+    );
+  }
+  if (status === 401 || status === 403) {
+    throw new Error(`SSH info request was rejected (HTTP ${status})`);
+  }
+  if (status !== 200 || !data?.host) {
+    throw new Error(`couldn't fetch SSH info (HTTP ${status})`);
+  }
+
+  const info: SshInfo = {
+    host: data.host,
+    port: data.port ?? 0,
+    user: data.user ?? "",
+    hostKeys: data.hostKeys ?? [],
+  };
+  validateSSHHost(info.host);
+  validateSSHUser(info.user);
+  if (info.port < 0 || info.port > 65535) throw new Error("invalid ssh port");
+
+  let knownHosts = "";
+  if (info.hostKeys.length) {
+    if (isHostname(info.host) && isUnpinned(info.host, info.port)) {
+      process.stderr.write(
+        "note: this Cube now has a stable SSH hostname (it stays the same even if the Cube migrates to another server) — pinning it is expected and only happens once.\n"
+      );
+    }
+    knownHosts = writeKnownHosts(info);
+  } else {
+    process.stderr.write(
+      "note: this server didn't provide host keys — using ssh trust-on-first-use (host-key checking stays on).\n"
+    );
+  }
+  return { cubeId: id, info, knownHosts };
+}
+
+// ── scp ────────────────────────────────────────────────────────────────────
+
+export interface CpOperands {
+  /** Cube name or ID of the one remote side. */
+  cube: string;
+  direction: "upload" | "download";
+  /** Path on the Cube (may be empty: the login directory). */
+  remotePath: string;
+  /** Path on this machine, made safe to hand to scp as a local operand. */
+  localPath: string;
+}
+
+/** Split `<cube>:<path>`. A prefix with a slash in it (`./a:b`, `/tmp/x:y`) is
+ *  a local path, and on Windows a one-letter prefix is a drive letter. */
+function splitRemote(arg: string): { cube: string; path: string } | undefined {
+  const i = arg.indexOf(":");
+  if (i <= 0) return undefined;
+  const cube = arg.slice(0, i);
+  if (cube.includes("/") || cube.includes("\\")) return undefined;
+  if (process.platform === "win32" && cube.length === 1) return undefined;
+  return { cube, path: arg.slice(i + 1) };
+}
+
+/** scp reads `a:b` as host `a`; a local path with a colon before its first
+ *  slash gets a `./` so it stays local. */
+function safeLocalPath(p: string): string {
+  const colon = p.indexOf(":");
+  const slash = p.indexOf("/");
+  if (colon !== -1 && (slash === -1 || colon < slash)) return `./${p}`;
+  return p;
+}
+
+/** Decide which side of `krova cp` is the Cube. Exactly one must be. */
+export function parseCpOperands(src: string, dst: string): CpOperands {
+  if (!src || !dst) throw new Error("cp needs a source and a destination");
+  const s = splitRemote(src);
+  const d = splitRemote(dst);
+  if (s && d) {
+    throw new Error("cp copies between this machine and a Cube: only one side can be <cube>:<path>");
+  }
+  if (!s && !d) {
+    throw new Error("one side must be a Cube path like <cube>:<path> (both sides are local)");
+  }
+  const remote = (s ?? d) as { cube: string; path: string };
+  if (remote.path.startsWith("-")) {
+    throw new Error("a remote path must not start with '-'");
+  }
+  if (/[\0\r\n]/.test(remote.path)) {
+    throw new Error("a remote path must not contain control characters");
+  }
+  return s
+    ? { cube: s.cube, direction: "download", remotePath: s.path, localPath: safeLocalPath(dst) }
+    : { cube: remote.cube, direction: "upload", remotePath: remote.path, localPath: safeLocalPath(src) };
+}
+
+/** Build the scp argv: strict host keys, `-P` port, and `--` before the operands. */
+export function buildSCPArgs(
+  info: SshInfo,
+  o: { knownHosts?: string; identity?: string; recursive?: boolean; operands: CpOperands }
+): string[] {
+  const args: string[] = [];
+  if (o.knownHosts) {
+    args.push("-o", `UserKnownHostsFile=${o.knownHosts}`, "-o", "StrictHostKeyChecking=yes");
+  }
+  if ((o.identity ?? "").trim()) args.push("-i", o.identity as string);
+  if (info.port > 0) args.push("-P", String(info.port));
+  if (o.recursive) args.push("-r");
+  const user = info.user.trim();
+  const host = isIP(info.host) === 6 ? `[${info.host}]` : info.host;
+  const remote = `${user ? `${user}@` : ""}${host}:${o.operands.remotePath}`;
+  const { direction, localPath } = o.operands;
+  args.push("--", ...(direction === "upload" ? [localPath, remote] : [remote, localPath]));
+  return args;
 }

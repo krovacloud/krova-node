@@ -6,6 +6,14 @@ All notable changes to `@krovacloud/cli` are documented here.
 
 ### Added
 
+- `krova tunnel <cube> [localPort:]cubePort` and `krova connect <cube> --port <cubePort> [--local-port <n>]`: a private SSH tunnel to a port inside a Cube, bound to `127.0.0.1` only, over the same pinned host keys and strict host-key checking as `krova ssh`. `connect` picks a free local port and prints the endpoint (`--json` prints `host`, `port`, `cube` and `cubePort`). Both accept `-i, --identity`. Prefer them to a public `krova tcp add` mapping for databases.
+
+- `krova psql`, `krova redis` and `krova mysql`: open a private tunnel on a free local port, run `psql`, `redis-cli` or `mysql` against it, close the tunnel when the client exits, and exit with the client's code. Flags: `--user`, `--db`, `--port`, `-i`. Passwords are never taken as flags. A missing client is reported before anything connects.
+
+- `krova exec <cube> -- <command...>`: run a command on a Cube over SSH without a terminal and exit with its exit code.
+
+- `krova cp [-r] [-i <file>] <src> <dst>`: copy files between this machine and a Cube with `scp`. Exactly one side is `<cube>:<path>`; both-remote, both-local and a remote path starting with `-` are rejected.
+
 - `krova backups`: `list`, `get <backup>`, `download <backup>`, `share <backup> <destination-space-id> [--idempotency-key <key>]`, `shares`, `accept <share-id>`, `decline <share-id>` and `cancel <share-id>`. A backup can be named or given by ID. `download` warns on stderr that the printed link works for anyone who has it until it expires. These need the Backups permissions on the key's member (View Backups to read, Manage Backups for the rest).
 
 - `krova domains add --proxy-protocol <v1|v2>` and

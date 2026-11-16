@@ -8,7 +8,10 @@ import { cubesCommand, rootGetCommand, rootListCommand } from "./commands/cubes.
 import { domainsCommand } from "./commands/domains.js";
 import { loginCommand } from "./commands/login.js";
 import { snapshotsCommand } from "./commands/snapshots.js";
+import { mysqlCommand, psqlCommand, redisCommand } from "./commands/dbclients.js";
+import { cpCommand, execCommand } from "./commands/exec.js";
 import { sshCommand } from "./commands/ssh.js";
+import { connectCommand, tunnelCommand } from "./commands/tunnel.js";
 import { tcpCommand } from "./commands/tcp.js";
 import { CLI_VERSION, versionCommand } from "./commands/version.js";
 import { webhooksCommand } from "./commands/webhooks.js";
@@ -33,6 +36,13 @@ program.addCommand(snapshotsCommand());
 program.addCommand(backupsCommand());
 program.addCommand(tcpCommand());
 program.addCommand(sshCommand());
+program.addCommand(tunnelCommand());
+program.addCommand(connectCommand());
+program.addCommand(psqlCommand());
+program.addCommand(redisCommand());
+program.addCommand(mysqlCommand());
+program.addCommand(execCommand());
+program.addCommand(cpCommand());
 program.addCommand(rootListCommand()); // `krova list` (alias `ls`)
 program.addCommand(rootGetCommand()); // `krova get`
 program.addCommand(regionsCommand());

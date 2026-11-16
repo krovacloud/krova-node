@@ -72,6 +72,25 @@ trust-on-first-use window). The destination is always passed after
 a `--` separator, with host/user validated against option-injection — a hostile
 value aborts before `ssh` ever runs.
 
+### Private tunnels, database clients, exec and copy
+
+These use the same pinned host keys and strict host-key checking as `krova ssh`. For a database, a private tunnel is safer than a public `krova tcp add` mapping: the port is only reachable from your machine, over your SSH key.
+
+```sh
+krova tunnel <cube> 5432               # localhost:5432 -> the Cube's port 5432
+krova tunnel <cube> 15432:5432         # localhost:15432 -> the Cube's port 5432
+krova connect <cube> --port 5432       # free local port, prints localhost:<port>
+krova connect <cube> --port 5432 --json
+krova psql <cube> [--user postgres] [--db postgres] [--port 5432]
+krova redis <cube> [--port 6379]
+krova mysql <cube> [--user root] [--db <name>] [--port 3306]
+krova exec <cube> -- uname -a          # no terminal; exits with the remote exit code
+krova cp ./site.tar.gz <cube>:/tmp/    # upload (scp)
+krova cp -r <cube>:/var/log ./logs     # download a directory
+```
+
+Tunnels listen on `127.0.0.1` only. `psql`, `redis` and `mysql` open a tunnel on a free local port, run the client (`psql`, `redis-cli` or `mysql`, which must be installed), and close the tunnel when it exits, with the client's exit code. They never take a password as a flag; the client prompts for it. `exec` joins the words after `--` and the remote shell runs them, like `ssh`. Put global flags such as `--space` before the `--`. In `cp`, exactly one side is `<cube>:<path>`; a remote path can't start with `-`.
+
 ## Domains, snapshots & TCP mappings
 
 Manage a Cube's attached resources. All take a `<cube>` name or ID and support
