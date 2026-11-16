@@ -1,6 +1,6 @@
 import { Command } from "commander";
 
-import { configPath, maskKey } from "../lib/config.js";
+import { configPath, displayKey, find, load, remove, save } from "../lib/config.js";
 import { printJSON, printKeyValue } from "../lib/output.js";
 import { persistLogin } from "../lib/persist.js";
 import { getRuntime, probeAuth } from "../lib/runtime.js";
@@ -75,8 +75,10 @@ export function authCommand(): Command {
     .command("status")
     .description("show the resolved credentials and verify them against the API")
     .option("--offline", "skip the live check; only report what's stored locally")
+    .option("--show-secrets", "print the full API key instead of a masked one")
     .action(async (opts, cmd: Command) => {
       const rt = getRuntime(cmd);
+      const showSecrets = Boolean(opts.showSecrets);
       const offline = Boolean(opts.offline);
 
       // A STORED key is not a WORKING key — it can be revoked server-side at
@@ -113,7 +115,9 @@ export function authCommand(): Command {
           detail: detail || undefined,
           context: rt.res.contextName,
           apiKeySource: rt.res.apiKeySource,
-          apiKeyMasked: maskKey(rt.res.apiKey),
+          ...(showSecrets
+            ? { apiKey: rt.res.apiKey }
+            : { apiKeyMasked: displayKey(rt.res.apiKey, false) }),
           spaceId,
           spaceSource: rt.res.spaceIdSource,
           baseUrl: rt.res.baseUrl,
@@ -134,7 +138,7 @@ export function authCommand(): Command {
       printKeyValue([
         ["Authenticated", label],
         ["Context", rt.res.contextName || "—"],
-        ["API key", rt.res.apiKey ? `${maskKey(rt.res.apiKey)} (${rt.res.apiKeySource})` : "—"],
+        ["API key", rt.res.apiKey ? `${displayKey(rt.res.apiKey, showSecrets)} (${rt.res.apiKeySource})` : "—"],
         ["Space ID", spaceId ? `${spaceId} (${rt.res.spaceIdSource})` : "—"],
         ["Base URL", rt.res.baseUrl],
         ["Config", configPath()],
@@ -146,6 +150,27 @@ export function authCommand(): Command {
       // `gh auth status`). An unreachable or too-old API says nothing about
       // the key, so those stay 0 rather than failing a build over a blip.
       if (!hasKey || probe.state === "rejected") process.exitCode = 1;
+    });
+
+  auth
+    .command("logout")
+    .description("remove a saved context and its API key from this machine")
+    .option("--context <name>", "the context to remove (default: the current one)")
+    .action((opts, cmd: Command) => {
+      const rt = getRuntime(cmd);
+      const cfg = load();
+      // The global --context may be consumed before this command sees it, so read both.
+      const name =
+        ((opts.context as string | undefined) ?? rt.flags.context ?? "").trim() ||
+        rt.res.contextName;
+      if (!name) throw new Error(`not logged in: no saved context in ${configPath()}`);
+      if (!find(cfg, name)) throw new Error(`no context named "${name}"`);
+      remove(cfg, name);
+      save(cfg);
+      if (rt.json) return printJSON({ context: name, result: "logged_out" });
+      process.stdout.write(
+        `Logged out of ${name}. The API key still works until you revoke it in the dashboard (Settings > API keys).\n`,
+      );
     });
 
   return auth;

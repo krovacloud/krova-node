@@ -1,6 +1,6 @@
 import { Command } from "commander";
 
-import { load, maskKey, remove, save } from "../lib/config.js";
+import { displayKey, load, remove, save } from "../lib/config.js";
 import { printJSON, printTable } from "../lib/output.js";
 import { getRuntime } from "../lib/runtime.js";
 
@@ -13,7 +13,8 @@ export function contextCommand(): Command {
     .command("list")
     .aliases(["ls"])
     .description("list all contexts")
-    .action((_opts, cmd: Command) => {
+    .option("--show-secrets", "print full API keys instead of masked ones (JSON output only; the table has no key column)")
+    .action((opts, cmd: Command) => {
       const { json } = getRuntime(cmd);
       const cfg = load();
       if (json) {
@@ -21,7 +22,7 @@ export function contextCommand(): Command {
           currentContext: cfg.currentContext ?? "",
           contexts: (cfg.contexts ?? []).map((c) => ({
             name: c.name,
-            apiKey: maskKey(c.apiKey ?? ""),
+            apiKey: displayKey(c.apiKey ?? "", Boolean(opts.showSecrets)),
             spaceId: c.spaceId ?? "",
             spaceName: c.spaceName ?? "",
             baseUrl: c.baseUrl ?? "",

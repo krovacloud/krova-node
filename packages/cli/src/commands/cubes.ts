@@ -2,6 +2,7 @@ import { Command } from "commander";
 
 import { printJSON, printKeyValue, printTable } from "../lib/output.js";
 import { resolveCube } from "../lib/resolve.js";
+import { confirm, printAborted, shouldConfirm } from "../lib/safety.js";
 import { getRuntime, makeClient, resolveSpace } from "../lib/runtime.js";
 
 function listCmd(): Command {
@@ -134,6 +135,28 @@ function actionCmd(
     });
 }
 
+function deleteCmd(): Command {
+  return new Command("delete")
+    .argument("<cube>", "cube name or ID")
+    .option("-y, --yes", "skip the confirmation prompt")
+    .description("delete a Cube (permanent)")
+    .action(async (cubeRef: string, opts, cmd: Command) => {
+      const rt = getRuntime(cmd);
+      const client = makeClient(rt.res);
+      const space = await resolveSpace(rt);
+      const id = await resolveCube(client, space, cubeRef);
+      if (shouldConfirm(opts)) {
+        const ok = await confirm(
+          `Delete cube ${cubeRef}${cubeRef === id ? "" : ` (${id})`}? This is permanent and cannot be undone. [y/N] `,
+        );
+        if (!ok) return printAborted(rt.json);
+      }
+      await client.cubes.delete(space, id);
+      if (rt.json) return printJSON({ id, result: "Deleting" });
+      process.stdout.write(`Deleting cube ${id}\n`);
+    });
+}
+
 function restartCmd(): Command {
   return new Command("restart")
     .argument("<cube>", "cube name or ID")
@@ -222,7 +245,7 @@ export function cubesCommand(): Command {
     actionCmd("power-off", "Powering off", (c, s, id) => c.powerOff(s, id)),
   );
   cubes.addCommand(actionCmd("wake", "Starting", (c, s, id) => c.wake(s, id)));
-  cubes.addCommand(actionCmd("delete", "Deleting", (c, s, id) => c.delete(s, id)));
+  cubes.addCommand(deleteCmd());
   cubes.addCommand(restartCmd());
   cubes.addCommand(sshPortCmd());
   cubes.addCommand(setProtectionCmd("protect", true, "Protected"));
