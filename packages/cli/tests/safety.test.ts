@@ -4,11 +4,13 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync }
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
+import { PassThrough } from "node:stream";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
 
 import { displayKey, maskKey } from "../src/lib/config.js";
 import {
+  confirm,
   isOpenWhitelist,
   publicExposureWarning,
   shouldConfirm,
@@ -37,6 +39,47 @@ test("isOpenWhitelist: empty, 0.0.0.0/0 and ::/0 are open; a real CIDR is not", 
   assert.equal(isOpenWhitelist([" ::/0 "]), true);
   assert.equal(isOpenWhitelist(["203.0.113.0/24"]), false);
   assert.equal(isOpenWhitelist(["203.0.113.4/32", "2001:db8::/32"]), false);
+});
+
+test("isOpenWhitelist: any numerically zero prefix is open, however it is spelled", () => {
+  for (const open of ["0.0.0.0/00", "0.0.0.0/000", "1.2.3.4/0", "::/00", "2001:db8::/0", " ::/0 "]) {
+    assert.equal(isOpenWhitelist([open]), true, open);
+  }
+  for (const closed of ["0.0.0.0/32", "0.0.0.0/10", "10.0.0.0/8", "::/128", "0.0.0.0", "1.2.3.4/"]) {
+    assert.equal(isOpenWhitelist([closed]), false, closed);
+  }
+});
+
+test("isOpenWhitelist: the two IPv4 halves together cover everything, one alone does not", () => {
+  assert.equal(isOpenWhitelist(["0.0.0.0/1", "128.0.0.0/1"]), true);
+  assert.equal(isOpenWhitelist(["128.0.0.0/1", "203.0.113.4/32", "0.0.0.0/1"]), true);
+  assert.equal(isOpenWhitelist(["0.0.0.0/1"]), false);
+  assert.equal(isOpenWhitelist(["128.0.0.0/1"]), false);
+  assert.equal(isOpenWhitelist(["0.0.0.0/1", "0.0.0.0/1"]), false);
+  assert.equal(isOpenWhitelist(["0.0.0.0/1", "192.0.0.0/2"]), false);
+});
+
+test("confirm: y and yes say yes, anything else says no, and EOF says no with exit code 1", async () => {
+  const ask = async (feed: (input: PassThrough) => void) => {
+    const input = new PassThrough();
+    const output = new PassThrough();
+    const answer = confirm("Go? [y/N] ", { input, output });
+    feed(input);
+    return answer;
+  };
+  const saved = process.exitCode;
+  try {
+    process.exitCode = undefined;
+    assert.equal(await ask((i) => i.write("y\n")), true);
+    assert.equal(await ask((i) => i.write("YES\n")), true);
+    assert.equal(await ask((i) => i.write("n\n")), false);
+    assert.equal(await ask((i) => i.write("\n")), false);
+    assert.equal(process.exitCode, undefined, "an answer, even no, is not an error");
+    assert.equal(await ask((i) => i.end()), false);
+    assert.equal(process.exitCode, 1, "EOF before an answer must exit non-zero");
+  } finally {
+    process.exitCode = saved;
+  }
 });
 
 test("publicExposureWarning names the port, the cube and the tunnel alternative", () => {
@@ -240,7 +283,7 @@ test("`auth logout` removes the current context and its key from the 0600 config
   assert.equal(run.code, 0, run.stderr);
   assert.equal(
     run.stdout.trim(),
-    "Logged out of work. The API key still works until you revoke it in the dashboard (Settings > API keys).",
+    "Logged out of work. The API key still works until you revoke it in the dashboard (Settings > API keys).\nNow using personal.",
   );
   const text = readFileSync(file, "utf8");
   assert.ok(!text.includes(FULL_KEY), "the removed key must not stay in the file");
@@ -251,13 +294,42 @@ test("`auth logout` removes the current context and its key from the 0600 config
   );
   assert.equal(cfg.currentContext, "personal");
   assert.equal(statSync(file).mode & 0o777, 0o600);
+  assert.match(run.stdout, /\nNow using personal\.\n$/);
+});
+
+test("`auth logout` of a non-current context does not announce a switch", async () => {
+  const { home } = makeConfig("logout-quiet");
+  const run = await runCli(["auth", "logout", "--context", "personal"], home, false);
+  assert.equal(run.code, 0, run.stderr);
+  assert.doesNotMatch(run.stdout, /Now using/);
+});
+
+test("`auth logout --json` of the current context reports the context that took over", async () => {
+  const { home } = makeConfig("logout-json-current");
+  const run = await runCli(["auth", "logout", "--json"], home, false);
+  assert.deepEqual(JSON.parse(run.stdout), {
+    context: "work",
+    result: "logged_out",
+    current: "personal",
+  });
+});
+
+test("`auth logout` of the last context reports current as null", async () => {
+  const { home } = makeConfig("logout-last");
+  await runCli(["auth", "logout", "--context", "personal"], home, false);
+  const run = await runCli(["auth", "logout", "--json"], home, false);
+  assert.deepEqual(JSON.parse(run.stdout), { context: "work", result: "logged_out", current: null });
 });
 
 test("`auth logout --context <name> --json` removes that context only", async () => {
   const { home, file } = makeConfig("logout-named");
   const run = await runCli(["auth", "logout", "--context", "personal", "--json"], home, false);
   assert.equal(run.code, 0, run.stderr);
-  assert.deepEqual(JSON.parse(run.stdout), { context: "personal", result: "logged_out" });
+  assert.deepEqual(JSON.parse(run.stdout), {
+    context: "personal",
+    result: "logged_out",
+    current: "work",
+  });
   const cfg = JSON.parse(readFileSync(file, "utf8"));
   assert.deepEqual(
     cfg.contexts.map((c: { name: string }) => c.name),

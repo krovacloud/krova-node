@@ -165,12 +165,15 @@ export function authCommand(): Command {
         rt.res.contextName;
       if (!name) throw new Error(`not logged in: no saved context in ${configPath()}`);
       if (!find(cfg, name)) throw new Error(`no context named "${name}"`);
+      const wasCurrent = cfg.currentContext === name;
       remove(cfg, name);
       save(cfg);
-      if (rt.json) return printJSON({ context: name, result: "logged_out" });
+      const current = cfg.currentContext || null;
+      if (rt.json) return printJSON({ context: name, result: "logged_out", current });
       process.stdout.write(
         `Logged out of ${name}. The API key still works until you revoke it in the dashboard (Settings > API keys).\n`,
       );
+      if (wasCurrent && current) process.stdout.write(`Now using ${current}.\n`);
     });
 
   return auth;

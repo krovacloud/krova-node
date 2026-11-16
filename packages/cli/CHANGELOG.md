@@ -14,7 +14,7 @@ All notable changes to `@krovacloud/cli` are documented here.
 
 - `krova cp [-r] [-i <file>] <src> <dst>`: copy files between this machine and a Cube with `scp`. Exactly one side is `<cube>:<path>`; both-remote, both-local and a remote path starting with `-` are rejected.
 
-- `krova auth logout [--context <name>]`: removes a saved context (the current one by default) and its API key from this machine. The key itself keeps working until you revoke it in the dashboard (Settings > API keys). `--json` prints `{ "context": "<name>", "result": "logged_out" }`.
+- `krova auth logout [--context <name>]`: removes a saved context (the current one by default) and its API key from this machine. The key itself keeps working until you revoke it in the dashboard (Settings > API keys). If that was the current context and another one takes over, it prints `Now using <name>.`. `--json` prints `{ "context": "<name>", "result": "logged_out", "current": "<name>" | null }`.
 
 - `--show-secrets` on `krova whoami`, `krova auth status` and `krova context list`: prints the full API key. It stays masked by default, in text and in `--json`. With the flag, `whoami --json` and `auth status --json` return `apiKey` in place of `apiKeyMasked`.
 
