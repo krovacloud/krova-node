@@ -24,7 +24,7 @@ export function tunnelCommand(): Command {
     .option("-i, --identity <file>", "SSH identity (private key) file, passed to ssh -i")
     .action(async (cubeRef: string, spec: string, opts, cmd: Command) => {
       const { localPort, cubePort } = parseTunnelSpec(spec);
-      const { info, knownHosts } = await resolveSshTarget(cmd, cubeRef);
+      const { info, knownHosts } = await resolveSshTarget(cmd, cubeRef, { requireHostKeys: true });
       const args = buildTunnelArgs(info, {
         identity: opts.identity as string | undefined,
         knownHosts,
@@ -54,7 +54,7 @@ export function connectCommand(): Command {
           ? parsePort(opts.localPort as string, "--local-port")
           : await freeLoopbackPort();
       const json = Boolean(cmd.optsWithGlobals().json);
-      const { info, knownHosts } = await resolveSshTarget(cmd, cubeRef);
+      const { info, knownHosts } = await resolveSshTarget(cmd, cubeRef, { requireHostKeys: true });
       const args = buildTunnelArgs(info, {
         identity: opts.identity as string | undefined,
         knownHosts,

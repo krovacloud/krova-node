@@ -83,6 +83,8 @@ function canConnect(port: number): Promise<boolean> {
   });
 }
 
+const READY_GRACE_MS = 150;
+
 /** Wait until the local forward accepts a connection. ssh opens the listener
  *  once it has authenticated, so a refused connect means "not yet": retry with a
  *  short growing delay and stop at once if ssh exits or attempts run out. */
@@ -98,7 +100,16 @@ export async function waitForPort(
   void ssh.exited.then(markDone, markDone);
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (sshDone) return "ssh-exited";
-    if (await canConnect(port)) return sshDone ? "ssh-exited" : "ready";
+    if (await canConnect(port)) {
+      // Something answered. If another process holds the port, ssh fails to bind
+      // (ExitOnForwardFailure) and exits right after: give it a short bounded
+      // moment to do so, and only call the tunnel ready if ssh is still running.
+      await Promise.race([
+        ssh.exited.then(markDone, markDone),
+        new Promise((r) => setTimeout(r, READY_GRACE_MS)),
+      ]);
+      return sshDone ? "ssh-exited" : "ready";
+    }
     await new Promise((r) => setTimeout(r, Math.min(20 * 2 ** Math.min(attempt, 4), 250)));
   }
   return "timeout";
@@ -133,9 +144,19 @@ export interface Spawned {
 }
 
 /** Start the tunnel's ssh. stdin and stdout are not used (ssh prompts for a
- *  passphrase on the terminal itself); stderr stays visible. */
-export function spawnTunnel(args: string[]): Spawned {
-  const child = spawn("ssh", args, { stdio: ["ignore", "ignore", "inherit"] });
+ *  passphrase on the terminal itself); stderr stays visible.
+ *
+ *  `ignoreSigint` keeps a terminal Ctrl+C (sent to the whole foreground process
+ *  group) from killing the tunnel while a database client is using it: ssh is
+ *  started through `sh` with SIGINT ignored, which survives the exec. It is NOT
+ *  `detached: true`, because that calls setsid(), so ssh would lose the
+ *  controlling terminal and could no longer ask for a key passphrase. */
+export function spawnTunnel(args: string[], o: { ignoreSigint?: boolean } = {}): Spawned {
+  const stdio: ["ignore", "ignore", "inherit"] = ["ignore", "ignore", "inherit"];
+  const child =
+    o.ignoreSigint && process.platform !== "win32"
+      ? spawn("/bin/sh", ["-c", 'trap "" INT; exec ssh "$@"', "sh", ...args], { stdio })
+      : spawn("ssh", args, { stdio });
   const exited = new Promise<number>((resolve, reject) => {
     child.once("error", (err: NodeJS.ErrnoException) => {
       if (err.code === "ENOENT") reject(new Error("`ssh` was not found on your PATH"));
@@ -188,15 +209,23 @@ export async function runClientThroughTunnel(o: {
   client: string;
   clientArgs: string[];
 }): Promise<number> {
-  const ssh = spawnTunnel(o.sshArgs);
+  const ssh = spawnTunnel(o.sshArgs, { ignoreSigint: true });
   let client: ChildProcess | undefined;
   const onSignal = (sig: NodeJS.Signals) => {
-    // Ctrl+C reaches the client too (psql uses it to cancel a query), so the
-    // parent keeps running; a termination signal stops both.
-    if (sig === "SIGINT") return;
+    if (sig === "SIGINT") {
+      // Once the client runs, Ctrl+C belongs to it (psql cancels the query) and
+      // the tunnel ignores it. Before that, it is how the user gives up waiting.
+      if (!client) ssh.child.kill("SIGTERM");
+      return;
+    }
     client?.kill(sig);
     ssh.child.kill(sig);
   };
+  // Never leave the tunnel behind, whatever way this process ends.
+  const killTunnel = () => {
+    if (ssh.child.exitCode === null && ssh.child.signalCode === null) ssh.child.kill("SIGTERM");
+  };
+  process.on("exit", killTunnel);
   for (const sig of STOP_SIGNALS) process.on(sig, onSignal);
   try {
     const state = await waitForPort(o.localPort, ssh);
@@ -219,10 +248,9 @@ export async function runClientThroughTunnel(o: {
       running.once("exit", (code, signal) => resolve(exitCodeFor(code, signal)));
     });
   } finally {
-    if (ssh.child.exitCode === null && ssh.child.signalCode === null) {
-      ssh.child.kill("SIGTERM");
-    }
+    killTunnel();
     await ssh.exited.catch(() => 0);
     for (const sig of STOP_SIGNALS) process.off(sig, onSignal);
+    process.off("exit", killTunnel);
   }
 }

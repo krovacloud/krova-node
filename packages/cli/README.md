@@ -89,7 +89,7 @@ krova cp ./site.tar.gz <cube>:/tmp/    # upload (scp)
 krova cp -r <cube>:/var/log ./logs     # download a directory
 ```
 
-Tunnels listen on `127.0.0.1` only. `psql`, `redis` and `mysql` open a tunnel on a free local port, run the client (`psql`, `redis-cli` or `mysql`, which must be installed), and close the tunnel when it exits, with the client's exit code. They never take a password as a flag; the client prompts for it. `exec` joins the words after `--` and the remote shell runs them, like `ssh`. Put global flags such as `--space` before the `--`. In `cp`, exactly one side is `<cube>:<path>`; a remote path can't start with `-`.
+Tunnels listen on `127.0.0.1` only. `psql`, `redis` and `mysql` open a tunnel on a free local port, run the client (`psql`, `redis-cli` or `mysql`, which must be installed), and close the tunnel when it exits, with the client's exit code. They never take a password as a flag; the client prompts for it. `exec` joins the words after `--` and the remote shell runs them, like `ssh`. Put global flags such as `--space` before the `--`. In `cp`, exactly one side is `<cube>:<path>`; a remote path can't start with `-`. Write a local name that contains a colon as `./a:b`, or `cp` reads the part before the colon as a Cube. These commands refuse to run when Krova has no recorded host key for the Cube yet (`krova ssh` still connects, with ssh's own host-key prompt).
 
 ## Domains, snapshots & TCP mappings
 
