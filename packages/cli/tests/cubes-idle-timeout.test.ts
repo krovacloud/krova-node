@@ -9,6 +9,7 @@ import {
   buildCreateBody,
   cubesCommand,
   describeIdleTimeout,
+  idleTimeoutApplied,
   parseIdleTimeout,
 } from "../src/commands/cubes.js";
 
@@ -42,6 +43,16 @@ test("describeIdleTimeout says off, N min, or a dash when the server does not sa
   assert.equal(describeIdleTimeout(null), "off");
   assert.equal(describeIdleTimeout(30), "30 min");
   assert.equal(describeIdleTimeout(undefined), "-");
+});
+
+test("idleTimeoutApplied: present must match; absent is fine only for off", () => {
+  assert.equal(idleTimeoutApplied(30, 30), true);
+  assert.equal(idleTimeoutApplied(null, null), true);
+  assert.equal(idleTimeoutApplied(undefined, null), true, "a server may omit a null field");
+  assert.equal(idleTimeoutApplied(undefined, 30), false);
+  assert.equal(idleTimeoutApplied(null, 30), false);
+  assert.equal(idleTimeoutApplied(60, 30), false);
+  assert.equal(idleTimeoutApplied(30, null), false);
 });
 
 test("buildCreateBody sends idleTimeoutMinutes only when given, and null for off", () => {
@@ -173,7 +184,21 @@ test("`krova cubes create --idle-timeout 30 --json` keeps stdout JSON and warns 
   const run = await runCli([...CREATE, "--idle-timeout", "30", "--json"]);
   assert.equal(run.code, 0, run.stderr);
   assert.equal(JSON.parse(run.stdout).id, "cube_1");
-  assert.match(run.stderr, /did not report an idle timeout/);
+  assert.match(run.stderr, /did not report the requested idle timeout/);
+});
+
+test("`krova cubes create --idle-timeout off` does not warn when the server omits the null field", async () => {
+  handler = (_req, res) => json(res, 201, { cube: cube("cube_1", "web") });
+  const run = await runCli([...CREATE, "--idle-timeout", "off"]);
+  assert.equal(run.code, 0, run.stderr);
+  assert.equal(run.stderr, "");
+});
+
+test("`krova cubes create --idle-timeout 30` warns when the server reports a different value", async () => {
+  handler = (_req, res) => json(res, 201, { cube: cube("cube_1", "web", { idleTimeoutMinutes: null }) });
+  const run = await runCli([...CREATE, "--idle-timeout", "30"]);
+  assert.equal(run.code, 0, run.stderr);
+  assert.match(run.stderr, /did not report the requested idle timeout/);
 });
 
 const LIST = { cubes: [cube("cube_1", "web"), cube("cube_2", "db")], pagination: {} };
@@ -255,6 +280,22 @@ test("`krova cubes update` does not claim success when a 200 does not carry the 
   assert.equal(run.code, 1);
   assert.match(run.stderr, /did not apply --idle-timeout/);
   assert.doesNotMatch(run.stdout, /Set idle auto-stop/);
+});
+
+test("`krova cubes update --idle-timeout off` succeeds when the server omits the null field, and fails when it reports another value", async () => {
+  handler = (req, res) =>
+    req.method === "GET" ? json(res, 200, LIST) : json(res, 200, { cube: cube("cube_1", "web") });
+  const ok = await runCli(["cubes", "update", "web", "--idle-timeout", "off"]);
+  assert.equal(ok.code, 0, ok.stderr);
+  assert.match(ok.stdout, /Turned off idle auto-stop for cube cube_1/);
+
+  handler = (req, res) =>
+    req.method === "GET"
+      ? json(res, 200, LIST)
+      : json(res, 200, { cube: cube("cube_1", "web", { idleTimeoutMinutes: 60 }) });
+  const bad = await runCli(["cubes", "update", "web", "--idle-timeout", "off"]);
+  assert.equal(bad.code, 1);
+  assert.match(bad.stderr, /kept the idle timeout at 60 min/);
 });
 
 test("`krova cubes get` shows the idle timeout and last activity", async () => {
