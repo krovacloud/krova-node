@@ -261,7 +261,7 @@ export function createCmd(deps: CreateDeps = defaultCreateDeps): Command {
           opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : undefined
         )
       );
-      if (idleTimeoutMinutes !== undefined && cube.idleTimeoutMinutes === undefined) {
+      if (idleTimeoutMinutes !== undefined && !idleTimeoutApplied(cube.idleTimeoutMinutes, idleTimeoutMinutes)) {
         // An older server ignores the field it does not know and still answers 201.
         process.stderr.write(IDLE_UNSUPPORTED_WARNING);
       }
@@ -384,7 +384,7 @@ const IDLE_TIMEOUT_HELP =
   'power the Cube off after this many minutes without activity (10 to 10080), or "off" (needs a server with the idle-timeout feature)';
 
 const IDLE_UNSUPPORTED_WARNING =
-  "Warning: this server did not report an idle timeout for the Cube, so --idle-timeout was probably ignored. It needs a server with the idle-timeout feature.\n";
+  "Warning: this server did not report the requested idle timeout for the Cube, so --idle-timeout was probably ignored. It needs a server with the idle-timeout feature.\n";
 
 /**
  * Parse `--idle-timeout`: whole minutes from 10 to 10080 (7 days), or `off`
@@ -397,6 +397,17 @@ export function parseIdleTimeout(raw: string): number | null {
     throw new Error('--idle-timeout must be a whole number of minutes from 10 to 10080, or "off"');
   }
   return n;
+}
+
+/**
+ * Did the server apply the requested timeout? A present field must equal the request. An absent field means
+ * the server omitted it (an older server, or a null it left out): that only counts as applied for `off`.
+ */
+export function idleTimeoutApplied(
+  returned: number | null | undefined,
+  requested: number | null,
+): boolean {
+  return returned === undefined ? requested === null : returned === requested;
 }
 
 /** `off` for a Cube with no timeout, `N min` for one with a timeout, `-` when the server does not say. */
@@ -421,7 +432,7 @@ function updateCmd(): Command {
       const id = await resolveCube(client, space, cubeRef);
       const cube = await client.cubes.setIdleTimeout(space, id, minutes);
       // A 200 that does not carry the new value means the server ignored the field; never report a change that did not happen.
-      if (cube.idleTimeoutMinutes !== minutes) {
+      if (!idleTimeoutApplied(cube.idleTimeoutMinutes, minutes)) {
         throw new Error(
           cube.idleTimeoutMinutes === undefined
             ? "the server did not apply --idle-timeout (it needs a server with the idle-timeout feature)"

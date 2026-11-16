@@ -2567,7 +2567,7 @@
         ]
       },
       "patch": {
-        "description": "Idempotent. The PATCHable fields are `name` and `terminationProtection`; send either or both. Sending a value the Cube already has returns the Cube unchanged and writes no audit row. Sending neither is a 400 rather than a no-op, so a typo in a field name cannot look like success. Renaming needs the `cube.manage` permission and changing termination protection needs `cube.termination_protection`; a request with both fields needs both. Every supplied field is validated before any is applied. Names are not unique within a space. Renaming is metadata only: the hostname inside a running Cube changes on its next cold restart. To change vCPU, RAM or disk use `POST .../resize`.",
+        "description": "Idempotent. The PATCHable fields are `name`, `terminationProtection` and `idleTimeoutMinutes`; send any of them. Sending a value the Cube already has returns the Cube unchanged and writes no audit row. Sending neither is a 400 rather than a no-op, so a typo in a field name cannot look like success. Renaming and changing the idle auto-stop timeout need the `cube.manage` permission, and changing termination protection needs `cube.termination_protection`; a request with several fields needs each permission. Every supplied field is validated before any is applied. Names are not unique within a space. Renaming is metadata only: the hostname inside a running Cube changes on its next cold restart. To change vCPU, RAM or disk use `POST .../resize`.",
         "parameters": [
           {
             "in": "path",
@@ -2645,7 +2645,7 @@
             "$ref": "#/components/responses/RateLimited"
           }
         },
-        "summary": "Update a Cube (rename, toggle termination protection)",
+        "summary": "Update a Cube (rename, termination protection, idle auto-stop)",
         "tags": [
           "Cubes"
         ]
