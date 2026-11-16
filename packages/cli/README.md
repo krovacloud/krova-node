@@ -31,7 +31,12 @@ krova context list
 krova context use <name>
 krova context rename <old> <new>
 krova context delete <name>
+krova auth logout [--context <name>]   # remove a saved context and its key from this machine
 ```
+
+`krova auth logout` only clears the local copy. The API key keeps working until you revoke it in the dashboard (Settings > API keys).
+
+`krova whoami`, `krova auth status` and `krova context list --json` mask the API key. Add `--show-secrets` to print it in full.
 
 ## Cubes
 
@@ -46,8 +51,10 @@ krova cubes power-off <cube>
 krova cubes wake <cube>
 krova cubes restart <cube>   # cold restart — the only way to pick up a new kernel
 krova cubes ssh-port <cube> --port 2222   # in-Cube sshd port, NOT the host port
-krova cubes delete <cube>
+krova cubes delete <cube>            # asks first in a terminal; -y/--yes skips the prompt
 ```
+
+In a terminal, `krova cubes delete` and `krova snapshots rm` ask `[y/N]` before deleting, because it is permanent. In scripts and pipes (no terminal) they run without a prompt, as before. Pass `-y, --yes` to skip it.
 
 `<cube>` is a Cube **name or ID** — a unique name resolves automatically.
 
@@ -102,11 +109,13 @@ krova domains set-proxy-protocol <cube> <domain-id> v2    # or v1, or off
 krova snapshots list <cube>
 krova snapshots create <cube> --name nightly
 krova snapshots restore <cube> <snapshot-id>   # replaces the Cube's disk
-krova snapshots rm <cube> <snapshot-id>
+krova snapshots rm <cube> <snapshot-id>   # asks first in a terminal; -y/--yes skips the prompt
 
 # TCP port mappings (expose a Cube port on the host)
 krova tcp list <cube>
 krova tcp add <cube> --port 5432 --whitelist 203.0.113.4/32
+# With no --whitelist (or 0.0.0.0/0, ::/0) the port is open to the whole internet:
+# the CLI warns on stderr and, in a terminal, asks to confirm (-y/--yes skips it).
 krova tcp rm <cube> <mapping-id>
 ```
 

@@ -1,14 +1,16 @@
 import { Command } from "commander";
 
-import { find, maskKey } from "../lib/config.js";
+import { displayKey, find } from "../lib/config.js";
 import { printJSON, printKeyValue } from "../lib/output.js";
 import { getRuntime, probeAuth } from "../lib/runtime.js";
 
 export function whoamiCommand(): Command {
   return new Command("whoami")
     .description("show the current context, space, and base URL")
-    .action(async (_opts, cmd: Command) => {
+    .option("--show-secrets", "print the full API key instead of a masked one")
+    .action(async (opts, cmd: Command) => {
       const rt = getRuntime(cmd);
+      const showSecrets = Boolean(opts.showSecrets);
       const ctx = find(rt.cfg, rt.res.contextName);
       let spaceId = rt.res.spaceId;
       let spaceName = ctx?.spaceName ?? "";
@@ -34,7 +36,9 @@ export function whoamiCommand(): Command {
           context: rt.res.contextName,
           spaceId,
           spaceName,
-          apiKeyMasked: maskKey(rt.res.apiKey),
+          ...(showSecrets
+            ? { apiKey: rt.res.apiKey }
+            : { apiKeyMasked: displayKey(rt.res.apiKey, false) }),
           apiKeySource: rt.res.apiKeySource,
           baseUrl: rt.res.baseUrl,
           spaceLive,
@@ -46,7 +50,7 @@ export function whoamiCommand(): Command {
         ["Context", rt.res.contextName || "—"],
         ["Space", spaceName || "—"],
         ["Space ID", spaceId || "—"],
-        ["API key", rt.res.apiKey ? `${maskKey(rt.res.apiKey)} (${rt.res.apiKeySource})` : "—"],
+        ["API key", rt.res.apiKey ? `${displayKey(rt.res.apiKey, showSecrets)} (${rt.res.apiKeySource})` : "—"],
         ["Base URL", rt.res.baseUrl],
       ]);
       if (warning) process.stdout.write(`\n${warning}\n`);

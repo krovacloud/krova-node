@@ -6,6 +6,14 @@ All notable changes to `@krovacloud/cli` are documented here.
 
 ### Added
 
+- `krova auth logout [--context <name>]`: removes a saved context (the current one by default) and its API key from this machine. The key itself keeps working until you revoke it in the dashboard (Settings > API keys). `--json` prints `{ "context": "<name>", "result": "logged_out" }`.
+
+- `--show-secrets` on `krova whoami`, `krova auth status` and `krova context list`: prints the full API key. It stays masked by default, in text and in `--json`. With the flag, `whoami --json` and `auth status --json` return `apiKey` in place of `apiKeyMasked`.
+
+- `krova cubes delete` and `krova snapshots rm` take `-y, --yes`. In a terminal they now ask `[y/N]` before deleting; with no terminal (scripts, pipes) they run without a prompt, as before.
+
+- `krova tcp add` warns on stderr when the port would be open to the whole internet (no `--whitelist`, or `0.0.0.0/0` or `::/0`) and suggests `--whitelist` or `krova tunnel`. In a terminal it also asks `[y/N]`; `-y, --yes` skips the question. With no terminal it adds the mapping as before.
+
 - `krova backups`: `list`, `get <backup>`, `download <backup>`, `share <backup> <destination-space-id> [--idempotency-key <key>]`, `shares`, `accept <share-id>`, `decline <share-id>` and `cancel <share-id>`. A backup can be named or given by ID. `download` warns on stderr that the printed link works for anyone who has it until it expires. These need the Backups permissions on the key's member (View Backups to read, Manage Backups for the rest).
 
 - `krova domains add --proxy-protocol <v1|v2>` and

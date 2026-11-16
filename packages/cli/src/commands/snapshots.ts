@@ -2,6 +2,7 @@ import { Command } from "commander";
 
 import { printJSON, printTable } from "../lib/output.js";
 import { resolveCube } from "../lib/resolve.js";
+import { confirm, printAborted, shouldConfirm } from "../lib/safety.js";
 import { getRuntime, makeClient, resolveSpace } from "../lib/runtime.js";
 
 /** `krova snapshots` — snapshot and restore a Cube's disk. */
@@ -51,12 +52,23 @@ export function snapshotsCommand(): Command {
     .command("rm")
     .argument("<cube>", "cube name or ID")
     .argument("<snapshot-id>", "the snapshot ID (see `krova snapshots list`)")
-    .description("delete a snapshot")
-    .action(async (cubeRef: string, snapshotId: string, _opts, c: Command) => {
+    .option("-y, --yes", "skip the confirmation prompt")
+    .description("delete a snapshot (permanent)")
+    .action(async (cubeRef: string, snapshotId: string, opts, c: Command) => {
       const rt = getRuntime(c);
       const client = makeClient(rt.res);
       const space = await resolveSpace(rt);
       const id = await resolveCube(client, space, cubeRef);
+      if (shouldConfirm(opts)) {
+        // Show the snapshot's name when we can find it; the ID alone is hard to recognize.
+        const name = (await client.snapshots.list(space, id).catch(() => [])).find(
+          (s) => s.id === snapshotId,
+        )?.name;
+        const ok = await confirm(
+          `Delete snapshot ${name ? `"${name}" (${snapshotId})` : snapshotId} of cube ${cubeRef}? This is permanent and cannot be undone. [y/N] `,
+        );
+        if (!ok) return printAborted(rt.json);
+      }
       await client.snapshots.delete(space, id, snapshotId);
       if (rt.json) return printJSON({ id: snapshotId, result: "deleted" });
       process.stdout.write(`Deleted snapshot ${snapshotId}\n`);

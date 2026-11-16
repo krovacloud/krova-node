@@ -186,3 +186,8 @@ export function maskKey(key: string): string {
   if (key.length <= 8) return "****";
   return `${key.slice(0, 6)}…${key.slice(-4)}`;
 }
+
+/** The key as it should be printed: masked unless `--show-secrets` was passed. */
+export function displayKey(key: string, showSecrets: boolean): string {
+  return showSecrets ? key : maskKey(key);
+}
