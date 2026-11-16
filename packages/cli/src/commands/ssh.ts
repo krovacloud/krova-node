@@ -1,18 +1,6 @@
 import { Command } from "commander";
 
-import { rawRequest } from "../lib/client.js";
-import { resolveCube } from "../lib/resolve.js";
-import { getRuntime, makeClient, resolveSpace } from "../lib/runtime.js";
-import {
-  type SshInfo,
-  buildSSHArgs,
-  execSSH,
-  isHostname,
-  isUnpinned,
-  validateSSHHost,
-  validateSSHUser,
-  writeKnownHosts,
-} from "../lib/ssh.js";
+import { buildSSHArgs, execSSH, resolveSshTarget } from "../lib/ssh.js";
 
 const collect = (v: string, acc: string[]) => {
   acc.push(v);
@@ -28,54 +16,7 @@ export function sshCommand(): Command {
     .option("-L, --local-forward <spec>", "local port forward, passed to ssh -L (repeatable)", collect, [])
     .option("-R, --remote-forward <spec>", "remote port forward, passed to ssh -R (repeatable)", collect, [])
     .action(async (cubeRef: string, command: string[], opts, cmd: Command) => {
-      const rt = getRuntime(cmd);
-      const client = makeClient(rt.res);
-      const space = await resolveSpace(rt);
-      const id = await resolveCube(client, space, cubeRef);
-
-      const { status, data } = await rawRequest<SshInfo>({
-        method: "GET",
-        baseUrl: rt.res.baseUrl,
-        path: `/spaces/${space}/cubes/${id}/ssh`,
-        apiKey: rt.res.apiKey,
-        timeoutMs: rt.timeoutMs,
-      });
-      if (status === 404) {
-        throw new Error(
-          `SSH info isn't available on this server yet — try \`krova cubes get ${cubeRef}\` for the Cube's IP and ssh manually`
-        );
-      }
-      if (status === 401 || status === 403) {
-        throw new Error(`SSH info request was rejected (HTTP ${status})`);
-      }
-      if (status !== 200 || !data?.host) {
-        throw new Error(`couldn't fetch SSH info (HTTP ${status})`);
-      }
-
-      const info: SshInfo = {
-        host: data.host,
-        port: data.port ?? 0,
-        user: data.user ?? "",
-        hostKeys: data.hostKeys ?? [],
-      };
-      validateSSHHost(info.host);
-      validateSSHUser(info.user);
-      if (info.port < 0 || info.port > 65535) throw new Error("invalid ssh port");
-
-      let knownHosts = "";
-      if (info.hostKeys.length) {
-        if (isHostname(info.host) && isUnpinned(info.host, info.port)) {
-          process.stderr.write(
-            "note: this Cube now has a stable SSH hostname (it stays the same even if the Cube migrates to another server) — pinning it is expected and only happens once.\n"
-          );
-        }
-        knownHosts = writeKnownHosts(info);
-      } else {
-        process.stderr.write(
-          "note: this server didn't provide host keys — using ssh trust-on-first-use (host-key checking stays on).\n"
-        );
-      }
-
+      const { info, knownHosts } = await resolveSshTarget(cmd, cubeRef);
       const args = buildSSHArgs(info, {
         identity: opts.identity as string | undefined,
         localFwd: opts.localForward as string[],
