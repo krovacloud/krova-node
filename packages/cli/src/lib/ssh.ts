@@ -43,8 +43,12 @@ const HOST_BANNED = new Set(
 );
 // User is slightly looser — it may contain '=' (host may not).
 const USER_BANNED = new Set(
-  "@/\\'\"`$;&|<>(){}*?!#,".split("")
+  "@/\\'\"`$;&|<>(){}*?!#,:[]".split("")
 );
+
+// One DNS label: letters, digits and inner hyphens, at most 63 characters.
+const DNS_NAME =
+  /^(?=.{1,253}$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
 
 export function validateSSHHost(host: string): void {
   const h = host.trim();
@@ -58,6 +62,9 @@ export function validateSSHHost(host: string): void {
     if (HOST_BANNED.has(r)) {
       throw new Error(`host contains a disallowed character ${JSON.stringify(r)}`);
     }
+  }
+  if (isIP(h) === 0 && !DNS_NAME.test(h)) {
+    throw new Error("host must be an IP address or a DNS hostname");
   }
 }
 
@@ -169,11 +176,26 @@ export function exitCodeFor(code: number | null, signal: NodeJS.Signals | null):
 export function execInherit(bin: string, args: string[]): Promise<number> {
   return new Promise((resolve, reject) => {
     const child = spawn(bin, args, { stdio: "inherit" });
+    // Ctrl+C already reaches the child through the terminal; a signal sent only
+    // to this process (kill, a supervisor) is passed on, and we keep running
+    // until the child has exited so its exit code is not lost.
+    const forward = (sig: NodeJS.Signals) => {
+      child.kill(sig);
+    };
+    const signals: NodeJS.Signals[] = ["SIGINT", "SIGTERM", "SIGHUP"];
+    for (const sig of signals) process.on(sig, forward);
+    const done = () => {
+      for (const sig of signals) process.off(sig, forward);
+    };
     child.on("error", (err: NodeJS.ErrnoException) => {
+      done();
       if (err.code === "ENOENT") reject(new Error(`\`${bin}\` was not found on your PATH`));
       else reject(err);
     });
-    child.on("exit", (code, signal) => resolve(exitCodeFor(code, signal)));
+    child.on("exit", (code, signal) => {
+      done();
+      resolve(exitCodeFor(code, signal));
+    });
   });
 }
 
@@ -187,7 +209,11 @@ export interface SshTarget {
 /** Resolve a Cube (name or ID) to its validated SSH endpoint and pin its host
  *  keys. Shared by `ssh`, `tunnel`, `connect`, `psql`, `redis`, `mysql`, `exec`
  *  and `cp`, so every one of them keeps the same strict host-key checking. */
-export async function resolveSshTarget(cmd: Command, cubeRef: string): Promise<SshTarget> {
+export async function resolveSshTarget(
+  cmd: Command,
+  cubeRef: string,
+  o: { requireHostKeys?: boolean } = {}
+): Promise<SshTarget> {
   const rt = getRuntime(cmd);
   const client = makeClient(rt.res);
   const space = await resolveSpace(rt);
@@ -221,6 +247,14 @@ export async function resolveSshTarget(cmd: Command, cubeRef: string): Promise<S
   validateSSHHost(info.host);
   validateSSHUser(info.user);
   if (info.port < 0 || info.port > 65535) throw new Error("invalid ssh port");
+
+  if (o.requireHostKeys && !info.hostKeys.length) {
+    // Fail closed: without a recorded key there is nothing to pin, and these
+    // commands never fall back to trusting whatever key the host presents.
+    throw new Error(
+      "Krova has no recorded host key for this Cube yet; use `krova ssh` to connect interactively"
+    );
+  }
 
   let knownHosts = "";
   if (info.hostKeys.length) {
@@ -265,6 +299,8 @@ function splitRemote(arg: string): { cube: string; path: string } | undefined {
  *  slash gets a `./` so it stays local. */
 function safeLocalPath(p: string): string {
   const colon = p.indexOf(":");
+  // A Windows drive letter (`C:\\x`) is not a host.
+  if (process.platform === "win32" && colon === 1) return p;
   const slash = p.indexOf("/");
   if (colon !== -1 && (slash === -1 || colon < slash)) return `./${p}`;
   return p;
@@ -298,6 +334,12 @@ export function buildSCPArgs(
   info: SshInfo,
   o: { knownHosts?: string; identity?: string; recursive?: boolean; operands: CpOperands }
 ): string[] {
+  // scp splits `user@host:path` on colons, so neither part may carry one.
+  const user = info.user.trim();
+  if (/[:\[\]]/.test(user)) throw new Error("user contains a disallowed character");
+  if (info.host.includes(":") && isIP(info.host) !== 6) {
+    throw new Error("host contains a disallowed character");
+  }
   const args: string[] = [];
   if (o.knownHosts) {
     args.push("-o", `UserKnownHostsFile=${o.knownHosts}`, "-o", "StrictHostKeyChecking=yes");
@@ -305,7 +347,6 @@ export function buildSCPArgs(
   if ((o.identity ?? "").trim()) args.push("-i", o.identity as string);
   if (info.port > 0) args.push("-P", String(info.port));
   if (o.recursive) args.push("-r");
-  const user = info.user.trim();
   const host = isIP(info.host) === 6 ? `[${info.host}]` : info.host;
   const remote = `${user ? `${user}@` : ""}${host}:${o.operands.remotePath}`;
   const { direction, localPath } = o.operands;

@@ -8,8 +8,8 @@ import { join } from "node:path";
 import { after, before, test } from "node:test";
 
 import { validateIdent } from "../src/commands/dbclients.js";
-import { buildSCPArgs, parseCpOperands, type SshInfo } from "../src/lib/ssh.js";
-import { buildTunnelArgs, findOnPath, parsePort, parseTunnelSpec } from "../src/lib/tunnel.js";
+import { buildSCPArgs, parseCpOperands, type SshInfo, validateSSHHost, validateSSHUser } from "../src/lib/ssh.js";
+import { buildTunnelArgs, findOnPath, parsePort, parseTunnelSpec, spawnTunnel } from "../src/lib/tunnel.js";
 
 const info: SshInfo = {
   host: "cube.example.test",
@@ -180,6 +180,7 @@ let binDir: string;
 let xdg: string;
 let logPath: string;
 let calls = 0;
+let sshInfoBody: unknown = info;
 const handler: Handler = (req, res) => {
   calls++;
   const url = (req.url ?? "").split("?")[0] as string;
@@ -187,7 +188,7 @@ const handler: Handler = (req, res) => {
   if (url.endsWith("/cubes")) {
     res.end(JSON.stringify({ cubes: [{ id: "cube_1", name: "db" }] }));
   } else if (url.endsWith("/cubes/cube_1/ssh")) {
-    res.end(JSON.stringify(info));
+    res.end(JSON.stringify(sshInfoBody));
   } else {
     res.writeHead(404);
     res.end("{}");
@@ -206,16 +207,27 @@ const log = (o) => fs.appendFileSync(process.env.FAKE_LOG, JSON.stringify(o) + "
 log({ bin: name, argv });
 if (name === "ssh" || name === "scp") {
   const i = argv.indexOf("-L");
-  if (i >= 0 && process.env.FAKE_SSH_EXIT === undefined) {
+  if (process.env.FAKE_SSH_HANG) {
+    process.on("SIGTERM", () => { log({ bin: name, event: "SIGTERM" }); process.exit(0); });
+    process.stderr.write("FAKE_READY\\n");
+    setInterval(() => {}, 1 << 30);
+  } else if (i >= 0 && process.env.FAKE_SSH_EXIT === undefined) {
     const [host, port] = argv[i + 1].split(":");
-    net.createServer((s) => s.end()).listen(Number(port), host);
+    net.createServer((s) => {
+      s.end();
+      // A port squatter: ssh could not bind, so it exits after the first probe.
+      if (process.env.FAKE_SSH_SQUAT) setTimeout(() => process.exit(255), 50);
+    }).listen(Number(port), host);
     process.on("SIGTERM", () => { log({ bin: name, event: "SIGTERM" }); process.exit(0); });
     setInterval(() => {}, 1 << 30);
   } else {
     process.exit(Number(process.env.FAKE_SSH_EXIT || 0));
   }
 } else {
-  process.exit(Number(process.env.FAKE_CLIENT_EXIT || 0));
+  setTimeout(
+    () => process.exit(Number(process.env.FAKE_CLIENT_EXIT || 0)),
+    Number(process.env.FAKE_CLIENT_DELAY_MS || 0)
+  );
 }
 `;
 
@@ -546,4 +558,116 @@ test("help for tunnel, connect and psql says private tunnels beat a public tcp m
     assert.equal(r.code, 0, cmd);
     assert.match(r.stdout.replace(/\s+/g, " "), /krova tcp add/, cmd);
   }
+});
+
+// ── Hardening ───────────────────────────────────────────────────────────────
+
+test("validateSSHHost accepts an IP or a DNS name and nothing else", () => {
+  for (const ok of ["1.2.3.4", "2001:db8::1", "cube-1.example.test", "a"]) validateSSHHost(ok);
+  for (const bad of ["a_b.test", "-x.test", "a..b", "a.b-", "host:22", "[::1]", "a b", "x".repeat(64) + ".test"]) {
+    assert.throws(() => validateSSHHost(bad), Error, bad);
+  }
+});
+
+test("validateSSHUser bans ':', '[' and ']'", () => {
+  validateSSHUser("ubuntu");
+  for (const bad of ["a:b", "a[b", "a]b"]) assert.throws(() => validateSSHUser(bad), /disallowed character/, bad);
+});
+
+test("buildSCPArgs refuses a host or user that scp would split on ':'", () => {
+  const operands = parseCpOperands("a.txt", "db:/x");
+  assert.throws(() => buildSCPArgs({ ...info, user: "u:x" }, { operands }), /user contains/);
+  assert.throws(() => buildSCPArgs({ ...info, user: "u[x]" }, { operands }), /user contains/);
+  assert.throws(() => buildSCPArgs({ ...info, host: "evil:80" }, { operands }), /host contains/);
+  // A real IPv6 address is fine and gets brackets.
+  buildSCPArgs({ ...info, host: "2001:db8::1" }, { operands });
+});
+
+test("a Windows drive letter stays a local path", () => {
+  const real = Object.getOwnPropertyDescriptor(process, "platform") as PropertyDescriptor;
+  Object.defineProperty(process, "platform", { value: "win32" });
+  try {
+    assert.equal(parseCpOperands("C:\\x\\a.txt", "db:/y").localPath, "C:\\x\\a.txt");
+    assert.equal(parseCpOperands("db:/y", "D:out").localPath, "D:out");
+  } finally {
+    Object.defineProperty(process, "platform", real);
+  }
+  // Elsewhere a local name with a colon is written ./a:b; a backslash name is safe too.
+  assert.equal(parseCpOperands("./a:b", "db:/y").localPath, "./a:b");
+  assert.equal(parseCpOperands("db:/y", "a\\b:c").localPath, "./a\\b:c");
+});
+
+test("e2e the new commands fail closed when the API has no host keys; krova ssh keeps its behavior", async () => {
+  resetLog();
+  sshInfoBody = { ...info, hostKeys: [] };
+  try {
+    for (const args of [
+      ["exec", "db", "--", "true"],
+      ["cp", "a.txt", "db:/x"],
+      ["tunnel", "db", "5432"],
+      ["connect", "db", "--port", "5432"],
+      ["psql", "db"],
+      ["redis", "db"],
+      ["mysql", "db"],
+    ]) {
+      const r = await runCli(args, { FAKE_SSH_EXIT: "0" });
+      assert.equal(r.code, 1, args.join(" "));
+      assert.match(
+        r.stderr,
+        /Error: Krova has no recorded host key for this Cube yet; use `krova ssh` to connect interactively/
+      );
+    }
+    assert.deepEqual(readLog(), [], "no ssh, scp or client ran");
+    const ssh = await runCli(["ssh", "db", "--", "true"], { FAKE_SSH_EXIT: "0" });
+    assert.equal(ssh.code, 0, ssh.stderr);
+    assert.match(ssh.stderr, /didn't provide host keys/);
+    assert.equal(readLog().length, 1);
+  } finally {
+    sshInfoBody = info;
+  }
+});
+
+test("e2e psql refuses to start the client when ssh exits right after the probe (port squat)", { timeout: 30_000 }, async () => {
+  resetLog();
+  const r = await runCli(["psql", "db"], { FAKE_SSH_SQUAT: "1" });
+  assert.equal(r.code, 1, r.stderr);
+  assert.match(r.stderr, /Error: ssh exited \(code 255\) before the tunnel was ready/);
+  assert.ok(!readLog().some((e) => e.bin === "psql"), "the client never started");
+});
+
+test("spawnTunnel({ ignoreSigint }) starts ssh with SIGINT ignored, and a plain spawn does not", { timeout: 30_000, skip: process.platform === "win32" }, async () => {
+  // A sh fake: Node resets signal dispositions on start, a shell keeps them.
+  const dir = mkdtempSync(join(tmpdir(), "krova-sigint-"));
+  const log = join(dir, "log");
+  writeFileSync(join(dir, "ssh"), `#!/bin/sh\nkill -INT $$\necho survived >> "${log}"\n`);
+  chmodSync(join(dir, "ssh"), 0o755);
+  const oldPath = process.env.PATH;
+  process.env.PATH = dir;
+  try {
+    const shielded = spawnTunnel([], { ignoreSigint: true });
+    assert.equal(await shielded.exited, 0);
+    assert.equal(readFileSync(log, "utf8"), "survived\n");
+    const plain = spawnTunnel([]);
+    assert.equal(await plain.exited, 130, "without the shield SIGINT kills it");
+  } finally {
+    process.env.PATH = oldPath;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("e2e exec forwards SIGTERM to ssh and still returns its exit code", { timeout: 30_000, skip: process.platform === "win32" }, async () => {
+  resetLog();
+  const child = spawn(process.execPath, cliArgs(["exec", "db", "--", "sleep", "60"]), {
+    env: cliEnv({ FAKE_SSH_HANG: "1" }),
+  });
+  await new Promise<void>((resolve, reject) => {
+    child.stderr.on("data", (d) => String(d).includes("FAKE_READY") && resolve());
+    child.once("close", () => reject(new Error("exited before ssh started")));
+  });
+  const code = await new Promise<number | null>((resolve) => {
+    child.once("close", resolve);
+    child.kill("SIGTERM");
+  });
+  assert.equal(code, 0);
+  assert.ok(readLog().some((e) => e.bin === "ssh" && e.event === "SIGTERM"), "ssh was sent SIGTERM");
 });

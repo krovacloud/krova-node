@@ -103,7 +103,7 @@ function dbClientCommand(spec: DbClientSpec): Command {
       throw new Error(`\`${spec.client}\` was not found on your PATH — install it and try again`);
     }
 
-    const { info, knownHosts } = await resolveSshTarget(cmd, cubeRef);
+    const { info, knownHosts } = await resolveSshTarget(cmd, cubeRef, { requireHostKeys: true });
     const localPort = await freeLoopbackPort();
     const sshArgs = buildTunnelArgs(info, {
       identity: opts.identity as string | undefined,

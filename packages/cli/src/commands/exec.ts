@@ -20,7 +20,7 @@ export function execCommand(): Command {
       if (!command.some((w) => w.trim())) {
         throw new Error("exec needs a command to run, e.g. krova exec <cube> -- uname -a");
       }
-      const { info, knownHosts } = await resolveSshTarget(cmd, cubeRef);
+      const { info, knownHosts } = await resolveSshTarget(cmd, cubeRef, { requireHostKeys: true });
       const args = buildSSHArgs(info, {
         preArgs: ["-T"],
         identity: opts.identity as string | undefined,
@@ -42,7 +42,7 @@ export function cpCommand(): Command {
     .option("-i, --identity <file>", "SSH identity (private key) file, passed to scp -i")
     .action(async (src: string, dst: string, opts, cmd: Command) => {
       const operands = parseCpOperands(src, dst);
-      const { info, knownHosts } = await resolveSshTarget(cmd, operands.cube);
+      const { info, knownHosts } = await resolveSshTarget(cmd, operands.cube, { requireHostKeys: true });
       const args = buildSCPArgs(info, {
         knownHosts,
         identity: opts.identity as string | undefined,
