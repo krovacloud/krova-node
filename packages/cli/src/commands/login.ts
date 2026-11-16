@@ -53,6 +53,20 @@ export function safeBrowserURL(
   return href;
 }
 
+/** Removes C0, DEL and C1 control characters (ESC included) so a server string cannot drive the terminal. */
+export function stripControlChars(s: string): string {
+  return s.replace(/[\u0000-\u001f\u007f-\u009f]/g, "");
+}
+
+/** The URL as it is shown to the user: the normalized href when it parses, else the raw string, with control characters stripped. */
+export function displayURL(raw: string): string {
+  try {
+    return stripControlChars(new URL(raw).href);
+  } catch {
+    return stripControlChars(raw);
+  }
+}
+
 export interface BrowserSpawnPlan {
   command: string;
   args: string[];
@@ -112,7 +126,7 @@ export function loginCommand(): Command {
         throw new Error(`device login failed to start (HTTP ${start.status})`);
       }
       const s = start.data;
-      process.stdout.write(`Your verification code is: ${s.userCode}\n`);
+      process.stdout.write(`Your verification code is: ${stripControlChars(String(s.userCode ?? ""))}\n`);
 
       const target = s.verificationUriComplete || s.verificationUri;
       const safe = safeBrowserURL(target);
@@ -120,7 +134,12 @@ export function loginCommand(): Command {
         process.stdout.write(`Opening ${safe} …\n`);
         openBrowser(safe);
       } else {
-        process.stdout.write(`Open this URL to approve the login:\n  ${target}\n`);
+        process.stdout.write(`Open this URL to approve the login:\n  ${displayURL(target)}\n`);
+        if (!safe) {
+          process.stdout.write(
+            "It was not opened automatically because it contains characters that are unsafe to pass to the system opener.\n"
+          );
+        }
       }
 
       const intervalMs = Math.max((s.interval || 5) * 1000, 5000);

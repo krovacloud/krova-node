@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { browserSpawnPlan, safeBrowserURL } from "../src/commands/login.js";
+import { browserSpawnPlan, displayURL, safeBrowserURL, stripControlChars } from "../src/commands/login.js";
 
 const GOOD = "https://krova.cloud/cli?code=ABCD-1234";
 
@@ -59,6 +59,10 @@ test("scheme checks still apply", () => {
     "http://localhost:3000/cli?code=A-1"
   );
   assert.equal(safeBrowserURL("http://127.0.0.1:3000/cli", "linux"), "http://127.0.0.1:3000/cli");
+  assert.equal(
+    safeBrowserURL("http://[::1]:3000/cli?code=A-1", "linux"),
+    "http://[::1]:3000/cli?code=A-1"
+  );
 });
 
 test("the win32 spawn plan uses rundll32 and never a shell", () => {
@@ -75,4 +79,15 @@ test("the macOS and Linux plans keep open and xdg-open, with no shell", () => {
   const lin = browserSpawnPlan(GOOD, "linux");
   assert.deepEqual([lin.command, lin.args], ["xdg-open", [GOOD]]);
   for (const p of [mac, lin]) assert.ok(!("shell" in p.options));
+});
+
+test("displayURL strips control characters, including ESC", () => {
+  assert.equal(stripControlChars("a\u001b[31mb\u0007c\u009bd\u007fe"), "a[31mbcde");
+  // Does not parse as a URL: the raw string is shown with the controls removed.
+  assert.equal(displayURL("not a url\u001b[2J"), "not a url[2J");
+  // Parses: the normalized href is shown and carries no control character.
+  const shown = displayURL("https://krova.cloud/cli?code=1\u001b[2J&calc.exe");
+  assert.ok(!/[\u0000-\u001f\u007f-\u009f]/.test(shown));
+  assert.ok(shown.startsWith("https://krova.cloud/cli?code=1"));
+  assert.equal(displayURL(GOOD), GOOD);
 });
