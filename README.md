@@ -15,6 +15,10 @@ cross-package change is one PR.
 | [`packages/webhook`](packages/webhook) | [`@krovacloud/webhook`](https://www.npmjs.com/package/@krovacloud/webhook) | Outbound-webhook signature verification |
 | [`packages/n8n-node`](packages/n8n-node) | [`n8n-nodes-krova`](https://www.npmjs.com/package/n8n-nodes-krova) | n8n community node |
 
+## Agent skill
+
+[`skills/krova`](skills/krova/SKILL.md) is an [Agent Skill](https://agentskills.io/specification) that teaches an agent to use Krova Cubes as sandboxes through the MCP server: launching a Cube for a task, running commands over SSH, snapshotting before a risky change, cleaning up, and keeping an eye on cost. Install it with `npx skills add krovacloud/krova-node`, or copy the folder into `.claude/skills/`.
+
 ## Develop
 
 ```sh
