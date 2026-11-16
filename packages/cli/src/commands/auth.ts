@@ -1,8 +1,17 @@
 import { Command } from "commander";
 
-import { configPath, displayKey, find, load, remove, save } from "../lib/config.js";
+import { KeychainUnavailableError } from "../lib/keychain.js";
+import {
+  configPath,
+  displayKey,
+  find,
+  load,
+  migrateKeysToKeychain,
+  remove,
+  save,
+} from "../lib/config.js";
 import { printJSON, printKeyValue } from "../lib/output.js";
-import { persistLogin } from "../lib/persist.js";
+import { loginMessage, persistLogin } from "../lib/persist.js";
 import { getRuntime, probeAuth } from "../lib/runtime.js";
 
 /** Prompt for an API key. Hidden echo when stdin is a TTY. */
@@ -60,14 +69,14 @@ export function authCommand(): Command {
       let key = (opts.apiKey as string) || rt.flags.apiKey || "";
       if (!key.trim()) key = await promptAPIKey();
       if (!key.trim()) throw new Error("no API key provided");
-      const { ctxName, spaceName } = await persistLogin({
+      const { ctxName, spaceName, stored } = await persistLogin({
         apiKey: key.trim(),
         baseUrl: rt.res.baseUrl,
         spaceId: opts.space as string | undefined,
         ctxName: opts.context as string | undefined,
         timeoutMs: rt.timeoutMs,
       });
-      process.stdout.write(`Logged in. Saved context "${ctxName}" to ${configPath()}\n`);
+      process.stdout.write(`${loginMessage(ctxName, stored)}\n`);
       if (spaceName) process.stdout.write(`Space: ${spaceName}\n`);
     });
 
@@ -115,6 +124,7 @@ export function authCommand(): Command {
           detail: detail || undefined,
           context: rt.res.contextName,
           apiKeySource: rt.res.apiKeySource,
+          apiKeyStorage: rt.res.apiKeyStorage || undefined,
           ...(showSecrets
             ? { apiKey: rt.res.apiKey }
             : { apiKeyMasked: displayKey(rt.res.apiKey, false) }),
@@ -138,7 +148,12 @@ export function authCommand(): Command {
       printKeyValue([
         ["Authenticated", label],
         ["Context", rt.res.contextName || "—"],
-        ["API key", rt.res.apiKey ? `${displayKey(rt.res.apiKey, showSecrets)} (${rt.res.apiKeySource})` : "—"],
+        [
+          "API key",
+          rt.res.apiKey
+            ? `${displayKey(rt.res.apiKey, showSecrets)} (${rt.res.apiKeySource}${rt.res.apiKeyStorage ? `, ${rt.res.apiKeyStorage}` : ""})`
+            : "—",
+        ],
         ["Space ID", spaceId ? `${spaceId} (${rt.res.spaceIdSource})` : "—"],
         ["Base URL", rt.res.baseUrl],
         ["Config", configPath()],
@@ -174,6 +189,38 @@ export function authCommand(): Command {
         `Logged out of ${name}. The API key still works until you revoke it in the dashboard (Settings > API keys).\n`,
       );
       if (wasCurrent && current) process.stdout.write(`Now using ${current}.\n`);
+    });
+
+  auth
+    .command("migrate-keychain")
+    .description("move API keys saved in the config file into the OS keychain")
+    .action((_opts, cmd: Command) => {
+      const rt = getRuntime(cmd);
+      const cfg = load();
+      let result: ReturnType<typeof migrateKeysToKeychain>;
+      try {
+        result = migrateKeysToKeychain(cfg);
+      } catch (e) {
+        if (e instanceof KeychainUnavailableError) {
+          throw new Error(
+            e.optOut
+              ? `${e.message}; unset KROVA_NO_KEYCHAIN to move keys into the keychain`
+              : `no OS keychain available (${e.message}); keys stay in ${configPath()}`,
+          );
+        }
+        throw e;
+      }
+      const failed = result.entries.filter((x) => x.result === "failed");
+      if (failed.length > 0) process.exitCode = 1;
+      if (rt.json) return printJSON({ keychain: result.backend, results: result.entries });
+      if (result.entries.length === 0) process.stdout.write("No contexts to migrate.\n");
+      for (const x of result.entries) {
+        const tail = x.detail ? ` (${x.detail})` : "";
+        process.stdout.write(
+          `${x.result === "migrated" ? "Moved" : x.result === "failed" ? "FAILED" : "Skipped"} ${x.context}${x.result === "migrated" ? ` to the ${result.backend}` : tail}\n`,
+        );
+        if (x.result === "failed") process.stderr.write(`  ${x.detail}\n`);
+      }
     });
 
   return auth;

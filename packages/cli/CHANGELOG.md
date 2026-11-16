@@ -40,7 +40,13 @@ All notable changes to `@krovacloud/cli` are documented here.
   take `--confirm-mixed-proxy-protocol` to save a setting that differs from
   other domains on the same Cube port.
 
+- API keys now go to the OS keychain: macOS Keychain (through the `security` tool) and, on Linux, the Secret Service (through `secret-tool`). `krova login` and `krova auth login` store the key there under service `krova-cli`, account = the context name, and keep only the context's settings plus `keyStorage: "keychain"` in `config.json`. Each write is read back before the key is trusted. When no keychain is available (Windows, headless Linux, `secret-tool` missing, or the call fails) the key stays in the `0600` config file and one line on stderr says why. Existing file contexts keep working; nothing is migrated unless you ask. `--api-key` and `KROVA_API_KEY` still win and never touch the keychain.
 
+- `krova auth migrate-keychain`: moves the API keys saved in the config file into the keychain. A key leaves the file only after the keychain returns the same value. `--json` prints `{ "keychain": "<name>", "results": [{ "context", "result": "migrated" | "skipped" | "failed", "detail"? }] }`; it exits 1 if any context failed.
+
+- `KROVA_NO_KEYCHAIN=1` forces new keys into the config file, for CI. It does not stop `krova` from reading a key that is already in the keychain.
+
+- `krova whoami`, `krova auth status` and `krova context list --json` show where the key lives (`apiKeyStorage` / `keyStorage`: `keychain` or `file`), and `krova auth logout`, `krova context delete` and `krova context rename` delete or move the keychain item with the context.
 
 ## 0.6.2
 
@@ -72,7 +78,6 @@ All notable changes to `@krovacloud/cli` are documented here.
 ### Changed
 
 - Republished to validate the automated release pipeline. No code changes.
-
 
 ## 0.5.0
 

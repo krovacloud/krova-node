@@ -22,9 +22,17 @@ krova auth login       # prompts (hidden) for a kro_… key
 krova whoami           # confirm the active context + space
 ```
 
-Credentials are stored in `~/.config/krova/config.json` (mode `0600`), as named
-**contexts** — switch accounts/spaces like `kubectl`/`aws` profiles. The file
-format is compatible with the previous CLI, so existing logins keep working.
+Logins are saved as named **contexts** in `~/.config/krova/config.json` (mode `0600`) — switch accounts/spaces like `kubectl`/`aws` profiles. The file format is compatible with the previous CLI, so existing logins keep working.
+
+The API key itself goes to your OS keychain when there is one: the macOS Keychain (via `security`) or the Linux Secret Service (via `secret-tool`, from `libsecret-tools`), under service `krova-cli` with the context name as the account. The config file then holds only the context's settings and `"keyStorage": "keychain"`. Without a keychain (Windows, headless Linux, `secret-tool` not installed, or the keychain call fails) the key stays in the `0600` config file and `krova` prints one line on stderr saying so. `krova whoami` and `krova auth status` show which one is in use.
+
+```sh
+krova auth migrate-keychain   # move keys already saved in the config file into the keychain
+```
+
+Keys in an existing config file keep working and are never moved unless you run that command. `KROVA_NO_KEYCHAIN=1` forces new keys into the config file (for CI). `--api-key` and `KROVA_API_KEY` always win and never touch the keychain.
+
+On macOS the key is passed to `security` on its standard input, never as a command-line argument, so other users on the machine cannot see it in the process list. `secret-tool store` reads the key from standard input too.
 
 ```sh
 krova context list

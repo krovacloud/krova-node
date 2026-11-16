@@ -1,6 +1,6 @@
 import { Command } from "commander";
 
-import { displayKey, load, remove, save } from "../lib/config.js";
+import { contextKey, displayKey, load, remove, renameContext, save, storageOf } from "../lib/config.js";
 import { printJSON, printTable } from "../lib/output.js";
 import { getRuntime } from "../lib/runtime.js";
 
@@ -22,7 +22,8 @@ export function contextCommand(): Command {
           currentContext: cfg.currentContext ?? "",
           contexts: (cfg.contexts ?? []).map((c) => ({
             name: c.name,
-            apiKey: displayKey(c.apiKey ?? "", Boolean(opts.showSecrets)),
+            apiKey: displayKey(contextKey(c), Boolean(opts.showSecrets)),
+            keyStorage: storageOf(c),
             spaceId: c.spaceId ?? "",
             spaceName: c.spaceName ?? "",
             baseUrl: c.baseUrl ?? "",
@@ -72,13 +73,8 @@ export function contextCommand(): Command {
     .action((oldName: string, newName: string) => {
       const cfg = load();
       if (!newName.trim()) throw new Error("new name must not be empty");
-      const c = (cfg.contexts ?? []).find((x) => x.name === oldName);
-      if (!c) throw new Error(`no context named "${oldName}"`);
-      if ((cfg.contexts ?? []).some((x) => x.name === newName)) {
-        throw new Error(`a context named "${newName}" already exists`);
-      }
-      c.name = newName;
-      if (cfg.currentContext === oldName) cfg.currentContext = newName;
+      // Moves the keychain item too, so the key follows the context name.
+      renameContext(cfg, oldName, newName);
       save(cfg);
       process.stdout.write(`Renamed ${oldName} → ${newName}\n`);
     });
