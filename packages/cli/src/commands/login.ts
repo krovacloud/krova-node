@@ -23,29 +23,81 @@ interface PollResponse {
 const BROWSER_UNAVAILABLE =
   "Browser login isn't enabled on this server yet — run `krova auth login` to paste an API key from https://krova.cloud";
 
-/** Only open https URLs, or http to a loopback host. Everything else is unsafe. */
-export function safeBrowserURL(raw: string): string | null {
+/** Characters that never appear in a device-login URL and that cmd.exe treats as operators. */
+const SHELL_METACHARS = /[&|^<>"]/;
+
+/**
+ * Only open https URLs, or http to a loopback host, and return the normalized href.
+ * The device-login URL is `<base>/cli?code=<ALNUM-ALNUM>`: it never needs `& | ^ < > "`, so a URL
+ * carrying one is refused on every platform. `%` is refused on Windows only, where it expands
+ * environment variables in some launchers; the real URL never contains it (the code is alphanumeric).
+ * A refused URL is not opened: the caller prints it for the user to open by hand.
+ */
+export function safeBrowserURL(
+  raw: string,
+  platform: NodeJS.Platform = process.platform
+): string | null {
   let u: URL;
   try {
     u = new URL(raw);
   } catch {
     return null;
   }
-  if (u.protocol === "https:" && u.hostname) return raw;
-  if (
+  const loopbackHttp =
     u.protocol === "http:" &&
-    (u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "::1")
-  ) {
-    return raw;
-  }
-  return null;
+    (u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "[::1]");
+  if (!((u.protocol === "https:" && u.hostname) || loopbackHttp)) return null;
+  const href = u.href;
+  if (SHELL_METACHARS.test(href)) return null;
+  if (platform === "win32" && href.includes("%")) return null;
+  return href;
 }
 
-function openBrowser(url: string): void {
-  const cmd =
-    process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
-  const args = process.platform === "win32" ? ["", url] : [url];
-  const child = spawn(cmd, args, { stdio: "ignore", detached: true, shell: process.platform === "win32" });
+/** Removes C0, DEL and C1 control characters (ESC included) so a server string cannot drive the terminal. */
+export function stripControlChars(s: string): string {
+  return s.replace(/[\u0000-\u001f\u007f-\u009f]/g, "");
+}
+
+/** The URL as it is shown to the user: the normalized href when it parses, else the raw string, with control characters stripped. */
+export function displayURL(raw: string): string {
+  try {
+    return stripControlChars(new URL(raw).href);
+  } catch {
+    return stripControlChars(raw);
+  }
+}
+
+export interface BrowserSpawnPlan {
+  command: string;
+  args: string[];
+  options: { stdio: "ignore"; detached: true; windowsHide?: true };
+}
+
+/**
+ * How to open `href` in the default browser. Never uses a shell: on Windows `rundll32` is a real
+ * executable, so cmd.exe never parses the URL.
+ */
+export function browserSpawnPlan(
+  href: string,
+  platform: NodeJS.Platform = process.platform
+): BrowserSpawnPlan {
+  if (platform === "win32") {
+    return {
+      command: "rundll32",
+      args: ["url.dll,FileProtocolHandler", href],
+      options: { stdio: "ignore", detached: true, windowsHide: true },
+    };
+  }
+  return {
+    command: platform === "darwin" ? "open" : "xdg-open",
+    args: [href],
+    options: { stdio: "ignore", detached: true },
+  };
+}
+
+function openBrowser(href: string): void {
+  const plan = browserSpawnPlan(href);
+  const child = spawn(plan.command, plan.args, plan.options);
   child.on("error", () => {
     /* fall through — the URL was already printed */
   });
@@ -74,7 +126,7 @@ export function loginCommand(): Command {
         throw new Error(`device login failed to start (HTTP ${start.status})`);
       }
       const s = start.data;
-      process.stdout.write(`Your verification code is: ${s.userCode}\n`);
+      process.stdout.write(`Your verification code is: ${stripControlChars(String(s.userCode ?? ""))}\n`);
 
       const target = s.verificationUriComplete || s.verificationUri;
       const safe = safeBrowserURL(target);
@@ -82,7 +134,12 @@ export function loginCommand(): Command {
         process.stdout.write(`Opening ${safe} …\n`);
         openBrowser(safe);
       } else {
-        process.stdout.write(`Open this URL to approve the login:\n  ${target}\n`);
+        process.stdout.write(`Open this URL to approve the login:\n  ${displayURL(target)}\n`);
+        if (!safe) {
+          process.stdout.write(
+            "It was not opened automatically because it contains characters that are unsafe to pass to the system opener.\n"
+          );
+        }
       }
 
       const intervalMs = Math.max((s.interval || 5) * 1000, 5000);
