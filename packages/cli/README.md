@@ -189,6 +189,16 @@ krova webhooks listen --secret "$KROVA_WEBHOOK_SECRET"
 # verifies each delivery's HMAC signature and prints the event
 ```
 
+## Updating
+
+```sh
+krova update    # check npm for a newer CLI and print the install command
+```
+
+`krova update` asks the npm registry for the latest `@krovacloud/cli` and compares it with the version you have. It never installs anything: when a newer release exists it prints the exact `npm install -g @krovacloud/cli@latest` command to run. `--json` prints `{ "current", "latest", "updateAvailable", "command" }`. If the registry cannot be read, it exits 1 and changes nothing.
+
+To use an npm mirror, set `KROVA_NPM_REGISTRY` to its base URL (default `https://registry.npmjs.org`), for example `KROVA_NPM_REGISTRY=https://npm.example.com krova update`.
+
 ## Global flags
 
 Available on every command (flag > env var > context):

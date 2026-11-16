@@ -22,6 +22,7 @@ export const ENV = {
   spaceId: "KROVA_SPACE_ID",
   baseUrl: "KROVA_BASE_URL",
   context: "KROVA_CONTEXT",
+  npmRegistry: "KROVA_NPM_REGISTRY",
 } as const;
 
 /** Where a context's API key lives. A context with no `keyStorage` is a file context. */
