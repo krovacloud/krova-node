@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { printJSON, printKeyValue, printTable } from "../lib/output.js";
 import { resolveCube } from "../lib/resolve.js";
 import { getRuntime, makeClient, resolveSpace } from "../lib/runtime.js";
+import { withSpinner } from "../lib/spinner.js";
 
 function listCmd(): Command {
   return new Command("list")
@@ -105,10 +106,12 @@ function createCmd(): Command {
       // Only send the flag when explicitly turned on; the server defaults it
       // to `false`, and an explicit `false` would just be noise on the wire.
       if (opts.terminationProtection) body.terminationProtection = true;
-      const cube = await client.cubes.create(
-        space,
-        body as never,
-        opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : undefined
+      const cube = await withSpinner("Creating cube", { json: rt.json }, () =>
+        client.cubes.create(
+          space,
+          body as never,
+          opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : undefined
+        )
       );
       if (rt.json) return printJSON(cube);
       process.stdout.write(`Created cube ${cube.id} (${cube.state})\n`);
