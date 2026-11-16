@@ -51,6 +51,15 @@ krova cubes delete <cube>
 
 `<cube>` is a Cube **name or ID** — a unique name resolves automatically.
 
+In a terminal, `krova cubes create` asks for whatever you leave out. Run it with no flags to pick the name, image, region, size and SSH key from lists:
+
+```sh
+krova cubes create                     # asks for everything
+krova cubes create --name web --vcpu 2 # asks for the image, region, RAM, disk and key
+```
+
+It reads only `~/.ssh/id_ed25519.pub` and `~/.ssh/id_rsa.pub` (public keys, never private ones) to offer your key, and shows a one-line summary with `[Y/n]` before it creates anything. Add `-y` / `--yes` to skip that question. A fully flagged command never asks anything, and without a terminal (scripts, CI) or with `--json` nothing is prompted: a missing `--name`, `--image` or `--ssh-key` is an error, as before.
+
 ## SSH
 
 ```sh

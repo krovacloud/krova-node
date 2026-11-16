@@ -1,5 +1,18 @@
 import { Command } from "commander";
 
+import {
+  type CatalogSource,
+  type KeyFiles,
+  type PromptIO,
+  DEFAULT_RESOURCES,
+  PromptAbortError,
+  confirmCreate,
+  createReadlineIO,
+  defaultKeyFiles,
+  isInteractive,
+  promptCreate,
+  summarize,
+} from "../lib/create-prompt.js";
 import { printJSON, printKeyValue, printTable } from "../lib/output.js";
 import { resolveCube } from "../lib/resolve.js";
 import { getRuntime, makeClient, resolveSpace } from "../lib/runtime.js";
@@ -60,15 +73,85 @@ function getCmd(): Command {
     });
 }
 
-function createCmd(): Command {
+/** The values `cubes create` turns into a request body. All strings, as typed. */
+export interface CreateBodyInput {
+  name: string;
+  image: string;
+  sshKey: string;
+  vcpu: string;
+  ram: string;
+  disk: string;
+  region?: string;
+  userData?: string;
+  terminationProtection?: boolean;
+}
+
+/**
+ * Build the POST /cubes body. Validates resources client-side so bad input
+ * fails with a clear message rather than being coerced to NaN, then JSON null,
+ * then a generic server 400.
+ */
+export function buildCreateBody(input: CreateBodyInput): Record<string, unknown> {
+  const posInt = (flag: string, raw: string): number => {
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n <= 0) {
+      throw new Error(`--${flag} must be a positive integer (got "${raw}").`);
+    }
+    return n;
+  };
+  const body: Record<string, unknown> = {
+    name: input.name,
+    image: input.image,
+    sshPublicKey: input.sshKey,
+    resources: {
+      vcpu: posInt("vcpu", input.vcpu),
+      ramGb: posInt("ram", input.ram),
+      diskGb: posInt("disk", input.disk),
+    },
+  };
+  if (input.region) body.region = input.region;
+  if (input.userData) body.userData = input.userData;
+  // Only send the flag when explicitly turned on; the server defaults it
+  // to `false`, and an explicit `false` would just be noise on the wire.
+  if (input.terminationProtection) body.terminationProtection = true;
+  return body;
+}
+
+/** What `cubes create` needs from the outside world; tests swap these. */
+export interface CreateDeps {
+  /** Whether prompting is allowed (a real terminal, and not --json). */
+  interactive: (json: boolean) => boolean;
+  makeIO: () => PromptIO;
+  keyFiles: () => KeyFiles;
+  /** Catalog to list images and regions from; defaults to the API client's. */
+  catalog?: (client: ReturnType<typeof makeClient>) => CatalogSource;
+  /** Where human messages go; defaults to stdout. */
+  stdout?: (text: string) => void;
+}
+
+const defaultCreateDeps: CreateDeps = {
+  interactive: (json) => isInteractive({ json }),
+  makeIO: createReadlineIO,
+  keyFiles: defaultKeyFiles,
+};
+
+// Required on the command line unless the terminal can ask. Order is the order
+// commander reports a missing one in.
+const REQUIRED_CREATE_FLAGS = [
+  ["--name", "name"],
+  ["--image", "image"],
+  ["--ssh-key", "sshKey"],
+] as const;
+
+export function createCmd(deps: CreateDeps = defaultCreateDeps): Command {
   return new Command("create")
-    .description("provision a new Cube")
-    .requiredOption("--name <name>", "cube name")
-    .requiredOption("--image <slug>", "OS image slug (see `krova images`)")
-    .requiredOption("--ssh-key <key>", "SSH public key written to authorized_keys")
-    .option("--vcpu <n>", "number of vCPUs", "1")
-    .option("--ram <gb>", "RAM in GB", "1")
-    .option("--disk <gb>", "disk size in GB", "10")
+    .description("provision a new Cube (in a terminal, asks for anything you leave out)")
+    .option("--name <name>", "cube name")
+    .option("--image <slug>", "OS image slug (see `krova images`)")
+    .option("--ssh-key <key>", "SSH public key written to authorized_keys")
+    .option("--vcpu <n>", "number of vCPUs", DEFAULT_RESOURCES.vcpu)
+    .option("--ram <gb>", "RAM in GB", DEFAULT_RESOURCES.ram)
+    .option("--disk <gb>", "disk size in GB", DEFAULT_RESOURCES.disk)
     .option("--region <slug>", "region slug (see `krova regions`)")
     .option("--user-data <script>", "cloud-init script")
     .option("--idempotency-key <key>", "idempotency key (24h dedupe)")
@@ -77,41 +160,92 @@ function createCmd(): Command {
       "turn on termination protection (the cube cannot be deleted until turned off)",
       false
     )
+    .option("-y, --yes", "skip the confirmation after the prompts")
     .action(async (opts, cmd: Command) => {
+      // --name, --image and --ssh-key were requiredOption; without a terminal
+      // they still are, with commander's own message and exit code.
+      const missing = REQUIRED_CREATE_FLAGS.filter(([, key]) => opts[key] === undefined);
+      const wantsJson = Boolean((cmd.optsWithGlobals() as { json?: unknown }).json);
+      const prompting = missing.length > 0 && deps.interactive(wantsJson);
+      if (missing.length > 0 && !prompting) {
+        const flags = cmd.options.find((o) => o.long === missing[0]?.[0])?.flags;
+        cmd.error(`error: required option '${flags}' not specified`, {
+          code: "commander.missingMandatoryOptionValue",
+        });
+      }
       const rt = getRuntime(cmd);
       const client = makeClient(rt.res);
       const space = await resolveSpace(rt);
-      // Validate resources client-side so bad input fails with a clear message
-      // rather than being coerced to NaN → JSON null → a generic server 400.
-      const posInt = (flag: string, raw: string): number => {
-        const n = Number(raw);
-        if (!Number.isInteger(n) || n <= 0) {
-          throw new Error(`--${flag} must be a positive integer (got "${raw}").`);
+      const out = deps.stdout ?? ((text: string) => void process.stdout.write(text));
+      const build = (v: {
+        name: string;
+        image: string;
+        sshKey: string;
+        vcpu: string;
+        ram: string;
+        disk: string;
+        region?: string;
+      }) =>
+        buildCreateBody({
+          ...v,
+          userData: opts.userData,
+          terminationProtection: opts.terminationProtection,
+        });
+      let body: Record<string, unknown>;
+      if (prompting) {
+        const io = deps.makeIO();
+        try {
+          // A resource flag counts as given only when it came from the command line.
+          const given = (key: "vcpu" | "ram" | "disk") =>
+            cmd.getOptionValueSource(key) === "default" ? undefined : (opts[key] as string);
+          const answers = await promptCreate(
+            {
+              name: opts.name,
+              image: opts.image,
+              sshKey: opts.sshKey,
+              region: opts.region,
+              vcpu: given("vcpu"),
+              ram: given("ram"),
+              disk: given("disk"),
+            },
+            {
+              io,
+              catalog: deps.catalog ? deps.catalog(client) : client.catalog,
+              keyFiles: deps.keyFiles(),
+            }
+          );
+          // Build first so a bad flag value fails before the confirmation, not after it.
+          body = build(answers);
+          if (!opts.yes && !(await confirmCreate(io, summarize(answers)))) {
+            out("Aborted.\n");
+            return;
+          }
+        } catch (err) {
+          if (!(err instanceof PromptAbortError)) throw err;
+          out("\nAborted.\n");
+          process.exitCode = 1;
+          return;
+        } finally {
+          io.close();
         }
-        return n;
-      };
-      const body: Record<string, unknown> = {
-        name: opts.name,
-        image: opts.image,
-        sshPublicKey: opts.sshKey,
-        resources: {
-          vcpu: posInt("vcpu", opts.vcpu),
-          ramGb: posInt("ram", opts.ram),
-          diskGb: posInt("disk", opts.disk),
-        },
-      };
-      if (opts.region) body.region = opts.region;
-      if (opts.userData) body.userData = opts.userData;
-      // Only send the flag when explicitly turned on; the server defaults it
-      // to `false`, and an explicit `false` would just be noise on the wire.
-      if (opts.terminationProtection) body.terminationProtection = true;
+      } else {
+        body = build({
+          name: opts.name,
+          image: opts.image,
+          sshKey: opts.sshKey,
+          vcpu: opts.vcpu,
+          ram: opts.ram,
+          disk: opts.disk,
+          region: opts.region,
+        });
+      }
       const cube = await client.cubes.create(
         space,
         body as never,
         opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : undefined
       );
       if (rt.json) return printJSON(cube);
-      process.stdout.write(`Created cube ${cube.id} (${cube.state})\n`);
+      out(`Created cube ${cube.id} (${cube.state})\n`);
     });
 }
 
