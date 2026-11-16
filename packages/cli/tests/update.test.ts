@@ -125,6 +125,16 @@ test("`krova update --json` prints the documented object on stdout", async () =>
   });
 });
 
+test("`krova update` normalizes latest to MAJOR.MINOR.PATCH", async () => {
+  serveVersion("v99.0.0+build.1");
+  const json = await runCli(["update", "--json"]);
+  assert.equal(json.code, 0, json.stderr);
+  assert.equal(JSON.parse(json.stdout).latest, "99.0.0");
+  const text = await runCli(["update"]);
+  assert.equal(text.code, 0, text.stderr);
+  assert.match(text.stdout, /^krova 99\.0\.0 is available /);
+});
+
 test("`krova update` fails with the registry reason when the check cannot run", async () => {
   reply = (res) => {
     res.writeHead(503, { "content-type": "application/json" });
