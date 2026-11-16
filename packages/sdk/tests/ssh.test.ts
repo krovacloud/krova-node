@@ -44,10 +44,12 @@ test("buildCommand: a string runs as written, an array is quoted", () => {
 test("buildCommand: cwd and env are quoted and applied to the whole command", () => {
   assert.equal(
     buildCommand(["pwd"], { cwd: "/tmp/a b", env: { FOO: "x y" } }),
-    `cd '/tmp/a b' && export FOO='x y' && 'pwd'`,
+    `cd -- '/tmp/a b' && export FOO='x y' && 'pwd'`,
   );
-  assert.equal(buildCommand("a; b", { cwd: "/x" }), "cd '/x' && {\na; b\n}");
+  assert.equal(buildCommand("a; b", { cwd: "/x" }), "cd -- '/x' && {\na; b\n}");
   assert.throws(() => buildCommand("true", { env: { "A;B": "1" } }), TypeError);
+  assert.ok(buildCommand("x", { cwd: "-P" }).includes("cd -- '-P'"));
+  assert.throws(() => buildCommand("x", { cwd: "" }), TypeError);
   assert.throws(() => buildCommand("  "), TypeError);
 });
 

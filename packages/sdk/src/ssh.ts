@@ -102,7 +102,11 @@ export function buildCommand(
     typeof command === "string" ? command : command.map((part) => shellQuote(part)).join(" ");
   if (body.trim() === "") throw new TypeError("Command is empty.");
   const pre: string[] = [];
-  if (opts.cwd !== undefined) pre.push(`cd ${shellQuote(opts.cwd)}`);
+  if (opts.cwd !== undefined) {
+    if (opts.cwd === "") throw new TypeError("cwd cannot be an empty string.");
+    // `--` so a cwd that starts with `-` is a path, never an option to `cd`.
+    pre.push(`cd -- ${shellQuote(opts.cwd)}`);
+  }
   const entries = Object.entries(opts.env ?? {});
   if (entries.length > 0) {
     const assigns = entries.map(([name, value]) => {
@@ -281,21 +285,22 @@ export class CubeShell {
         if (timeoutMs !== undefined) {
           timer = setTimeout(() => {
             timedOut = true;
+            // Reject now: a server that ignores the channel close must not leave this pending.
+            reject(new RunTimeoutError(timeoutMs as number));
             stream.close();
+            stream.destroy();
           }, timeoutMs);
         }
         stream.on("data", (chunk: Buffer) => out.push(chunk));
         stream.stderr.on("data", (chunk: Buffer) => errOut.push(chunk));
         stream.on("error", (e: Error) => {
+          if (timedOut) return;
           if (timer) clearTimeout(timer);
           reject(new SshError(`The command channel failed: ${e.message}`));
         });
         stream.on("close", (code?: number | null, signal?: string | null) => {
           if (timer) clearTimeout(timer);
-          if (timedOut) {
-            reject(new RunTimeoutError(timeoutMs as number));
-            return;
-          }
+          if (timedOut) return;
           const result: RunResult = {
             stdout: Buffer.concat(out).toString("utf8"),
             stderr: Buffer.concat(errOut).toString("utf8"),

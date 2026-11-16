@@ -395,6 +395,7 @@ try {
 - `run(command, { cwd?, env?, timeoutMs?, stdin? })` returns `{ stdout, stderr, exitCode, signal? }`. A string runs as written in the Cube's shell. A string array has each argument quoted for you (`shellQuote` is exported), as are `cwd` and the `env` values. A timeout closes the channel and rejects with `RunTimeoutError`.
 - The connection is verified against the Cube's host keys from `krova.cubes.ssh()`. A key that does not match, or a Cube with no keys captured yet, throws `HostKeyMismatchError`. If you keep your own pinned keys, pass them as `hostKeys`. There is no option to skip the check.
 - Your key is used for the connection and never logged or stored by the SDK. An encrypted key takes `passphrase`.
+- `ssh2` has an optional native addon (`cpu-features`) with an install script. The SDK works without it, so pnpm users can leave that script disabled.
 - File paths are literal: `~` and `$VAR` are not expanded. `files.read` and `files.write` hold the whole file in memory; use `upload` and `download` for large files.
 
 ## Configuration
