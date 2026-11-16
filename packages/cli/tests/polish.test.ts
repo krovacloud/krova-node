@@ -76,6 +76,50 @@ test("completion bash: the generated function completes commands, subcommands an
   assert.equal(run(["krova", "-o", ""]), "table json");
 });
 
+test("completion: each choice flag completes its own values, and value flags fall back to files", () => {
+  const program = new Command("krova")
+    .option("-o, --output <format>", "output format")
+    .option("--color <when>", "color output")
+    .option("-i, --identity <file>", "key file");
+  program.addCommand(new Command("run").argument("[path]"));
+  const choices = { "-o": ["table", "json"], "--output": ["table", "json"], "--color": ["auto", "always"] };
+
+  const bashScript = generateCompletion("bash", program, choices);
+  const complete = (words: string[]): string => {
+    const probe = [
+      bashScript,
+      `COMP_WORDS=(${words.map((w) => `'${w}'`).join(" ")})`,
+      `COMP_CWORD=${words.length - 1}`,
+      `COMPREPLY=()`,
+      `_krova_complete`,
+      `echo "\${COMPREPLY[*]}"`,
+    ].join("\n");
+    const out = spawnSync("bash", ["-c", probe], { encoding: "utf8" });
+    assert.equal(out.status, 0, out.stderr);
+    return out.stdout.trim();
+  };
+  assert.equal(complete(["krova", "--color", ""]), "auto always");
+  assert.equal(complete(["krova", "--output", ""]), "table json");
+  assert.equal(complete(["krova", "-i", ""]), "", "a value flag with no choices offers nothing, so bash falls back to files");
+
+  const zshScript = generateCompletion("zsh", program, choices);
+  assert.match(zshScript, /'--color'\) compadd -- 'auto' 'always'/);
+  assert.match(zshScript, /'--output'\) compadd -- 'table' 'json'/);
+  assert.match(zshScript, /'--identity'\) _files/);
+
+  const fishScript = generateCompletion("fish", program, choices);
+  assert.match(fishScript, /-l color -x -a 'auto always'/);
+  assert.match(fishScript, /-l output -x -a 'table json'/);
+  assert.match(fishScript, /-l identity -r /, "a path flag keeps file completion");
+  assert.doesNotMatch(fishScript, /^complete -c krova -f$/m, "file completion is not disabled globally");
+  assert.match(fishScript, /-n 'test \(__krova_path\) = \\'root\\'' -f$/m, "only where subcommands are offered");
+  assert.doesNotMatch(
+    fishScript,
+    /-n 'test \(__krova_path\) = \\'run\\'' -f$/m,
+    "a command that takes arguments keeps file completion"
+  );
+});
+
 test("every shell script parses in a shell that is installed", () => {
   const script = (s: "bash" | "zsh" | "fish") => generateCompletion(s, sampleProgram());
   for (const [shell, args] of [
