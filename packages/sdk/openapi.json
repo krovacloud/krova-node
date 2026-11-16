@@ -824,6 +824,26 @@
       },
       "Space": {
         "properties": {
+          "apiKey": {
+            "description": "The API key this request authenticated with, or null when an OAuth access token did.",
+            "nullable": true,
+            "properties": {
+              "expiresAt": {
+                "description": "When the key stops working. Null for a key that never expires.",
+                "format": "date-time",
+                "nullable": true,
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "expiresAt"
+            ],
+            "type": "object"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -1313,7 +1333,7 @@
     },
     "/space": {
       "get": {
-        "description": "Returns the single space the API key belongs to. Lets a client auto-resolve the space id from the key alone (no spaceId in the URL).",
+        "description": "Returns the single space the API key belongs to. Lets a client auto-resolve the space id from the key alone (no spaceId in the URL). `apiKey` carries the name and expiry of the key that made the request.",
         "responses": {
           "200": {
             "content": {
@@ -2527,7 +2547,7 @@
         ]
       },
       "patch": {
-        "description": "Idempotent. Termination protection is the only PATCHable field today: sending the value it already has returns the Cube unchanged and writes no audit row. Omitting it is a 400 rather than a no-op, so a typo in the field name cannot look like success. Rename and resize are not part of the public API.",
+        "description": "Idempotent. The PATCHable fields are `name` and `terminationProtection`; send either or both. Sending a value the Cube already has returns the Cube unchanged and writes no audit row. Sending neither is a 400 rather than a no-op, so a typo in a field name cannot look like success. Renaming needs the `cube.manage` permission and changing termination protection needs `cube.termination_protection`; a request with both fields needs both. Every supplied field is validated before any is applied. Names are not unique within a space. Renaming is metadata only: the hostname inside a running Cube changes on its next cold restart. To change vCPU, RAM or disk use `POST .../resize`.",
         "parameters": [
           {
             "in": "path",
@@ -2550,15 +2570,19 @@
           "content": {
             "application/json": {
               "schema": {
+                "minProperties": 1,
                 "properties": {
+                  "name": {
+                    "description": "New display name. 1–64 printable characters after trimming, the same rule as Cube creation.",
+                    "maxLength": 64,
+                    "minLength": 1,
+                    "type": "string"
+                  },
                   "terminationProtection": {
                     "description": "Turn protection on or off. Turning it on stamps `terminationProtectionChangedAt` and `terminationProtectionChangedBy`; turning it off clears both.",
                     "type": "boolean"
                   }
                 },
-                "required": [
-                  "terminationProtection"
-                ],
                 "type": "object"
               }
             }
@@ -2594,7 +2618,7 @@
             "$ref": "#/components/responses/RateLimited"
           }
         },
-        "summary": "Update a Cube (toggle termination protection)",
+        "summary": "Update a Cube (rename, toggle termination protection)",
         "tags": [
           "Cubes"
         ]
@@ -3340,6 +3364,205 @@
           }
         },
         "summary": "Power off a running Cube",
+        "tags": [
+          "Cubes"
+        ]
+      }
+    },
+    "/spaces/{spaceId}/cubes/{cubeId}/resize": {
+      "post": {
+        "description": "Changes a Cube's vCPU, RAM and/or disk. Send only the dimensions you want to change; the rest keep their current value. It goes through the same checks as the dashboard: the hardware ranges, your plan's per-Cube size limit (including any override on your space) and the free capacity of the host the Cube runs on. Disk can only grow. The Cube must be `running` or `stopped`. The response says whether the resize is `isLive` (RAM or disk growth, and vCPU changes on Cubes that support it, applied with no restart) or `requiresRestart` (a RAM shrink or a vCPU change on a Cube that cannot hotplug: the Cube is restarted to apply it). The change is applied by a background job, so the Cube keeps its current size until `GET` shows the new one. A second request while one is queued for the same Cube is rejected with 409. When the host itself has no room for the requested size the 400 carries `code: \"insufficient_host_capacity\"` and the `dimension` that ran out.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cubeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional unique key (max 255 chars). Replays return the original response and add header Idempotency-Replayed: true. Scoped per space; expires after 24h.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "resources": {
+                    "additionalProperties": false,
+                    "minProperties": 1,
+                    "properties": {
+                      "diskGb": {
+                        "description": "Disk in GB. Grow-only.",
+                        "type": "integer"
+                      },
+                      "ramGb": {
+                        "description": "RAM in GB (1 = 1 GB), the same unit as Cube creation.",
+                        "type": "number"
+                      },
+                      "vcpu": {
+                        "minimum": 1,
+                        "type": "integer"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "resources"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "isLive": {
+                      "description": "True when the resize is applied with no restart.",
+                      "type": "boolean"
+                    },
+                    "jobId": {
+                      "type": "string"
+                    },
+                    "previous": {
+                      "properties": {
+                        "diskGb": {
+                          "type": "integer"
+                        },
+                        "ramGb": {
+                          "type": "number"
+                        },
+                        "vcpu": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "vcpu",
+                        "ramGb",
+                        "diskGb"
+                      ],
+                      "type": "object"
+                    },
+                    "requested": {
+                      "properties": {
+                        "diskGb": {
+                          "type": "integer"
+                        },
+                        "ramGb": {
+                          "type": "number"
+                        },
+                        "vcpu": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "vcpu",
+                        "ramGb",
+                        "diskGb"
+                      ],
+                      "type": "object"
+                    },
+                    "requiresRestart": {
+                      "description": "The inverse of `isLive`.",
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "enum": [
+                        "queued"
+                      ],
+                      "type": "string"
+                    },
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state",
+                    "jobId",
+                    "isLive",
+                    "requiresRestart",
+                    "previous",
+                    "requested"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Resize queued"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "enum": [
+                        "insufficient_host_capacity"
+                      ],
+                      "type": "string"
+                    },
+                    "dimension": {
+                      "enum": [
+                        "cpu",
+                        "ram",
+                        "disk"
+                      ],
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid body, a value out of range or above your plan's limit, a disk shrink, no change, the Cube is not `running` or `stopped`, or the host has no capacity (then `code` is `insufficient_host_capacity` and `dimension` is `cpu`, `ram` or `disk`)."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "A resize is already queued for this Cube, or a transfer is in progress"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "summary": "Resize a Cube (asynchronous)",
         "tags": [
           "Cubes"
         ]

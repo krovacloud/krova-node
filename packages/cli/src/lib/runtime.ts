@@ -77,6 +77,12 @@ export interface SpaceInfo {
   id: string;
   name?: string;
   slug?: string;
+  /**
+   * The key this request authenticated with: `expiresAt` is an ISO date-time,
+   * or `null` for a key that never expires. `null` for an OAuth token, and
+   * absent when the server is too old to send it, so treat absent as unknown.
+   */
+  apiKey?: { name: string; expiresAt: string | null } | null;
 }
 
 /**

@@ -6,6 +6,12 @@ All notable changes to `@krovacloud/cli` are documented here.
 
 ### Added
 
+- `krova cubes rename <cube> <new-name>`: renames a Cube (1 to 64 printable characters; names do not have to be unique). `--json` prints the updated Cube. A running Cube's hostname changes on its next cold restart.
+
+- `krova cubes resize <cube> [--vcpu <n>] [--ram <gb>] [--disk <gb>] [-y]`: changes a Cube's vCPU, RAM and/or disk; send only what changes, and disk can only grow. It prints the job, each size before and after, and whether the API applies it live (`Applied live: the Cube does not restart.`) or restarts the Cube. In a terminal it first shows the current and new size and asks `[y/N]`, because some changes restart the Cube; `-y, --yes` skips the question and with no terminal (scripts, pipes) it runs without one. `--json` prints the API's result (`jobId`, `isLive`, `requiresRestart`, `previous`, `requested`) with the Cube `id`. A host without room for the size says so and suggests a smaller one.
+
+- `krova whoami` shows when the API key expires (`Key expires`, an ISO date with the days left, or `never`), and `whoami --json` adds `apiKeyExpiresAt` (a date, or `null` for a key that never expires). Nothing is shown when the server does not say (an older server, or an OAuth login).
+
 - `krova update`: asks the npm registry for the latest `@krovacloud/cli` and compares it with the installed version. It never installs anything: it prints `krova <latest> is available (you have <current>). Update with: npm install -g @krovacloud/cli@latest`, or `krova <version> is the latest version.` when there is nothing newer. `--json` prints `{ "current", "latest", "updateAvailable", "command" }`. A registry failure exits 1. `latest` is printed in plain `MAJOR.MINOR.PATCH[-prerelease]` form (no leading `v`, no build metadata). The check gives up after 10s, or sooner with a smaller `--timeout`. `KROVA_NPM_REGISTRY` overrides the registry base URL for mirrors.
 
 - `krova tunnel <cube> [localPort:]cubePort` and `krova connect <cube> --port <cubePort> [--local-port <n>]`: a private SSH tunnel to a port inside a Cube, bound to `127.0.0.1` only, over the same pinned host keys and strict host-key checking as `krova ssh`. `connect` picks a free local port and prints the endpoint (`--json` prints `host`, `port`, `cube` and `cubePort`). Both accept `-i, --identity`. Prefer them to a public `krova tcp add` mapping for databases.

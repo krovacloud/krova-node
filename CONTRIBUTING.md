@@ -91,6 +91,10 @@ anywhere else a consumer reads — `KrovaClient`'s own `baseUrl` option is the
 supported way for a caller to point somewhere else, and the default is the only
 base a customer should ever need to think about.
 
+### When the SDK is ahead of the deployed API
+
+An SDK method for an endpoint that krova-cloud has merged but not deployed needs the new spec in the snapshot, and the live spec cannot match it until the deploy. List the spec locations that may differ in `packages/sdk/openapi-pending.json` as JSON Pointers (RFC 6901, `~1` for `/`). `pnpm check:openapi-drift` removes them from both documents before comparing, keeps holding everything else to equality, and prints which pointers it skipped and that they were not verified. Pointers must be narrow (`/paths/<path>/<method>` or `/components/schemas/<Schema>/properties/<field>`, or deeper), or the check exits 2. Once the API deploys, the check fails (exit 1) until the listed pointers are removed, so a stale ignore cannot linger: empty `ignore` after the krova-cloud deploy. To produce the new snapshot before the deploy, point the check at a local dev server with `KROVA_API_BASE` and `--write`.
+
 Commit the snapshot and the regenerated types together. If a hand-written
 helper in `src/client.ts` stops compiling afterwards, that is the point — the
 API contract moved and the SDK was describing the old one.

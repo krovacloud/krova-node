@@ -274,7 +274,7 @@ export interface paths {
         };
         /**
          * Resolve the space this API key is scoped to
-         * @description Returns the single space the API key belongs to. Lets a client auto-resolve the space id from the key alone (no spaceId in the URL).
+         * @description Returns the single space the API key belongs to. Lets a client auto-resolve the space id from the key alone (no spaceId in the URL). `apiKey` carries the name and expiry of the key that made the request.
          */
         get: {
             parameters: {
@@ -1175,8 +1175,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Update a Cube (toggle termination protection)
-         * @description Idempotent. Termination protection is the only PATCHable field today: sending the value it already has returns the Cube unchanged and writes no audit row. Omitting it is a 400 rather than a no-op, so a typo in the field name cannot look like success. Rename and resize are not part of the public API.
+         * Update a Cube (rename, toggle termination protection)
+         * @description Idempotent. The PATCHable fields are `name` and `terminationProtection`; send either or both. Sending a value the Cube already has returns the Cube unchanged and writes no audit row. Sending neither is a 400 rather than a no-op, so a typo in a field name cannot look like success. Renaming needs the `cube.manage` permission and changing termination protection needs `cube.termination_protection`; a request with both fields needs both. Every supplied field is validated before any is applied. Names are not unique within a space. Renaming is metadata only: the hostname inside a running Cube changes on its next cold restart. To change vCPU, RAM or disk use `POST .../resize`.
          */
         patch: {
             parameters: {
@@ -1191,8 +1191,10 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
+                        /** @description New display name. 1–64 printable characters after trimming, the same rule as Cube creation. */
+                        name?: string;
                         /** @description Turn protection on or off. Turning it on stamps `terminationProtectionChangedAt` and `terminationProtectionChangedBy`; turning it off clears both. */
-                        terminationProtection: boolean;
+                        terminationProtection?: boolean;
                     };
                 };
             };
@@ -1610,6 +1612,108 @@ export interface paths {
                     content?: never;
                 };
                 404: components["responses"]["NotFound"];
+                429: components["responses"]["RateLimited"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceId}/cubes/{cubeId}/resize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resize a Cube (asynchronous)
+         * @description Changes a Cube's vCPU, RAM and/or disk. Send only the dimensions you want to change; the rest keep their current value. It goes through the same checks as the dashboard: the hardware ranges, your plan's per-Cube size limit (including any override on your space) and the free capacity of the host the Cube runs on. Disk can only grow. The Cube must be `running` or `stopped`. The response says whether the resize is `isLive` (RAM or disk growth, and vCPU changes on Cubes that support it, applied with no restart) or `requiresRestart` (a RAM shrink or a vCPU change on a Cube that cannot hotplug: the Cube is restarted to apply it). The change is applied by a background job, so the Cube keeps its current size until `GET` shows the new one. A second request while one is queued for the same Cube is rejected with 409. When the host itself has no room for the requested size the 400 carries `code: "insufficient_host_capacity"` and the `dimension` that ran out.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Optional unique key (max 255 chars). Replays return the original response and add header Idempotency-Replayed: true. Scoped per space; expires after 24h. */
+                    "Idempotency-Key"?: string;
+                };
+                path: {
+                    spaceId: string;
+                    cubeId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        resources: {
+                            /** @description Disk in GB. Grow-only. */
+                            diskGb?: number;
+                            /** @description RAM in GB (1 = 1 GB), the same unit as Cube creation. */
+                            ramGb?: number;
+                            vcpu?: number;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description Resize queued */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description True when the resize is applied with no restart. */
+                            isLive: boolean;
+                            jobId: string;
+                            previous: {
+                                diskGb: number;
+                                ramGb: number;
+                                vcpu: number;
+                            };
+                            requested: {
+                                diskGb: number;
+                                ramGb: number;
+                                vcpu: number;
+                            };
+                            /** @description The inverse of `isLive`. */
+                            requiresRestart: boolean;
+                            /** @enum {string} */
+                            state: "queued";
+                            success: boolean;
+                        };
+                    };
+                };
+                /** @description Invalid body, a value out of range or above your plan's limit, a disk shrink, no change, the Cube is not `running` or `stopped`, or the host has no capacity (then `code` is `insufficient_host_capacity` and `dimension` is `cpu`, `ram` or `disk`). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            code?: "insufficient_host_capacity";
+                            /** @enum {string} */
+                            dimension?: "cpu" | "ram" | "disk";
+                            error: string;
+                        };
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
+                /** @description A resize is already queued for this Cube, or a transfer is in progress */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
                 429: components["responses"]["RateLimited"];
             };
         };
@@ -2491,6 +2595,15 @@ export interface components {
             status: string;
         };
         Space: {
+            /** @description The API key this request authenticated with, or null when an OAuth access token did. */
+            apiKey?: {
+                /**
+                 * Format: date-time
+                 * @description When the key stops working. Null for a key that never expires.
+                 */
+                expiresAt: string | null;
+                name: string;
+            } | null;
             /** Format: date-time */
             createdAt: string;
             id: string;

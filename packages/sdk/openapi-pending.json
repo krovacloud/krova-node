@@ -1,0 +1,13 @@
+{
+  "description": "Spec pointers (RFC 6901) that packages/sdk/openapi.json may carry ahead of the live API, as narrow as the change allows. scripts/check-openapi-drift.mjs removes them from both documents before comparing and prints what it skipped. Empty this list after the krova-cloud deploy: the check fails while a listed pointer is already live.",
+  "ignore": [
+    "/paths/~1space/get/description",
+    "/paths/~1spaces~1{spaceId}~1cubes~1{cubeId}/patch/description",
+    "/paths/~1spaces~1{spaceId}~1cubes~1{cubeId}/patch/summary",
+    "/paths/~1spaces~1{spaceId}~1cubes~1{cubeId}/patch/requestBody/content/application~1json/schema/minProperties",
+    "/paths/~1spaces~1{spaceId}~1cubes~1{cubeId}/patch/requestBody/content/application~1json/schema/properties/name",
+    "/paths/~1spaces~1{spaceId}~1cubes~1{cubeId}/patch/requestBody/content/application~1json/schema/required",
+    "/paths/~1spaces~1{spaceId}~1cubes~1{cubeId}~1resize/post",
+    "/components/schemas/Space/properties/apiKey"
+  ]
+}

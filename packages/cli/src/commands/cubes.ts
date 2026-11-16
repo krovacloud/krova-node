@@ -1,3 +1,4 @@
+import { KrovaError } from "@krovacloud/sdk";
 import { Command } from "commander";
 
 import {
@@ -347,6 +348,126 @@ function sshPortCmd(): Command {
     });
 }
 
+function renameCmd(): Command {
+  return new Command("rename")
+    .argument("<cube>", "cube name or ID")
+    .argument("<new-name>", "the new name (1 to 64 printable characters)")
+    .description("rename a Cube (names do not have to be unique; a running Cube's hostname changes on its next cold restart)")
+    .action(async (cubeRef: string, rawName: string, _opts, cmd: Command) => {
+      const newName = parseCubeName(rawName);
+      const rt = getRuntime(cmd);
+      const client = makeClient(rt.res);
+      const space = await resolveSpace(rt);
+      const id = await resolveCube(client, space, cubeRef);
+      const cube = await client.cubes.rename(space, id, newName);
+      if (rt.json) return printJSON(cube);
+      process.stdout.write(`Renamed cube ${id} to ${cube.name}\n`);
+    });
+}
+
+/** Parse a `--vcpu`/`--ram`/`--disk` value. `integer` rejects fractions (RAM may be fractional). */
+export function parseSize(flag: string, raw: string, integer: boolean): number {
+  // Plain decimal digits only: Number() would also take 0x10, 1e1 and " 5 ".
+  const n = Number(raw);
+  if (!(integer ? /^\d+$/ : /^\d+(\.\d+)?$/).test(raw) || !Number.isFinite(n) || n <= 0) {
+    throw new Error(`${flag} must be a positive ${integer ? "whole number" : "number"}`);
+  }
+  return n;
+}
+
+/** Trim a new Cube name and check it locally: 1 to 64 characters, no control, line-separator or bidi characters. */
+export function parseCubeName(raw: string): string {
+  const name = raw.trim();
+  const length = [...name].length;
+  if (length < 1 || length > 64 || /[\p{Cc}\u2028\u2029\u202A-\u202E\u2066-\u2069]/u.test(name)) {
+    throw new Error("the new name must be 1 to 64 printable characters");
+  }
+  return name;
+}
+
+const RESIZE_DIMENSIONS = [
+  { key: "vcpu", label: "vCPU", unit: "" },
+  { key: "ramGb", label: "RAM", unit: " GB" },
+  { key: "diskGb", label: "Disk", unit: " GB" },
+] as const;
+
+function describeSize(size: { vcpu: number; ramGb: number; diskGb: number }): string {
+  return `${size.vcpu} vCPU, ${size.ramGb} GB RAM, ${size.diskGb} GB disk`;
+}
+
+function resizeCmd(): Command {
+  return new Command("resize")
+    .argument("<cube>", "cube name or ID")
+    .option("--vcpu <n>", "new vCPU count")
+    .option("--ram <gb>", "new RAM in GB (fractions allowed)")
+    .option("--disk <gb>", "new disk in GB (disk can only grow)")
+    .option("-y, --yes", "skip the confirmation prompt")
+    .description(
+      "change a Cube's vCPU, RAM and/or disk; the API says whether it is applied live or restarts the Cube",
+    )
+    .action(async (cubeRef: string, opts, cmd: Command) => {
+      const resources: { vcpu?: number; ramGb?: number; diskGb?: number } = {};
+      if (opts.vcpu !== undefined) resources.vcpu = parseSize("--vcpu", opts.vcpu, true);
+      if (opts.ram !== undefined) resources.ramGb = parseSize("--ram", opts.ram, false);
+      if (opts.disk !== undefined) resources.diskGb = parseSize("--disk", opts.disk, true);
+      if (Object.keys(resources).length === 0) {
+        throw new Error("give at least one of --vcpu, --ram or --disk");
+      }
+
+      const rt = getRuntime(cmd);
+      const client = makeClient(rt.res);
+      const space = await resolveSpace(rt);
+      const id = await resolveCube(client, space, cubeRef);
+
+      // The API only says whether a resize is live or restarts the Cube AFTER it
+      // queues the job, so the question cannot name the outcome: it states the
+      // change and that some changes restart. Only a person at a terminal is
+      // asked; scripts and pipes proceed, and -y skips it.
+      if (shouldConfirm(opts)) {
+        const current = (await client.cubes.get(space, id)).resources;
+        const target = { ...current, ...resources };
+        const ok = await confirm(
+          `Resize cube ${cubeRef}${cubeRef === id ? "" : ` (${id})`} from ${describeSize(current)} to ${describeSize(target)}? A RAM decrease, or a vCPU change on a Cube that cannot hotplug, restarts the Cube. [y/N] `,
+        );
+        if (!ok) return printAborted(rt.json);
+      }
+
+      let result: Awaited<ReturnType<typeof client.cubes.resize>>;
+      try {
+        result = await client.cubes.resize(space, id, resources);
+      } catch (err) {
+        // The host, not the request, is out of room: retrying the same size
+        // will not help, so say what will.
+        if (
+          err instanceof KrovaError &&
+          err.status === 400 &&
+          (err.body as { code?: unknown } | undefined)?.code === "insufficient_host_capacity"
+        ) {
+          Object.assign(err, {
+            hint: "The server this Cube runs on has no room for that size. Try a smaller size, or contact support.",
+          });
+        }
+        throw err;
+      }
+
+      if (rt.json) return printJSON({ id, ...result });
+      process.stdout.write(`Resize queued for cube ${id} (job ${result.jobId})\n`);
+      for (const { key, label, unit } of RESIZE_DIMENSIONS) {
+        const from = result.previous[key];
+        const to = result.requested[key];
+        process.stdout.write(
+          `  ${label}: ${from === to ? `${to}${unit} (unchanged)` : `${from}${unit} -> ${to}${unit}`}\n`,
+        );
+      }
+      process.stdout.write(
+        result.requiresRestart
+          ? "The Cube restarts to apply this change.\n"
+          : "Applied live: the Cube does not restart.\n",
+      );
+      process.stdout.write(`The Cube keeps its current size until the change is applied. Check with: krova cubes get ${id}\n`);
+    });
+}
+
 /**
  * Toggle a Cube's termination-protection flag. Shared by `protect` and
  * `unprotect`; only the boolean `enabled` differs.
@@ -386,6 +507,8 @@ export function cubesCommand(): Command {
   cubes.addCommand(deleteCmd());
   cubes.addCommand(restartCmd());
   cubes.addCommand(sshPortCmd());
+  cubes.addCommand(renameCmd());
+  cubes.addCommand(resizeCmd());
   cubes.addCommand(setProtectionCmd("protect", true, "Protected"));
   cubes.addCommand(setProtectionCmd("unprotect", false, "Unprotected"));
   return cubes;

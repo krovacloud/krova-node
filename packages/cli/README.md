@@ -63,10 +63,14 @@ krova cubes power-off <cube>
 krova cubes wake <cube>
 krova cubes restart <cube>   # cold restart — the only way to pick up a new kernel
 krova cubes ssh-port <cube> --port 2222   # in-Cube sshd port, NOT the host port
+krova cubes rename <cube> <new-name>      # 1-64 printable characters; names need not be unique
+krova cubes resize <cube> --vcpu 4 --ram 8 --disk 40   # any of the three; disk only grows
 krova cubes delete <cube>            # asks first in a terminal; -y/--yes skips the prompt
 ```
 
 In a terminal, `krova cubes delete` and `krova snapshots rm` ask `[y/N]` before deleting, because it is permanent. In scripts and pipes (no terminal) they run without a prompt, as before. Pass `-y, --yes` to skip it.
+
+`krova cubes resize` sends only the sizes you give it. The API queues the change and says whether it is applied live or restarts the Cube; the Cube keeps its size until then, so check it with `krova cubes get <cube>`. In a terminal it first shows the current and new size and asks `[y/N]`, because a RAM decrease, or a vCPU change on a Cube that cannot hotplug, restarts the Cube. Scripts and pipes run without a prompt, and `-y, --yes` skips it. `krova whoami` shows when the API key expires (`never` for a key that does not).
 
 `<cube>` is a Cube **name or ID** — a unique name resolves automatically.
 

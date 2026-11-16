@@ -28,6 +28,8 @@ export {
   type Pagination,
   type PricingTier,
   type Region,
+  type ResizeCubeInput,
+  type ResizeCubeResult,
   type Snapshot,
   type Space,
   type TcpMapping,
