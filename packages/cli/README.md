@@ -32,6 +32,10 @@ krova auth migrate-keychain   # move keys already saved in the config file into 
 
 Keys in an existing config file keep working and are never moved unless you run that command. `KROVA_NO_KEYCHAIN=1` forces new keys into the config file (for CI). `--api-key` and `KROVA_API_KEY` always win and never touch the keychain.
 
+The keychain item is keyed by context name only (service `krova-cli`, account = the name), so two config directories (for example different `XDG_CONFIG_HOME` values) that use the same context name share one keychain item. Use different context names if you keep separate configs. Context names cannot start with `-`.
+
+The keychain keeps the key out of plaintext files, in backups of your home directory and in dotfile repos. It does not protect the key from other programs running as you: any process in your login session can ask the keychain for it, and may get a prompt or not depending on your system.
+
 On macOS the key is passed to `security` on its standard input, never as a command-line argument, so other users on the machine cannot see it in the process list. `secret-tool store` reads the key from standard input too.
 
 ```sh

@@ -46,7 +46,7 @@ All notable changes to `@krovacloud/cli` are documented here.
 
 - `KROVA_NO_KEYCHAIN=1` forces new keys into the config file, for CI. It does not stop `krova` from reading a key that is already in the keychain.
 
-- `krova whoami`, `krova auth status` and `krova context list --json` show where the key lives (`apiKeyStorage` / `keyStorage`: `keychain` or `file`), and `krova auth logout`, `krova context delete` and `krova context rename` delete or move the keychain item with the context.
+- `krova whoami`, `krova auth status` and `krova context list --json` show where the key lives (`apiKeyStorage` / `keyStorage`: `keychain` or `file`), and `krova auth logout`, `krova context delete` and `krova context rename` delete or move the keychain item with the context, and only after the config file is saved. `krova context list` no longer reads the keychain unless you pass `--show-secrets`. The config file is now written atomically. Context names cannot start with `-`.
 
 ## 0.6.2
 
