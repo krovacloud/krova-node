@@ -65,12 +65,15 @@ krova cubes restart <cube>   # cold restart — the only way to pick up a new ke
 krova cubes ssh-port <cube> --port 2222   # in-Cube sshd port, NOT the host port
 krova cubes rename <cube> <new-name>      # 1-64 printable characters; names need not be unique
 krova cubes resize <cube> --vcpu 4 --ram 8 --disk 40   # any of the three; disk only grows
+krova cubes update <cube> --idle-timeout 60   # power off after 60 idle minutes (10 to 10080); "off" turns it off
 krova cubes delete <cube>            # asks first in a terminal; -y/--yes skips the prompt
 ```
 
 In a terminal, `krova cubes delete` and `krova snapshots rm` ask `[y/N]` before deleting, because it is permanent. In scripts and pipes (no terminal) they run without a prompt, as before. Pass `-y, --yes` to skip it.
 
 `krova cubes resize` sends only the sizes you give it. The API queues the change and says whether it is applied live or restarts the Cube; the Cube keeps its size until then, so check it with `krova cubes get <cube>`. In a terminal it first shows the current and new size and asks `[y/N]`, because a RAM decrease, or a vCPU change on a Cube that cannot hotplug, restarts the Cube. Scripts and pipes run without a prompt, and `-y, --yes` skips it. `krova whoami` shows when the API key expires (`never` for a key that does not).
+
+`--idle-timeout <minutes>` (on `krova cubes create` and `krova cubes update`) powers a Cube off after that many minutes without activity, so a forgotten Cube stops costing money. It takes a whole number from 10 to 10080 (7 days), or `off`; anything else fails before a request is sent. `krova cubes get` shows `Idle timeout` (`off`, or `N min`) and `Last active`, and `--json` includes `idleTimeoutMinutes` and `lastActiveAt`. This needs a server with the idle-timeout feature: on an older server `krova cubes update` fails with the server's message, and `krova cubes create` warns on stderr that the flag was probably ignored. `krova cubes get` shows `-` for both fields there.
 
 `<cube>` is a Cube **name or ID** — a unique name resolves automatically.
 

@@ -125,6 +125,7 @@ Ergonomic helpers for the Cube lifecycle. Each unwraps the response body and thr
 | `update` | `(spaceId, cubeId, body)` | changes the port sshd listens on inside the Cube |
 | `setTerminationProtection` | `(spaceId, cubeId, enabled)` | the updated `Cube`. While protection is on, `delete` throws `TerminationProtectedError` (a `KrovaError` for the API's `409`) |
 | `rename` | `(spaceId, cubeId, name)` | the updated `Cube`. The name is trimmed, 1 to 64 printable characters, and does not have to be unique |
+| `setIdleTimeout` | `(spaceId, cubeId, minutes \| null)` | the updated `Cube`. Krova powers the Cube off after that many minutes without activity: an integer from 10 to 10080, or `null` for off. Needs a server with the idle-timeout feature (an older one answers `400`) |
 | `resize` | `(spaceId, cubeId, { vcpu?, ramGb?, diskGb? }, opts?)` | enqueues a resize and returns `{ jobId, isLive, requiresRestart, previous, requested }`. `isLive` means no restart; `requiresRestart` is its inverse. Send only what changes; disk can only grow. `opts.idempotencyKey` makes retries safe |
 | `delete` | `(spaceId, cubeId)` | enqueues deletion |
 | `powerOff` | `(spaceId, cubeId)` | enqueues a power-off |
@@ -153,6 +154,7 @@ const cube = await krova.cubes.create(
     region: "us",                // optional — slug from catalog.regions()
     userData: "#cloud-config\n",  // optional — cloud-init (max 16 KB)
     terminationProtection: true, // optional — refuse deletes until turned off
+    idleTimeoutMinutes: 60,      // optional — power off after 60 idle minutes (10-10080; null = off)
   },
   { idempotencyKey: "deploy-2026-07-01" },
 );

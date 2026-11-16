@@ -6,6 +6,8 @@ All notable changes to `@krovacloud/cli` are documented here.
 
 ### Added
 
+- `--idle-timeout <minutes>` on `krova cubes create`, and a new `krova cubes update <cube> --idle-timeout <minutes|off>`: Krova powers the Cube off after that many minutes without activity. The value is a whole number from 10 to 10080, or `off` (sends `null`); anything else fails before a request. `krova cubes update` with no flag is an error. `krova cubes get` shows `Idle timeout` (`off` or `N min`) and `Last active`, and `--json` includes `idleTimeoutMinutes` and `lastActiveAt`; both show `-` on a server that does not send them. This needs a server with the idle-timeout feature: there, `cubes update` fails with the server's message (or says the server did not apply the flag), and `cubes create` warns on stderr that the flag was probably ignored.
+
 - `krova cubes rename <cube> <new-name>`: renames a Cube (1 to 64 printable characters; names do not have to be unique). `--json` prints the updated Cube. A running Cube's hostname changes on its next cold restart.
 
 - `krova cubes resize <cube> [--vcpu <n>] [--ram <gb>] [--disk <gb>] [-y]`: changes a Cube's vCPU, RAM and/or disk; send only what changes, and disk can only grow. It prints the job, each size before and after, and whether the API applies it live (`Applied live: the Cube does not restart.`) or restarts the Cube. In a terminal it first shows the current and new size and asks `[y/N]`, because some changes restart the Cube; `-y, --yes` skips the question and with no terminal (scripts, pipes) it runs without one. `--json` prints the API's result (`jobId`, `isLive`, `requiresRestart`, `previous`, `requested`) with the Cube `id`. A host without room for the size says so and suggests a smaller one.

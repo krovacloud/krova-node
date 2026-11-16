@@ -8,6 +8,10 @@
     "/paths/~1spaces~1{spaceId}~1cubes~1{cubeId}/patch/requestBody/content/application~1json/schema/properties/name",
     "/paths/~1spaces~1{spaceId}~1cubes~1{cubeId}/patch/requestBody/content/application~1json/schema/required",
     "/paths/~1spaces~1{spaceId}~1cubes~1{cubeId}~1resize/post",
-    "/components/schemas/Space/properties/apiKey"
+    "/components/schemas/Space/properties/apiKey",
+    "/paths/~1spaces~1{spaceId}~1cubes/post/requestBody/content/application~1json/schema/properties/idleTimeoutMinutes",
+    "/paths/~1spaces~1{spaceId}~1cubes~1{cubeId}/patch/requestBody/content/application~1json/schema/properties/idleTimeoutMinutes",
+    "/components/schemas/Cube/properties/idleTimeoutMinutes",
+    "/components/schemas/Cube/properties/lastActiveAt"
   ]
 }
