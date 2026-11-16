@@ -105,8 +105,12 @@ Throws if `apiKey` is missing. Exposes `client.baseUrl` (the resolved base URL),
 Resolve the `Space` your API key is scoped to — so you don't have to hardcode a `spaceId`:
 
 ```ts
-const space = await krova.getSpace(); // { id, name, tier, createdAt }
+const space = await krova.getSpace(); // { id, name, tier, createdAt, apiKey }
 const cubes = await krova.cubes.list(space.id);
+
+// When does this key stop working? null = never. `apiKey` itself is null for an OAuth
+// token, and missing on an older server, so treat missing as unknown.
+const expiresAt = space.apiKey?.expiresAt;
 ```
 
 ### `client.cubes`
@@ -120,11 +124,21 @@ Ergonomic helpers for the Cube lifecycle. Each unwraps the response body and thr
 | `get` | `(spaceId, cubeId)` | the Cube body |
 | `update` | `(spaceId, cubeId, body)` | changes the port sshd listens on inside the Cube |
 | `setTerminationProtection` | `(spaceId, cubeId, enabled)` | the updated `Cube`. While protection is on, `delete` throws `TerminationProtectedError` (a `KrovaError` for the API's `409`) |
+| `rename` | `(spaceId, cubeId, name)` | the updated `Cube`. The name is trimmed, 1 to 64 printable characters, and does not have to be unique |
+| `resize` | `(spaceId, cubeId, { vcpu?, ramGb?, diskGb? }, opts?)` | enqueues a resize and returns `{ jobId, isLive, requiresRestart, previous, requested }`. `isLive` means no restart; `requiresRestart` is its inverse. Send only what changes; disk can only grow. `opts.idempotencyKey` makes retries safe |
 | `delete` | `(spaceId, cubeId)` | enqueues deletion |
 | `powerOff` | `(spaceId, cubeId)` | enqueues a power-off |
 | `wake` | `(spaceId, cubeId)` | enqueues a start |
 | `ssh` | `(spaceId, cubeId)` | the Cube's SSH connection info — `host` is its stable SSH hostname (falls back to the server's public IPv4 with no DNS record yet), plus `port`, `user`, `hostKeys` |
 | `restore` | `(spaceId, cubeId, snapshotId)` | enqueues a restore — replaces the Cube's disk from a snapshot |
+
+```ts
+// rename and resize
+await krova.cubes.rename("space_123", "cube_123", "web-1");
+const job = await krova.cubes.resize("space_123", "cube_123", { ramGb: 4, diskGb: 40 });
+if (job.requiresRestart) console.log("the Cube restarts to apply this");
+// The Cube keeps its size until the worker applies the change; read it again to see the new one.
+```
 
 ```ts
 // create — sshPublicKey is required; region + userData (cloud-init) are optional.

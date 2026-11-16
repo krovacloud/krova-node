@@ -9,6 +9,8 @@ All notable changes to `@krovacloud/sdk` are documented here. This project adher
 
 ### Added
 
+- `cubes.rename(spaceId, cubeId, name)` and `cubes.resize(spaceId, cubeId, { vcpu?, ramGb?, diskGb? }, opts?)`, with the exported types `ResizeCubeInput` and `ResizeCubeResult`. `resize` resolves to `{ success, state: "queued", jobId, isLive, requiresRestart, previous, requested }`; the Cube keeps its size until the worker applies the change. `getSpace()` now returns `apiKey: { name, expiresAt } | null` (`expiresAt` is `null` for a key that never expires; `apiKey` is `null` for an OAuth token and absent on an older server). The OpenAPI snapshot and generated types include these API changes, which krova-cloud has not deployed yet: until it does, `packages/sdk/openapi-pending.json` lists them so the drift check stays green.
+
 - Backups and sharing them between spaces: `backups.list()`, `backups.get()` and `backups.share()` (with an optional `idempotencyKey`), and a new `backupShares` group with `list()`, `accept()`, `decline()` and `cancel()`. New exported types `Backup`, `BackupShare`, `BackupShareList` and `AcceptedBackupShare`. These endpoints read the Backups permissions (`backup.view`, `backup.manage`), not the Cube ones. The OpenAPI snapshot is refreshed from the live API and the types regenerated.
 
 - `proxyProtocol` (`"v1"`, `"v2"` or `null`) on `domains.create()` and

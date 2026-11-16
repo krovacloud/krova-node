@@ -1,0 +1,9 @@
+{
+  "description": "Spec pointers (RFC 6901) that packages/sdk/openapi.json may carry ahead of the live API. scripts/check-openapi-drift.mjs removes them from both documents before comparing and prints what it skipped. Empty this list once the API change is deployed and the check reports the entries as live.",
+  "ignore": [
+    "/paths/~1space/get",
+    "/paths/~1spaces~1{spaceId}~1cubes~1{cubeId}/patch",
+    "/paths/~1spaces~1{spaceId}~1cubes~1{cubeId}~1resize",
+    "/components/schemas/Space/properties/apiKey"
+  ]
+}

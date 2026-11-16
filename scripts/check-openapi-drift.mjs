@@ -24,6 +24,16 @@
 //
 // Override the origin with KROVA_API_BASE when checking against a preview
 // deployment or a local dev server.
+//
+// PENDING API CHANGES. An SDK method for an endpoint that krova-cloud has
+// merged but not yet deployed needs the NEW spec in the snapshot, and the live
+// spec cannot match it until the deploy. `packages/sdk/openapi-pending.json`
+// lists JSON Pointers (RFC 6901) into the spec that are allowed to differ for
+// that window: the check removes them from BOTH documents before comparing, so
+// everything else is still held to byte equality, and it says out loud which
+// pointers it skipped. Once the deploy lands the pointers hold equal values on
+// both sides, the check reports them as "now live", and the file is emptied.
+// The file ships empty (`"ignore": []`) so the default stays strict.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -31,6 +41,7 @@ import { join } from "node:path";
 const BASE = (process.env.KROVA_API_BASE ?? "https://krova.cloud").replace(/\/+$/, "");
 const SPEC_URL = `${BASE}/api/v1/openapi.json`;
 const SNAPSHOT = join("packages", "sdk", "openapi.json");
+const PENDING = join("packages", "sdk", "openapi-pending.json");
 const WRITE = process.argv.includes("--write");
 
 // ── normalisation ────────────────────────────────────────────────────────────
@@ -50,6 +61,55 @@ const sortKeys = (value) => {
 
 const serialise = (doc) => `${JSON.stringify(sortKeys(doc), null, 2)}\n`;
 
+// ── pending pointers ─────────────────────────────────────────────────────────
+const parsePointer = (pointer) => {
+  if (pointer === "" || pointer[0] !== "/") {
+    console.error(`${PENDING}: "${pointer}" is not a JSON Pointer (must start with "/").`);
+    process.exit(2);
+  }
+  return pointer
+    .slice(1)
+    .split("/")
+    .map((part) => part.replace(/~1/g, "/").replace(/~0/g, "~"));
+};
+
+const getAt = (doc, keys) => {
+  let node = doc;
+  for (const key of keys) {
+    if (node === null || typeof node !== "object" || !(key in node)) return undefined;
+    node = node[key];
+  }
+  return node;
+};
+
+// Returns a deep copy of `doc` without the value at each pointer. A pointer
+// whose parent is missing is skipped: the pending entry may name something
+// only one side has, which is the whole point.
+const withoutPointers = (doc, pointers) => {
+  const copy = structuredClone(doc);
+  for (const pointer of pointers) {
+    const keys = parsePointer(pointer);
+    const parent = getAt(copy, keys.slice(0, -1));
+    if (parent !== null && typeof parent === "object") delete parent[keys[keys.length - 1]];
+  }
+  return copy;
+};
+
+let pending = [];
+try {
+  const parsed = JSON.parse(readFileSync(PENDING, "utf8"));
+  if (!Array.isArray(parsed.ignore) || !parsed.ignore.every((p) => typeof p === "string")) {
+    console.error(`${PENDING}: "ignore" must be an array of JSON Pointer strings.`);
+    process.exit(2);
+  }
+  pending = parsed.ignore;
+} catch (err) {
+  if (err.code !== "ENOENT") {
+    console.error(`Could not read ${PENDING}: ${err.message}`);
+    process.exit(2);
+  }
+}
+
 // ── fetch the live spec ──────────────────────────────────────────────────────
 const fail = (code, message) => {
   console.error(message);
@@ -67,19 +127,39 @@ try {
 
 const snapshot = JSON.parse(readFileSync(SNAPSHOT, "utf8"));
 
-const liveText = serialise(live);
-const snapshotText = serialise(snapshot);
+const fullLiveText = serialise(live);
+const fullSnapshotText = serialise(snapshot);
 
 if (WRITE) {
-  writeFileSync(SNAPSHOT, liveText);
-  const verb = liveText === snapshotText ? "already current" : "updated";
+  writeFileSync(SNAPSHOT, fullLiveText);
+  const verb = fullLiveText === fullSnapshotText ? "already current" : "updated";
   console.log(`${SNAPSHOT} ${verb} from ${SPEC_URL}`);
+  if (pending.length) console.log(`The snapshot now equals the live spec, so empty "ignore" in ${PENDING}.`);
   console.log("Now run:  pnpm --filter @krovacloud/sdk gen");
   process.exit(0);
 }
 
+// Compare with the pending pointers removed from both sides.
+const liveDoc = withoutPointers(live, pending);
+const snapshotDoc = withoutPointers(snapshot, pending);
+const liveText = serialise(liveDoc);
+const snapshotText = serialise(snapshotDoc);
+
 if (liveText === snapshotText) {
+  const skipped = pending.filter(
+    (pointer) => !(serialise(getAt(live, parsePointer(pointer))) === serialise(getAt(snapshot, parsePointer(pointer)))),
+  );
+  const nowLive = pending.filter((pointer) => !skipped.includes(pointer));
   console.log(`${SNAPSHOT} matches ${SPEC_URL}`);
+  if (skipped.length) {
+    console.log(`Skipped ${skipped.length} pending pointer(s) the live API does not serve yet (${PENDING}):`);
+    for (const pointer of skipped) console.log(`  ${pointer}`);
+    console.log("Those parts were NOT verified against the live API.");
+  }
+  if (nowLive.length) {
+    console.log(`These pending pointer(s) are live now; remove them from ${PENDING}:`);
+    for (const pointer of nowLive) console.log(`  ${pointer}`);
+  }
   process.exit(0);
 }
 
@@ -114,20 +194,20 @@ const requiredSets = (doc) => {
 
 const report = [];
 
-const addedPaths = only(keys(live.paths), keys(snapshot.paths));
-const removedPaths = only(keys(snapshot.paths), keys(live.paths));
+const addedPaths = only(keys(liveDoc.paths), keys(snapshotDoc.paths));
+const removedPaths = only(keys(snapshotDoc.paths), keys(liveDoc.paths));
 if (addedPaths.length) report.push(`  new operations not in the snapshot: ${addedPaths.join(", ")}`);
 if (removedPaths.length) report.push(`  operations the API no longer serves: ${removedPaths.join(", ")}`);
 
-const liveSchemas = keys(live.components?.schemas);
-const snapSchemas = keys(snapshot.components?.schemas);
+const liveSchemas = keys(liveDoc.components?.schemas);
+const snapSchemas = keys(snapshotDoc.components?.schemas);
 const addedSchemas = only(liveSchemas, snapSchemas);
 const removedSchemas = only(snapSchemas, liveSchemas);
 if (addedSchemas.length) report.push(`  new schemas: ${addedSchemas.join(", ")}`);
 if (removedSchemas.length) report.push(`  dropped schemas: ${removedSchemas.join(", ")}`);
 
-const liveRequired = requiredSets(live);
-const snapRequired = requiredSets(snapshot);
+const liveRequired = requiredSets(liveDoc);
+const snapRequired = requiredSets(snapshotDoc);
 for (const [path, liveValue] of liveRequired) {
   const snapValue = snapRequired.get(path);
   if (snapValue === liveValue) continue;
@@ -166,4 +246,6 @@ console.error("");
 console.error("Refresh with:");
 console.error("  node scripts/check-openapi-drift.mjs --write");
 console.error("  pnpm --filter @krovacloud/sdk gen");
+console.error("");
+console.error(`If the snapshot is deliberately ahead of the live API (an SDK method for an endpoint that is merged but not deployed), list those spec pointers in "ignore" in ${PENDING}.`);
 process.exit(1);

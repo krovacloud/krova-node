@@ -105,7 +105,7 @@ export function authCommand(): Command {
         offline || !hasKey
           ? ""
           : probe.state === "rejected"
-            ? `the API rejected this key (HTTP ${probe.status}) — it was revoked or belongs to another environment; run \`krova login\``
+            ? `the API rejected this key (HTTP ${probe.status}) — it is invalid, revoked or expired, or belongs to another environment; run \`krova login\``
             : probe.state === "unreachable"
               ? `could not reach ${rt.res.baseUrl} (${probe.error}) — the key was NOT verified`
               : probe.state === "unsupported"
