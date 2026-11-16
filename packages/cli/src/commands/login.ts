@@ -6,6 +6,7 @@ import { rawRequest } from "../lib/client.js";
 import { configPath } from "../lib/config.js";
 import { persistLogin } from "../lib/persist.js";
 import { getRuntime } from "../lib/runtime.js";
+import { spinnerEnabled, withSpinner } from "../lib/spinner.js";
 
 interface StartResponse {
   deviceCode: string;
@@ -87,43 +88,45 @@ export function loginCommand(): Command {
 
       const intervalMs = Math.max((s.interval || 5) * 1000, 5000);
       const deadline = Date.now() + Math.max(s.expiresIn || 600, 1) * 1000;
-      process.stdout.write("Waiting for approval…\n");
+      // On an interactive terminal the spinner says it; otherwise keep the plain line.
+      if (!spinnerEnabled(rt.json)) process.stdout.write("Waiting for approval…\n");
 
-      // poll loop
-      // eslint-disable-next-line no-constant-condition
-      for (;;) {
-        if (Date.now() >= deadline) {
-          throw new Error(
-            "login timed out: the verification code expired before it was approved"
-          );
-        }
-        await sleep(intervalMs);
-        const poll = await rawRequest<PollResponse>({
-          method: "POST",
-          baseUrl,
-          path: "/auth/cli/poll",
-          body: { deviceCode: s.deviceCode },
-          timeoutMs: rt.timeoutMs,
-        });
-        if (poll.status === 200) {
-          if (!poll.data?.apiKey) throw new Error("login succeeded but no API key was returned");
-          const { ctxName, spaceName } = await persistLogin({
-            apiKey: poll.data.apiKey,
+      // Poll loop. withSpinner clears the spinner line on success and on failure.
+      const approved = await withSpinner("Waiting for approval", { json: rt.json }, async () => {
+        for (;;) {
+          if (Date.now() >= deadline) {
+            throw new Error(
+              "login timed out: the verification code expired before it was approved"
+            );
+          }
+          await sleep(intervalMs);
+          const poll = await rawRequest<PollResponse>({
+            method: "POST",
             baseUrl,
-            spaceId: poll.data.spaceId,
-            ctxName: opts.context as string | undefined,
+            path: "/auth/cli/poll",
+            body: { deviceCode: s.deviceCode },
             timeoutMs: rt.timeoutMs,
           });
-          process.stdout.write(`Logged in. Saved context "${ctxName}" to ${configPath()}\n`);
-          if (spaceName) process.stdout.write(`Space: ${spaceName}\n`);
-          return;
+          if (poll.status === 200) {
+            if (!poll.data?.apiKey) throw new Error("login succeeded but no API key was returned");
+            return poll.data;
+          }
+          if (poll.status === 202 || poll.status === 425 || poll.status === 428) continue;
+          if (poll.status === 410) {
+            throw new Error("login expired: request a new code with `krova login`");
+          }
+          if (poll.status === 404) throw new Error(BROWSER_UNAVAILABLE);
+          throw new Error(`login failed while polling (HTTP ${poll.status})`);
         }
-        if (poll.status === 202 || poll.status === 425 || poll.status === 428) continue;
-        if (poll.status === 410) {
-          throw new Error("login expired: request a new code with `krova login`");
-        }
-        if (poll.status === 404) throw new Error(BROWSER_UNAVAILABLE);
-        throw new Error(`login failed while polling (HTTP ${poll.status})`);
-      }
+      });
+      const { ctxName, spaceName } = await persistLogin({
+        apiKey: approved.apiKey,
+        baseUrl,
+        spaceId: approved.spaceId,
+        ctxName: opts.context as string | undefined,
+        timeoutMs: rt.timeoutMs,
+      });
+      process.stdout.write(`Logged in. Saved context "${ctxName}" to ${configPath()}\n`);
+      if (spaceName) process.stdout.write(`Space: ${spaceName}\n`);
     });
 }

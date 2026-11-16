@@ -17,6 +17,7 @@ import { printJSON, printKeyValue, printTable } from "../lib/output.js";
 import { resolveCube } from "../lib/resolve.js";
 import { confirm, printAborted, shouldConfirm } from "../lib/safety.js";
 import { getRuntime, makeClient, resolveSpace } from "../lib/runtime.js";
+import { withSpinner } from "../lib/spinner.js";
 
 function listCmd(): Command {
   return new Command("list")
@@ -166,7 +167,8 @@ export function createCmd(deps: CreateDeps = defaultCreateDeps): Command {
       // --name, --image and --ssh-key were requiredOption; without a terminal
       // they still are, with commander's own message and exit code.
       const missing = REQUIRED_CREATE_FLAGS.filter(([, key]) => opts[key] === undefined);
-      const wantsJson = Boolean((cmd.optsWithGlobals() as { json?: unknown }).json);
+      const globals = cmd.optsWithGlobals() as { json?: unknown; output?: unknown };
+      const wantsJson = Boolean(globals.json) || globals.output === "json";
       const prompting = missing.length > 0 && deps.interactive(wantsJson);
       if (missing.length > 0 && !prompting) {
         const flags = cmd.options.find((o) => o.long === missing[0]?.[0])?.flags;
@@ -240,10 +242,12 @@ export function createCmd(deps: CreateDeps = defaultCreateDeps): Command {
           region: opts.region,
         });
       }
-      const cube = await client.cubes.create(
-        space,
-        body as never,
-        opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : undefined
+      const cube = await withSpinner("Creating cube", { json: rt.json }, () =>
+        client.cubes.create(
+          space,
+          body as never,
+          opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : undefined
+        )
       );
       if (rt.json) return printJSON(cube);
       out(`Created cube ${cube.id} (${cube.state})\n`);

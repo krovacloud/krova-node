@@ -192,7 +192,20 @@ Available on every command (flag > env var > context):
 | `--base-url <url>` | `KROVA_BASE_URL` | override the API base URL |
 | `--context <name>` | `KROVA_CONTEXT` | select a named context |
 | `--json` | | machine-readable JSON output |
+| `-o, --output <format>` | | `table` (default) or `json`; `-o json` is the same as `--json` |
 | `--timeout <dur>` | | per-request timeout (e.g. `30s`); defaults to `30s` |
+
+When a command fails, `krova` prints the error and, for an API error or a connection failure, one line on what to try next. With `--json` (or `-o json`) errors stay exactly as they are, with no extra line.
+
+## Shell completion
+
+```sh
+krova completion bash > ~/.local/share/bash-completion/completions/krova
+krova completion zsh > "${fpath[1]}/_krova"      # needs compinit in ~/.zshrc
+krova completion fish > ~/.config/fish/completions/krova.fish
+```
+
+Restart your shell afterward. The script lists the commands, subcommands, aliases and flags of the version you have installed, so run it again after you upgrade. In bash and zsh you can also add `source <(krova completion bash)` or `source <(krova completion zsh)` to your shell's startup file (zsh: after `compinit`).
 
 ## License
 
