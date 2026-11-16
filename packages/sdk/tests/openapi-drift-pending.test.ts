@@ -34,8 +34,8 @@ ahead.paths["/spaces/{spaceId}/cubes/{cubeId}/resize"] = { post: {} };
 (ahead.components.schemas.Space.properties as Record<string, unknown>).apiKey = { type: "object" };
 
 const PENDING = [
-  "/paths/~1space/get",
-  "/paths/~1spaces~1{spaceId}~1cubes~1{cubeId}~1resize",
+  "/paths/~1space/get/description",
+  "/paths/~1spaces~1{spaceId}~1cubes~1{cubeId}~1resize/post",
   "/components/schemas/Space/properties/apiKey",
 ];
 
@@ -102,6 +102,7 @@ test("a snapshot ahead of the live API passes when exactly those pointers are pe
   assert.match(r.stdout, /Skipped 3 pending pointer/);
   for (const p of PENDING) assert.ok(r.stdout.includes(p), `names ${p}`);
   assert.match(r.stdout, /NOT verified against the live API/);
+  assert.match(r.stdout, /Empty the ignore list after the krova-cloud deploy/);
 });
 
 test("a difference outside the pending pointers still fails", async () => {
@@ -112,15 +113,46 @@ test("a difference outside the pending pointers still fails", async () => {
   assert.match(r.stderr, /DRIFT/);
 });
 
-test("pointers the live API already serves are reported as live, so the file can be emptied", async () => {
+test("pointers the live API already serves fail the check until they are removed", async () => {
   const r = await run(ahead, PENDING, ahead);
-  assert.equal(r.code, 0, r.stderr);
-  assert.match(r.stdout, /are live now; remove them/);
-  assert.doesNotMatch(r.stdout, /Skipped/);
+  assert.equal(r.code, 1);
+  assert.match(r.stderr, /already live or point at nothing; remove them/);
+  for (const p of PENDING) assert.ok(r.stderr.includes(p), `names ${p}`);
+});
+
+test("one stale pointer among live-pending ones still fails, and names only the stale one", async () => {
+  // The live API has the description change but not the new path or property.
+  const partlyLive = structuredClone(live) as typeof live & { paths: Record<string, unknown> };
+  partlyLive.paths["/space"] = { get: { description: "new" } };
+  const r = await run(ahead, PENDING, partlyLive);
+  assert.equal(r.code, 1);
+  assert.ok(r.stderr.includes("/paths/~1space/get/description"));
+  assert.ok(!r.stderr.includes("/components/schemas/Space/properties/apiKey"));
+});
+
+test("a pointer that points at nothing on both sides is stale", async () => {
+  const r = await run(live, ["/paths/~1gone/get/description"]);
+  assert.equal(r.code, 1);
+  assert.match(r.stderr, /~1gone/);
 });
 
 test("a malformed pending file is an error, never a silent pass", async () => {
   const r = await run(live, ["paths/space"]);
   assert.equal(r.code, 2);
   assert.match(r.stderr, /not a JSON Pointer/);
+});
+
+test("pointers broader than one operation or one schema field are refused", async () => {
+  for (const broad of [
+    "/paths/~1space",
+    "/paths",
+    "/components/schemas/Space",
+    "/components/schemas/Space/properties",
+    "/info",
+    "/paths/~1space/parameters",
+  ]) {
+    const r = await run(ahead, [broad]);
+    assert.equal(r.code, 2, `${broad} must exit 2`);
+    assert.match(r.stderr, /too broad/);
+  }
 });

@@ -353,7 +353,8 @@ function renameCmd(): Command {
     .argument("<cube>", "cube name or ID")
     .argument("<new-name>", "the new name (1 to 64 printable characters)")
     .description("rename a Cube (names do not have to be unique; a running Cube's hostname changes on its next cold restart)")
-    .action(async (cubeRef: string, newName: string, _opts, cmd: Command) => {
+    .action(async (cubeRef: string, rawName: string, _opts, cmd: Command) => {
+      const newName = parseCubeName(rawName);
       const rt = getRuntime(cmd);
       const client = makeClient(rt.res);
       const space = await resolveSpace(rt);
@@ -365,12 +366,23 @@ function renameCmd(): Command {
 }
 
 /** Parse a `--vcpu`/`--ram`/`--disk` value. `integer` rejects fractions (RAM may be fractional). */
-function parseSize(flag: string, raw: string, integer: boolean): number {
+export function parseSize(flag: string, raw: string, integer: boolean): number {
+  // Plain decimal digits only: Number() would also take 0x10, 1e1 and " 5 ".
   const n = Number(raw);
-  if (raw.trim() === "" || !Number.isFinite(n) || n <= 0 || (integer && !Number.isInteger(n))) {
+  if (!(integer ? /^\d+$/ : /^\d+(\.\d+)?$/).test(raw) || !Number.isFinite(n) || n <= 0) {
     throw new Error(`${flag} must be a positive ${integer ? "whole number" : "number"}`);
   }
   return n;
+}
+
+/** Trim a new Cube name and check it locally: 1 to 64 characters, no control, line-separator or bidi characters. */
+export function parseCubeName(raw: string): string {
+  const name = raw.trim();
+  const length = [...name].length;
+  if (length < 1 || length > 64 || /[\p{Cc}\u2028\u2029\u202A-\u202E\u2066-\u2069]/u.test(name)) {
+    throw new Error("the new name must be 1 to 64 printable characters");
+  }
+  return name;
 }
 
 const RESIZE_DIMENSIONS = [

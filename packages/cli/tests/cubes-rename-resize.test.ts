@@ -5,7 +5,7 @@ import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
 
-import { cubesCommand } from "../src/commands/cubes.js";
+import { cubesCommand, parseCubeName, parseSize } from "../src/commands/cubes.js";
 import { describeExpiry } from "../src/commands/whoami.js";
 
 const cube = (id: string, name: string, resources = { vcpu: 2, ramGb: 2, diskGb: 20 }) => ({
@@ -29,6 +29,27 @@ test("cubes exposes rename and resize with their flags", () => {
   assert.ok(resize, "cubes must expose `resize`");
   assert.equal(resize.registeredArguments.length, 1, "<cube>");
   assert.deepEqual(resize.options.map((o) => o.long).sort(), ["--disk", "--ram", "--vcpu", "--yes"]);
+});
+
+test("parseSize accepts plain decimals only", () => {
+  assert.equal(parseSize("--vcpu", "4", true), 4);
+  assert.equal(parseSize("--ram", "0.5", false), 0.5);
+  assert.equal(parseSize("--ram", "8", false), 8);
+  for (const bad of ["0x10", "1e1", " 5", "5 ", "", "-1", "0", "+4", ".5", "5.", "Infinity", "1_0"]) {
+    assert.throws(() => parseSize("--ram", bad, false), /--ram must be a positive number/, `ram ${JSON.stringify(bad)}`);
+  }
+  for (const bad of ["1.5", "0x10", "1e1", "0"]) {
+    assert.throws(() => parseSize("--vcpu", bad, true), /--vcpu must be a positive whole number/, `vcpu ${bad}`);
+  }
+});
+
+test("parseCubeName trims and enforces 1 to 64 printable characters", () => {
+  assert.equal(parseCubeName("  web-1  "), "web-1");
+  assert.equal(parseCubeName("x".repeat(64)), "x".repeat(64));
+  assert.equal(parseCubeName("web \u00e9\u{1F680}"), "web \u00e9\u{1F680}");
+  for (const bad of ["", "   ", "x".repeat(65), "a\nb", "a\u0000b", "a\tb", "a\u2028b", "a\u202Eb"]) {
+    assert.throws(() => parseCubeName(bad), /1 to 64 printable characters/, JSON.stringify(bad));
+  }
 });
 
 test("describeExpiry says never, counts days, and flags a date in the past", () => {
@@ -133,14 +154,35 @@ test("`krova cubes rename --json` prints only the Cube as JSON", async () => {
   assert.equal(JSON.parse(run.stdout).name, "web-1");
 });
 
-test("`krova cubes rename` exits 1 with the API's message on a 400", async () => {
+test("`krova cubes rename` refuses a bad name before any request, and sends the trimmed one", async () => {
+  let requests = 0;
+  let patched: unknown;
+  handler = (req, res, body) => {
+    requests += 1;
+    if (req.method === "GET") return json(res, 200, LIST);
+    patched = JSON.parse(body);
+    json(res, 200, { cube: cube("cube_1", "web-1") });
+  };
+  for (const bad of ["x".repeat(65), "   ", "a\u0007b"]) {
+    const run = await runCli(["cubes", "rename", "web", bad]);
+    assert.equal(run.code, 1);
+    assert.match(run.stderr, /1 to 64 printable characters/);
+  }
+  assert.equal(requests, 0);
+
+  const ok = await runCli(["cubes", "rename", "web", "  web-1  "]);
+  assert.equal(ok.code, 0, ok.stderr);
+  assert.deepEqual(patched, { name: "web-1" });
+});
+
+test("`krova cubes rename` shows the API's message when the server refuses the name", async () => {
   handler = (req, res) =>
     req.method === "GET"
       ? json(res, 200, LIST)
-      : json(res, 400, { error: "name is required and must be 1–64 printable characters" });
-  const run = await runCli(["cubes", "rename", "web", "x".repeat(65)]);
+      : json(res, 403, { error: "Forbidden: missing permission cube.manage" });
+  const run = await runCli(["cubes", "rename", "web", "web-1"]);
   assert.equal(run.code, 1);
-  assert.match(run.stderr, /1–64 printable characters/);
+  assert.match(run.stderr, /missing permission cube\.manage/);
 });
 
 test("`krova cubes resize` live: posts only the flags given and says no restart", async () => {
@@ -269,6 +311,10 @@ test("`krova cubes resize` rejects bad flags before any request", async () => {
   const neg = await runCli(["cubes", "resize", "web", "--ram", "-2"]);
   assert.equal(neg.code, 1);
   assert.match(neg.stderr, /--ram must be a positive number/);
+
+  const hex = await runCli(["cubes", "resize", "web", "--disk", "0x10"]);
+  assert.equal(hex.code, 1);
+  assert.match(hex.stderr, /--disk must be a positive whole number/);
   assert.equal(requests, 0);
 });
 

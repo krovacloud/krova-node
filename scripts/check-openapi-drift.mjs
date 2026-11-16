@@ -20,7 +20,8 @@
 //
 //   0  snapshot matches the live spec (or --write refreshed it)
 //   1  drift: the documents differ
-//   2  could not reach or parse the live spec — NOT a drift verdict
+//   2  could not reach or parse the live spec, or openapi-pending.json is
+//      malformed or too broad — NOT a drift verdict
 //
 // Override the origin with KROVA_API_BASE when checking against a preview
 // deployment or a local dev server.
@@ -31,9 +32,14 @@
 // lists JSON Pointers (RFC 6901) into the spec that are allowed to differ for
 // that window: the check removes them from BOTH documents before comparing, so
 // everything else is still held to byte equality, and it says out loud which
-// pointers it skipped. Once the deploy lands the pointers hold equal values on
-// both sides, the check reports them as "now live", and the file is emptied.
-// The file ships empty (`"ignore": []`) so the default stays strict.
+// pointers it skipped. The file lists pointers only while krova-cloud has not
+// deployed the change; empty it after the deploy. A pointer whose live value
+// already equals the snapshot's is STALE, and the check exits 1 until it is
+// removed, so an ignore can never linger and hide a later regression.
+//
+// Pointers must be narrow: `/paths/<path>/<method>` or deeper, or
+// `/components/schemas/<Schema>/properties/<field>` or deeper. Anything broader
+// (a whole schema, a whole path, the root) would hide too much and exits 2.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -73,6 +79,20 @@ const parsePointer = (pointer) => {
     .map((part) => part.replace(/~1/g, "/").replace(/~0/g, "~"));
 };
 
+const METHODS = new Set(["get", "put", "post", "delete", "options", "head", "patch", "trace"]);
+
+// Reject pointers that would hide more than one operation or one schema field.
+const checkNarrow = (pointer, keys) => {
+  const operation = keys[0] === "paths" && keys.length >= 3 && METHODS.has(keys[2]);
+  const field =
+    keys[0] === "components" && keys[1] === "schemas" && keys[3] === "properties" && keys.length >= 5;
+  if (operation || field) return;
+  console.error(
+    `${PENDING}: "${pointer}" is too broad. Use /paths/<path>/<method> or deeper, or /components/schemas/<Schema>/properties/<field> or deeper.`,
+  );
+  process.exit(2);
+};
+
 const getAt = (doc, keys) => {
   let node = doc;
   for (const key of keys) {
@@ -91,6 +111,11 @@ const withoutPointers = (doc, pointers) => {
     const keys = parsePointer(pointer);
     const parent = getAt(copy, keys.slice(0, -1));
     if (parent !== null && typeof parent === "object") delete parent[keys[keys.length - 1]];
+    // Dropping the only operation of a path leaves `"<path>": {}` on one side
+    // and no key on the other; that is not a difference worth reporting.
+    if (keys[0] === "paths" && keys.length === 3 && parent && Object.keys(parent).length === 0) {
+      delete copy.paths[keys[1]];
+    }
   }
   return copy;
 };
@@ -103,6 +128,7 @@ try {
     process.exit(2);
   }
   pending = parsed.ignore;
+  for (const pointer of pending) checkNarrow(pointer, parsePointer(pointer));
 } catch (err) {
   if (err.code !== "ENOENT") {
     console.error(`Could not read ${PENDING}: ${err.message}`);
@@ -145,23 +171,33 @@ const snapshotDoc = withoutPointers(snapshot, pending);
 const liveText = serialise(liveDoc);
 const snapshotText = serialise(snapshotDoc);
 
+// A pointer is STALE when both documents hold the same value at it (including
+// both holding nothing): the ignore no longer skips anything.
+const sameAt = (pointer) =>
+  serialise(getAt(live, parsePointer(pointer))) === serialise(getAt(snapshot, parsePointer(pointer)));
+const stale = pending.filter(sameAt);
+const skipped = pending.filter((pointer) => !stale.includes(pointer));
+
+const reportStale = () => {
+  console.error(`These pending pointer(s) in ${PENDING} are already live or point at nothing; remove them:`);
+  for (const pointer of stale) console.error(`  ${pointer}`);
+};
+
 if (liveText === snapshotText) {
-  const skipped = pending.filter(
-    (pointer) => !(serialise(getAt(live, parsePointer(pointer))) === serialise(getAt(snapshot, parsePointer(pointer)))),
-  );
-  const nowLive = pending.filter((pointer) => !skipped.includes(pointer));
+  if (stale.length) {
+    reportStale();
+    process.exit(1);
+  }
   console.log(`${SNAPSHOT} matches ${SPEC_URL}`);
   if (skipped.length) {
     console.log(`Skipped ${skipped.length} pending pointer(s) the live API does not serve yet (${PENDING}):`);
     for (const pointer of skipped) console.log(`  ${pointer}`);
     console.log("Those parts were NOT verified against the live API.");
-  }
-  if (nowLive.length) {
-    console.log(`These pending pointer(s) are live now; remove them from ${PENDING}:`);
-    for (const pointer of nowLive) console.log(`  ${pointer}`);
+    console.log("Empty the ignore list after the krova-cloud deploy.");
   }
   process.exit(0);
 }
+if (stale.length) reportStale();
 
 // ── report ───────────────────────────────────────────────────────────────────
 // A 149-line raw diff tells you nothing at a glance. Lead with the differences
