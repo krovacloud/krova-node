@@ -72,6 +72,8 @@ function getCmd(): Command {
         ["Disk (GB)", String(cube.resources.diskGb)],
         ["Public IPv4", cube.publicIpv4 ?? "—"],
         ["Cost/hour", `$${cube.costPerHour}`],
+        ["Idle timeout", describeIdleTimeout(cube.idleTimeoutMinutes)],
+        ["Last active", cube.lastActiveAt ?? "-"],
       ]);
     });
 }
@@ -87,6 +89,8 @@ export interface CreateBodyInput {
   region?: string;
   userData?: string;
   terminationProtection?: boolean;
+  /** Minutes (10 to 10080) or `null` for off; leave out to send nothing. */
+  idleTimeoutMinutes?: number | null;
 }
 
 /**
@@ -117,6 +121,8 @@ export function buildCreateBody(input: CreateBodyInput): Record<string, unknown>
   // Only send the flag when explicitly turned on; the server defaults it
   // to `false`, and an explicit `false` would just be noise on the wire.
   if (input.terminationProtection) body.terminationProtection = true;
+  // `null` (--idle-timeout off) is sent on purpose; only `undefined` means "not given".
+  if (input.idleTimeoutMinutes !== undefined) body.idleTimeoutMinutes = input.idleTimeoutMinutes;
   return body;
 }
 
@@ -163,8 +169,12 @@ export function createCmd(deps: CreateDeps = defaultCreateDeps): Command {
       "turn on termination protection (the cube cannot be deleted until turned off)",
       false
     )
+    .option("--idle-timeout <minutes>", IDLE_TIMEOUT_HELP)
     .option("-y, --yes", "skip the confirmation after the prompts")
     .action(async (opts, cmd: Command) => {
+      // Checked first so a bad value fails before any prompt or request.
+      const idleTimeoutMinutes =
+        opts.idleTimeout === undefined ? undefined : parseIdleTimeout(opts.idleTimeout);
       // --name, --image and --ssh-key were requiredOption; without a terminal
       // they still are, with commander's own message and exit code.
       const missing = REQUIRED_CREATE_FLAGS.filter(([, key]) => opts[key] === undefined);
@@ -194,6 +204,7 @@ export function createCmd(deps: CreateDeps = defaultCreateDeps): Command {
           ...v,
           userData: opts.userData,
           terminationProtection: opts.terminationProtection,
+          idleTimeoutMinutes,
         });
       let body: Record<string, unknown>;
       if (prompting) {
@@ -250,6 +261,10 @@ export function createCmd(deps: CreateDeps = defaultCreateDeps): Command {
           opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : undefined
         )
       );
+      if (idleTimeoutMinutes !== undefined && cube.idleTimeoutMinutes === undefined) {
+        // An older server ignores the field it does not know and still answers 201.
+        process.stderr.write(IDLE_UNSUPPORTED_WARNING);
+      }
       if (rt.json) return printJSON(cube);
       out(`Created cube ${cube.id} (${cube.state})\n`);
     });
@@ -362,6 +377,63 @@ function renameCmd(): Command {
       const cube = await client.cubes.rename(space, id, newName);
       if (rt.json) return printJSON(cube);
       process.stdout.write(`Renamed cube ${id} to ${cube.name}\n`);
+    });
+}
+
+const IDLE_TIMEOUT_HELP =
+  'power the Cube off after this many minutes without activity (10 to 10080), or "off" (needs a server with the idle-timeout feature)';
+
+const IDLE_UNSUPPORTED_WARNING =
+  "Warning: this server did not report an idle timeout for the Cube, so --idle-timeout was probably ignored. It needs a server with the idle-timeout feature.\n";
+
+/**
+ * Parse `--idle-timeout`: whole minutes from 10 to 10080 (7 days), or `off`
+ * (sent as `null`). Plain decimal digits only, so 1e2, 0x10 and " 20" fail.
+ */
+export function parseIdleTimeout(raw: string): number | null {
+  if (raw === "off") return null;
+  const n = Number(raw);
+  if (!/^\d+$/.test(raw) || !Number.isSafeInteger(n) || n < 10 || n > 10080) {
+    throw new Error('--idle-timeout must be a whole number of minutes from 10 to 10080, or "off"');
+  }
+  return n;
+}
+
+/** `off` for a Cube with no timeout, `N min` for one with a timeout, `-` when the server does not say. */
+export function describeIdleTimeout(minutes: number | null | undefined): string {
+  if (minutes === undefined) return "-";
+  return minutes === null ? "off" : `${minutes} min`;
+}
+
+function updateCmd(): Command {
+  return new Command("update")
+    .argument("<cube>", "cube name or ID")
+    .option("--idle-timeout <minutes>", IDLE_TIMEOUT_HELP)
+    .description("change a Cube's settings (idle auto-stop; `rename`, `resize` and `protect` cover the rest)")
+    .action(async (cubeRef: string, opts, cmd: Command) => {
+      if (opts.idleTimeout === undefined) {
+        throw new Error("nothing to update: pass --idle-timeout <minutes|off>");
+      }
+      const minutes = parseIdleTimeout(opts.idleTimeout);
+      const rt = getRuntime(cmd);
+      const client = makeClient(rt.res);
+      const space = await resolveSpace(rt);
+      const id = await resolveCube(client, space, cubeRef);
+      const cube = await client.cubes.setIdleTimeout(space, id, minutes);
+      // A 200 that does not carry the new value means the server ignored the field; never report a change that did not happen.
+      if (cube.idleTimeoutMinutes !== minutes) {
+        throw new Error(
+          cube.idleTimeoutMinutes === undefined
+            ? "the server did not apply --idle-timeout (it needs a server with the idle-timeout feature)"
+            : `the server kept the idle timeout at ${describeIdleTimeout(cube.idleTimeoutMinutes)}`
+        );
+      }
+      if (rt.json) return printJSON(cube);
+      process.stdout.write(
+        minutes === null
+          ? `Turned off idle auto-stop for cube ${id}\n`
+          : `Set idle auto-stop for cube ${id} to ${minutes} min\n`
+      );
     });
 }
 
@@ -507,6 +579,7 @@ export function cubesCommand(): Command {
   cubes.addCommand(deleteCmd());
   cubes.addCommand(restartCmd());
   cubes.addCommand(sshPortCmd());
+  cubes.addCommand(updateCmd());
   cubes.addCommand(renameCmd());
   cubes.addCommand(resizeCmd());
   cubes.addCommand(setProtectionCmd("protect", true, "Protected"));

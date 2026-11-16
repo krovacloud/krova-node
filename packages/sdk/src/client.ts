@@ -468,6 +468,32 @@ export class KrovaClient {
     },
 
     /**
+     * Set a Cube's idle auto-stop timeout. Returns the updated {@link Cube}.
+     *
+     * `PATCH /spaces/{spaceId}/cubes/{cubeId}` with `{ idleTimeoutMinutes }`: an
+     * integer from 10 to 10080 (7 days), or `null` to turn it off. Krova powers
+     * the Cube off after that many minutes without activity. Needs the
+     * `cube.manage` permission. Passing the current value is a no-op. A server
+     * without the idle-timeout feature answers `400`.
+     */
+    setIdleTimeout: async (
+      spaceId: string,
+      cubeId: string,
+      minutes: number | null,
+    ): Promise<Cube> => {
+      const { data, error, response } = await this.raw.PATCH("/spaces/{spaceId}/cubes/{cubeId}", {
+        params: { path: { spaceId, cubeId } },
+        body: { idleTimeoutMinutes: minutes },
+      });
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      const cube = (data as { cube?: Cube } | undefined)?.cube;
+      if (!cube) {
+        throw krovaErrorFrom(response, { error: "Set idle-timeout response had no `cube`." });
+      }
+      return cube;
+    },
+
+    /**
      * Rename a Cube. Returns the updated {@link Cube}.
      *
      * `PATCH /spaces/{spaceId}/cubes/{cubeId}` with `{ name }`. The name is
