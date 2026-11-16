@@ -3,8 +3,7 @@ import { spawn } from "node:child_process";
 import { Command } from "commander";
 
 import { rawRequest } from "../lib/client.js";
-import { configPath } from "../lib/config.js";
-import { persistLogin } from "../lib/persist.js";
+import { loginMessage, persistLogin } from "../lib/persist.js";
 import { getRuntime } from "../lib/runtime.js";
 import { spinnerEnabled, withSpinner } from "../lib/spinner.js";
 
@@ -119,14 +118,14 @@ export function loginCommand(): Command {
           throw new Error(`login failed while polling (HTTP ${poll.status})`);
         }
       });
-      const { ctxName, spaceName } = await persistLogin({
+      const { ctxName, spaceName, stored } = await persistLogin({
         apiKey: approved.apiKey,
         baseUrl,
         spaceId: approved.spaceId,
         ctxName: opts.context as string | undefined,
         timeoutMs: rt.timeoutMs,
       });
-      process.stdout.write(`Logged in. Saved context "${ctxName}" to ${configPath()}\n`);
+      process.stdout.write(`${loginMessage(ctxName, stored)}\n`);
       if (spaceName) process.stdout.write(`Space: ${spaceName}\n`);
     });
 }

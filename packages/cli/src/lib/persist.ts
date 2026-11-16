@@ -1,4 +1,13 @@
-import { DEFAULT_CONTEXT_NAME, load, sanitizeContextName, save, upsert } from "./config.js";
+import {
+  DEFAULT_CONTEXT_NAME,
+  configPath,
+  type StoreResult,
+  load,
+  sanitizeContextName,
+  save,
+  setContextKey,
+  upsert,
+} from "./config.js";
 import { probeAuth } from "./runtime.js";
 
 /** Save + switch to a context after a login. Best-effort space lookup fills in
@@ -9,7 +18,7 @@ export async function persistLogin(input: {
   spaceId?: string;
   ctxName?: string;
   timeoutMs: number;
-}): Promise<{ ctxName: string; spaceName: string }> {
+}): Promise<{ ctxName: string; spaceName: string; stored: StoreResult }> {
   const cfg = load();
   let spaceId = input.spaceId ?? "";
   let spaceName = "";
@@ -31,12 +40,20 @@ export async function persistLogin(input: {
 
   const cur = upsert(cfg, {
     name,
-    apiKey: input.apiKey,
     spaceId,
     spaceName,
     baseUrl: input.baseUrl,
   });
+  // Keychain first, 0600 file as the fallback; the key is never written to the file when the keychain took it.
+  const stored = setContextKey(cur, input.apiKey);
   cfg.currentContext = cur.name; // login always switches current
   save(cfg);
-  return { ctxName: cur.name, spaceName: cur.spaceName ?? "" };
+  return { ctxName: cur.name, spaceName: cur.spaceName ?? "", stored };
+}
+
+/** The line printed after a login: says where the key went. */
+export function loginMessage(ctxName: string, stored: StoreResult): string {
+  return stored.storage === "keychain"
+    ? `Logged in. Saved context "${ctxName}" to ${configPath()} (API key in the ${stored.backend})`
+    : `Logged in. Saved context "${ctxName}" to ${configPath()}`;
 }

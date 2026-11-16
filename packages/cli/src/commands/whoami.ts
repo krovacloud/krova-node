@@ -40,6 +40,7 @@ export function whoamiCommand(): Command {
             ? { apiKey: rt.res.apiKey }
             : { apiKeyMasked: displayKey(rt.res.apiKey, false) }),
           apiKeySource: rt.res.apiKeySource,
+          apiKeyStorage: rt.res.apiKeyStorage || undefined,
           baseUrl: rt.res.baseUrl,
           spaceLive,
           checkState: probe.state,
@@ -50,7 +51,12 @@ export function whoamiCommand(): Command {
         ["Context", rt.res.contextName || "—"],
         ["Space", spaceName || "—"],
         ["Space ID", spaceId || "—"],
-        ["API key", rt.res.apiKey ? `${displayKey(rt.res.apiKey, showSecrets)} (${rt.res.apiKeySource})` : "—"],
+        [
+          "API key",
+          rt.res.apiKey
+            ? `${displayKey(rt.res.apiKey, showSecrets)} (${rt.res.apiKeySource}${rt.res.apiKeyStorage ? `, ${rt.res.apiKeyStorage}` : ""})`
+            : "—",
+        ],
         ["Base URL", rt.res.baseUrl],
       ]);
       if (warning) process.stdout.write(`\n${warning}\n`);
