@@ -50,6 +50,10 @@ All notable changes to `@krovacloud/cli` are documented here.
 
 - `krova whoami`, `krova auth status` and `krova context list --json` show where the key lives (`apiKeyStorage` / `keyStorage`: `keychain` or `file`), and `krova auth logout`, `krova context delete` and `krova context rename` delete or move the keychain item with the context.
 
+### Fixed
+
+- `krova login` on Windows no longer passes the verification URL through `cmd.exe`: it opens the browser with `rundll32` and no shell. A URL containing `& | ^ < > "` (or `%` on Windows) is not opened; the CLI prints it so you can open it yourself. The URL it opens is now the normalized form of the one the server sent.
+
 ## 0.6.2
 
 ### Changed

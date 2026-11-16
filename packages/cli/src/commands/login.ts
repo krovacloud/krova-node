@@ -23,29 +23,67 @@ interface PollResponse {
 const BROWSER_UNAVAILABLE =
   "Browser login isn't enabled on this server yet — run `krova auth login` to paste an API key from https://krova.cloud";
 
-/** Only open https URLs, or http to a loopback host. Everything else is unsafe. */
-export function safeBrowserURL(raw: string): string | null {
+/** Characters that never appear in a device-login URL and that cmd.exe treats as operators. */
+const SHELL_METACHARS = /[&|^<>"]/;
+
+/**
+ * Only open https URLs, or http to a loopback host, and return the normalized href.
+ * The device-login URL is `<base>/cli?code=<ALNUM-ALNUM>`: it never needs `& | ^ < > "`, so a URL
+ * carrying one is refused on every platform. `%` is refused on Windows only, where it expands
+ * environment variables in some launchers; the real URL never contains it (the code is alphanumeric).
+ * A refused URL is not opened: the caller prints it for the user to open by hand.
+ */
+export function safeBrowserURL(
+  raw: string,
+  platform: NodeJS.Platform = process.platform
+): string | null {
   let u: URL;
   try {
     u = new URL(raw);
   } catch {
     return null;
   }
-  if (u.protocol === "https:" && u.hostname) return raw;
-  if (
+  const loopbackHttp =
     u.protocol === "http:" &&
-    (u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "::1")
-  ) {
-    return raw;
-  }
-  return null;
+    (u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "[::1]");
+  if (!((u.protocol === "https:" && u.hostname) || loopbackHttp)) return null;
+  const href = u.href;
+  if (SHELL_METACHARS.test(href)) return null;
+  if (platform === "win32" && href.includes("%")) return null;
+  return href;
 }
 
-function openBrowser(url: string): void {
-  const cmd =
-    process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
-  const args = process.platform === "win32" ? ["", url] : [url];
-  const child = spawn(cmd, args, { stdio: "ignore", detached: true, shell: process.platform === "win32" });
+export interface BrowserSpawnPlan {
+  command: string;
+  args: string[];
+  options: { stdio: "ignore"; detached: true; windowsHide?: true };
+}
+
+/**
+ * How to open `href` in the default browser. Never uses a shell: on Windows `rundll32` is a real
+ * executable, so cmd.exe never parses the URL.
+ */
+export function browserSpawnPlan(
+  href: string,
+  platform: NodeJS.Platform = process.platform
+): BrowserSpawnPlan {
+  if (platform === "win32") {
+    return {
+      command: "rundll32",
+      args: ["url.dll,FileProtocolHandler", href],
+      options: { stdio: "ignore", detached: true, windowsHide: true },
+    };
+  }
+  return {
+    command: platform === "darwin" ? "open" : "xdg-open",
+    args: [href],
+    options: { stdio: "ignore", detached: true },
+  };
+}
+
+function openBrowser(href: string): void {
+  const plan = browserSpawnPlan(href);
+  const child = spawn(plan.command, plan.args, plan.options);
   child.on("error", () => {
     /* fall through — the URL was already printed */
   });
