@@ -7,8 +7,7 @@ import {
   find,
   load,
   migrateKeysToKeychain,
-  remove,
-  save,
+  removeContext,
 } from "../lib/config.js";
 import { printJSON, printKeyValue } from "../lib/output.js";
 import { loginMessage, persistLogin } from "../lib/persist.js";
@@ -181,8 +180,7 @@ export function authCommand(): Command {
       if (!name) throw new Error(`not logged in: no saved context in ${configPath()}`);
       if (!find(cfg, name)) throw new Error(`no context named "${name}"`);
       const wasCurrent = cfg.currentContext === name;
-      remove(cfg, name);
-      save(cfg);
+      removeContext(cfg, name); // saves the config, then deletes the keychain item
       const current = cfg.currentContext || null;
       if (rt.json) return printJSON({ context: name, result: "logged_out", current });
       process.stdout.write(

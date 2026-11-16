@@ -116,8 +116,8 @@ export function secretToolBackend(service = KEYCHAIN_SERVICE): KeychainBackend {
     get(account) {
       const r = run("secret-tool", ["lookup", "service", service, "account", account]);
       if (r.status === 0) return r.stdout.replace(/\n$/, "");
-      // No match: non-zero with nothing on stderr.
-      if (!r.stderr.trim()) return undefined;
+      // Not found is exactly exit 1 with nothing on stdout or stderr; any other code is a failure.
+      if (r.status === 1 && !r.stdout && !r.stderr.trim()) return undefined;
       throw failure("secret-tool", r);
     },
     set(account, secret) {
@@ -131,7 +131,10 @@ export function secretToolBackend(service = KEYCHAIN_SERVICE): KeychainBackend {
     },
     delete(account) {
       const r = run("secret-tool", ["clear", "service", service, "account", account]);
-      if (r.status !== 0 && r.stderr.trim()) throw failure("secret-tool", r);
+      if (r.status === 0) return;
+      // A failed clear is only "nothing to delete" if a lookup confirms the item is gone.
+      if (this.get(account) === undefined) return;
+      throw failure("secret-tool", r);
     },
   };
 }

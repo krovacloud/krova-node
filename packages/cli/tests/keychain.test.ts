@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
@@ -11,13 +11,17 @@ import { contextCommand } from "../src/commands/context.js";
 import {
   KeychainUnavailableError,
   type KeychainBackend,
+  secretToolBackend,
   setKeychainBackendForTests,
 } from "../src/lib/keychain.js";
 import {
   configPath,
   load,
   migrateKeysToKeychain,
+  removeContext,
+  renameContext,
   resolve,
+  sanitizeContextName,
   save,
   setContextKey,
   type Config,
@@ -337,4 +341,121 @@ test("auth status --offline --json reports the storage", async () => {
   assert.equal(out.apiKeySource, "context");
   assert.equal(out.apiKeyStorage, "keychain");
   assert.equal(out.apiKey, undefined);
+});
+
+// --- review fixes -----------------------------------------------------------
+
+/** A fake `secret-tool` on PATH: `lookup` prints FAKE_KEY (exit FAKE_LOOKUP_EXIT, default 0 when
+ *  FAKE_KEY is set, else 1 with no output); `clear` exits FAKE_CLEAR_EXIT silently. */
+function withFakeSecretTool(env: Record<string, string>, fn: () => void): void {
+  const bin = mkdtempSync(join(tmpdir(), "krova-fake-st-"));
+  const script = join(bin, "secret-tool");
+  writeFileSync(
+    script,
+    `#!/bin/sh
+case "$1" in
+  lookup)
+    if [ -n "$FAKE_LOOKUP_EXIT" ]; then echo "boom" >&2; exit "$FAKE_LOOKUP_EXIT"; fi
+    if [ -n "$FAKE_KEY" ]; then printf %s "$FAKE_KEY"; exit 0; fi
+    exit 1;;
+  clear) exit "\${FAKE_CLEAR_EXIT:-0}";;
+esac
+exit 3
+`,
+    { mode: 0o755 },
+  );
+  const saved: Record<string, string | undefined> = { PATH: process.env.PATH };
+  for (const k of Object.keys(env)) saved[k] = process.env[k];
+  process.env.PATH = `${bin}:${process.env.PATH}`;
+  Object.assign(process.env, env);
+  try {
+    fn();
+  } finally {
+    for (const [k, v] of Object.entries(saved)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    rmSync(bin, { recursive: true, force: true });
+  }
+}
+
+test("secret-tool lookup: only exit 1 with no output is 'not found'; other codes throw", () => {
+  const b = secretToolBackend();
+  withFakeSecretTool({}, () => assert.equal(b.get("a"), undefined));
+  withFakeSecretTool({ FAKE_KEY: "k1" }, () => assert.equal(b.get("a"), "k1"));
+  withFakeSecretTool({ FAKE_LOOKUP_EXIT: "2" }, () => assert.throws(() => b.get("a"), /secret-tool.*failed/));
+  withFakeSecretTool({ FAKE_LOOKUP_EXIT: "1" }, () => assert.throws(() => b.get("a"), /boom/));
+});
+
+test("secret-tool clear that fails silently is an error while lookup still finds the key", () => {
+  const b = secretToolBackend();
+  withFakeSecretTool({ FAKE_CLEAR_EXIT: "1", FAKE_KEY: "still-here" }, () =>
+    assert.throws(() => b.delete("a"), /secret-tool.*failed/),
+  );
+  // a failed clear with nothing left to delete is fine
+  withFakeSecretTool({ FAKE_CLEAR_EXIT: "1" }, () => b.delete("a"));
+  withFakeSecretTool({ FAKE_CLEAR_EXIT: "0", FAKE_KEY: "x" }, () => b.delete("a"));
+});
+
+test("context list without --show-secrets does not read the keychain", async () => {
+  seedKeychainContexts();
+  await run(contextCommand(), ["context", "list", "--json"]);
+  assert.equal(fake.gets, 0);
+  const out = JSON.parse(stdout);
+  assert.equal(out.contexts[0].apiKey, "****");
+  assert.equal(out.contexts[0].keyStorage, "keychain");
+  stdout = "";
+  await run(contextCommand(), ["context", "list"]);
+  assert.equal(fake.gets, 0);
+});
+
+test("save writes atomically: no temp file is left and the mode stays 0600", () => {
+  save({ currentContext: "a", contexts: [{ name: "a", apiKey: KEY }] });
+  save({ currentContext: "a", contexts: [{ name: "a", apiKey: KEY, spaceId: "sp" }] });
+  assert.deepEqual(readdirSync(join(dir, "krova")), ["config.json"]);
+  assert.equal(statSync(configPath()).mode & 0o777, 0o600);
+});
+
+test("a save that fails during rename leaves the old keychain item and the old name", () => {
+  seedKeychainContexts();
+  const cfg = load();
+  assert.throws(
+    () =>
+      renameContext(cfg, "a", "prod", () => {
+        throw new Error("disk full");
+      }),
+    /disk full/,
+  );
+  assert.equal(fake.items.get("a"), "key_a");
+  assert.equal(fake.items.has("prod"), false, "the new item is rolled back");
+  assert.equal(cfg.contexts?.[0]?.name, "a");
+  assert.equal(cfg.currentContext, "a");
+});
+
+test("a save that fails during delete leaves the keychain item and the context", () => {
+  seedKeychainContexts();
+  const cfg = load();
+  assert.throws(
+    () =>
+      removeContext(cfg, "a", () => {
+        throw new Error("disk full");
+      }),
+    /disk full/,
+  );
+  assert.equal(fake.items.get("a"), "key_a");
+  assert.deepEqual(cfg.contexts?.map((c) => c.name), ["a", "b"]);
+  assert.equal(cfg.currentContext, "a");
+});
+
+test("context names that start with '-' are rejected", async () => {
+  assert.throws(() => sanitizeContextName("-x"), /cannot start with "-"/);
+  assert.throws(() => sanitizeContextName("  --evil"), /cannot start with "-"/);
+  assert.equal(sanitizeContextName(" My Space "), "my-space");
+  await assert.rejects(
+    persistLogin({ apiKey: KEY, baseUrl: "http://127.0.0.1:1", ctxName: "-a", timeoutMs: 500 }),
+    /cannot start with "-"/,
+  );
+  seedKeychainContexts();
+  await assert.rejects(run(contextCommand(), ["context", "rename", "a", "--", "-b"]), /cannot start with "-"/);
+  assert.equal(fake.items.get("a"), "key_a");
 });

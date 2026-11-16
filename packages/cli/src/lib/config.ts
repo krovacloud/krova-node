@@ -3,7 +3,8 @@
 // migration. The file is always tightened to 0600 on save. API keys live in the
 // OS keychain when one is available (see keychain.ts) and in this file otherwise.
 
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { chmodSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -103,8 +104,20 @@ export function save(cfg: Config): void {
       return o;
     });
   }
-  writeFileSync(path, `${JSON.stringify(clean, null, 2)}\n`, { mode: 0o600 });
-  // writeFileSync only applies mode on creation — re-tighten an existing file.
+  // Atomic: write a 0600 temp file in the same directory, then rename over the config, so a
+  // crash or full disk never leaves a half-written file (and the key is never briefly world-readable).
+  const tmp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+  try {
+    writeFileSync(tmp, `${JSON.stringify(clean, null, 2)}\n`, { mode: 0o600, flag: "wx" });
+    renameSync(tmp, path);
+  } catch (e) {
+    try {
+      unlinkSync(tmp);
+    } catch {
+      /* already gone */
+    }
+    throw e;
+  }
   chmodSync(path, 0o600);
 }
 
@@ -138,16 +151,33 @@ export function upsert(cfg: Config, incoming: Context): Context {
   return ctx;
 }
 
-/** Drop a context from `cfg` (the caller still calls `save`). Also deletes its keychain item. */
+/** Drop a context from `cfg` in memory only (the caller still calls `save`). Does not touch the
+ *  keychain: use `removeContext` to remove a context and its keychain item together. */
 export function remove(cfg: Config, name: string): boolean {
-  const gone = find(cfg, name);
-  if (gone) deleteContextKey(gone);
   const before = (cfg.contexts ?? []).length;
   cfg.contexts = (cfg.contexts ?? []).filter((c) => c.name !== name);
   if (cfg.contexts.length === before) return false;
   if (cfg.currentContext === name) {
     cfg.currentContext = cfg.contexts[0]?.name ?? "";
   }
+  return true;
+}
+
+/** Remove a context, save the config, and only then delete its keychain item, so a failed save
+ *  leaves both the context and its key intact. Returns false when there is no such context. */
+export function removeContext(cfg: Config, name: string, persist: () => void = () => save(cfg)): boolean {
+  const gone = find(cfg, name);
+  if (!gone) return false;
+  const snapshot = { contexts: [...(cfg.contexts ?? [])], currentContext: cfg.currentContext };
+  remove(cfg, name);
+  try {
+    persist();
+  } catch (e) {
+    cfg.contexts = snapshot.contexts;
+    cfg.currentContext = snapshot.currentContext;
+    throw e;
+  }
+  deleteContextKey(gone);
   return true;
 }
 
@@ -285,14 +315,22 @@ export function deleteContextKey(ctx: Context): void {
   }
 }
 
-/** Rename a context. A keychain key moves with it: the new item is written and verified
- *  before the old one is deleted, and a failure leaves the context unrenamed. */
-export function renameContext(cfg: Config, oldName: string, newName: string): void {
+/** Rename a context and save the config. A keychain key moves with it: the new item is written
+ *  and verified first, the config is saved, and only then is the old item deleted. A failure at
+ *  any step before that leaves the context (and its old item) as it was. */
+export function renameContext(
+  cfg: Config,
+  oldName: string,
+  newName: string,
+  persist: () => void = () => save(cfg),
+): void {
   const c = find(cfg, oldName);
   if (!c) throw new Error(`no context named "${oldName}"`);
+  assertContextName(newName);
   if (find(cfg, newName)) throw new Error(`a context named "${newName}" already exists`);
-  if (storageOf(c) === "keychain") {
-    const backend = readBackend();
+  const moved = storageOf(c) === "keychain";
+  const backend = moved ? readBackend() : undefined;
+  if (backend) {
     let key: string | undefined;
     try {
       key = backend.get(oldName);
@@ -311,14 +349,31 @@ export function renameContext(cfg: Config, oldName: string, newName: string): vo
       }
       throw new Error(`could not move the key to "${newName}" in the OS keychain: ${errText(e)}`);
     }
+  }
+  const wasCurrent = cfg.currentContext === oldName;
+  c.name = newName;
+  if (wasCurrent) cfg.currentContext = newName;
+  try {
+    persist();
+  } catch (e) {
+    c.name = oldName;
+    if (wasCurrent) cfg.currentContext = oldName;
+    if (backend) {
+      try {
+        backend.delete(newName);
+      } catch {
+        /* best effort */
+      }
+    }
+    throw e;
+  }
+  if (backend) {
     try {
       backend.delete(oldName);
     } catch (e) {
       warn(`renamed, but could not delete the old keychain item (${errText(e)}); remove it by hand (service ${KEYCHAIN_SERVICE}, account ${oldName})`);
     }
   }
-  c.name = newName;
-  if (cfg.currentContext === oldName) cfg.currentContext = newName;
 }
 
 export interface MigrateEntry {
@@ -365,8 +420,16 @@ export function migrateKeysToKeychain(cfg: Config): { backend: string; entries: 
   return { backend: backend.name, entries };
 }
 
+/** A context name becomes a keychain account passed to `security` and `secret-tool`, so one that
+ *  starts with `-` could be read as an option. */
+export function assertContextName(name: string): void {
+  if (name.trim().startsWith("-")) throw new Error(`context names cannot start with "-" (got "${name}")`);
+}
+
 export function sanitizeContextName(name: string): string {
-  return name.trim().toLowerCase().replace(/\s+/g, "-");
+  const clean = name.trim().toLowerCase().replace(/\s+/g, "-");
+  assertContextName(clean);
+  return clean;
 }
 
 export function maskKey(key: string): string {
