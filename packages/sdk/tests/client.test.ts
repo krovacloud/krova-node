@@ -321,6 +321,9 @@ test("list/get/catalog responses are typed (not unknown)", async () => {
     // They became required in the spec, and `satisfies Cube` is what caught it.
     terminationProtectionChangedAt: null,
     terminationProtectionChangedBy: null,
+    // Both are always sent since the idle-timeout feature shipped; null until set.
+    idleTimeoutMinutes: null,
+    lastActiveAt: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
   } satisfies Cube;

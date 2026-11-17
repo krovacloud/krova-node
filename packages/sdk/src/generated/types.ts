@@ -2456,13 +2456,13 @@ export interface components {
             createdAt: string;
             id: string;
             /** @description Minutes without activity after which Krova powers the Cube off. Null (the default) turns this off. A Cube counts as idle when no web terminal or SSH session is open and its CPU stays under 5% busy with a 5-minute load average under 0.1. Termination protection does not stop this power-off. */
-            idleTimeoutMinutes?: number | null;
+            idleTimeoutMinutes: number | null;
             image: string;
             /**
              * Format: date-time
              * @description ISO8601 timestamp of the last time Krova saw the Cube active (a web terminal or SSH session open, or CPU at or above 5% busy, or a 5-minute load average at or above 0.1). Null until the idle check has recorded one.
              */
-            lastActiveAt?: string | null;
+            lastActiveAt: string | null;
             name: string;
             publicIpv4: string | null;
             resources: {
