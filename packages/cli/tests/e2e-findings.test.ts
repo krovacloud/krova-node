@@ -10,6 +10,7 @@ import { after, before, test } from "node:test";
 
 import { KrovaError } from "@krovacloud/sdk";
 
+import { normalizeBaseUrl } from "../src/lib/base-url.js";
 import { exitQuietlyOnBrokenPipe } from "../src/lib/output.js";
 import {
   parseWaitSeconds,
@@ -217,6 +218,7 @@ interface RunOptions {
   /** Pass the API key, space and base URL as flags (default). */
   globals?: boolean;
   xdg?: string;
+  env?: Record<string, string>;
 }
 
 function runCli(args: string[], o: RunOptions = {}) {
@@ -230,6 +232,7 @@ function runCli(args: string[], o: RunOptions = {}) {
         XDG_CONFIG_HOME: o.xdg ?? join(work, "xdg-default"),
         KROVA_API_KEY: "",
         KROVA_NO_KEYCHAIN: "1",
+        ...o.env,
       },
     });
     let stdout = "";
@@ -423,4 +426,44 @@ test("e2e `krova cubes create --wait --wait-timeout 1` fails with the cube id in
   ]);
   assert.equal(bad.code, 1);
   assert.match(bad.stderr, /--wait-timeout must be a whole number of seconds/);
+});
+
+// ── Base URL: a bare origin works for the CLI's own requests too ────────────
+
+test("normalizeBaseUrl follows the SDK's rule", () => {
+  assert.equal(normalizeBaseUrl("https://krova.cloud"), "https://krova.cloud/api/v1");
+  assert.equal(normalizeBaseUrl("https://krova.cloud/"), "https://krova.cloud/api/v1");
+  assert.equal(normalizeBaseUrl("  https://krova.cloud///  "), "https://krova.cloud/api/v1");
+  assert.equal(normalizeBaseUrl("https://krova.cloud/api/v1/"), "https://krova.cloud/api/v1");
+  assert.equal(normalizeBaseUrl("http://localhost:3000/custom/base"), "http://localhost:3000/custom/base");
+  assert.equal(normalizeBaseUrl("https://krova.cloud/?x=1"), "https://krova.cloud/?x=1");
+  assert.equal(normalizeBaseUrl("not a url"), "not a url");
+});
+
+test("e2e a bare origin in --base-url or KROVA_BASE_URL reaches /api/v1 on every request", async () => {
+  const seen: string[] = [];
+  handler = (req, res) => {
+    seen.push(req.url ?? "");
+    const url = (req.url ?? "").split("?")[0] as string;
+    if (url === "/api/v1/space") return reply(res, 200, { id: "space_1", name: "Acme", slug: "acme" });
+    if (url === "/api/v1/spaces/space_1/cubes") return reply(res, 200, { cubes: [] });
+    return reply(res, 404, { error: "wrong path" });
+  };
+  const origin = baseUrl.replace(/\/api\/v1$/, "");
+
+  // The CLI's own probe (auth status), with the flag.
+  const flag = await runCli(["auth", "status", "--api-key", "kro_test", "--space", "space_1", "--base-url", `${origin}/`], {
+    globals: false,
+  });
+  assert.equal(flag.code, 0, flag.stderr);
+  assert.match(flag.stdout, /Authenticated\s+yes/i);
+
+  // The same with the environment variable, and the SDK path (cubes list) too.
+  const env = await runCli(["cubes", "list", "--api-key", "kro_test", "--space", "space_1"], {
+    globals: false,
+    env: { KROVA_BASE_URL: origin },
+  });
+  assert.equal(env.code, 0, env.stderr);
+  assert.ok(seen.includes("/api/v1/space"), seen.join(", "));
+  assert.ok(seen.every((u) => u.startsWith("/api/v1/")), seen.join(", "));
 });

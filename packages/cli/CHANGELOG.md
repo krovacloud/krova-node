@@ -66,6 +66,8 @@ All notable changes to `@krovacloud/cli` are documented here.
 
 - `krova auth login --context <name>` and `krova login --context <name>` save the context under the name you give. They used to save it as `default`.
 
+- `--base-url` and `KROVA_BASE_URL` take a bare origin such as `https://krova.cloud` for every request the CLI makes, including the login and key checks, the same way the SDK does: a bare origin gets `/api/v1`, trailing slashes are dropped, and any other path is kept.
+
 - `krova psql --help`, `redis` and `mysql` show each default once.
 
 - `krova cubes list | head -1` and other pipes that close early end quietly with status 0, as standard tools do, instead of printing an `EPIPE` stack trace. Other write errors are still reported.

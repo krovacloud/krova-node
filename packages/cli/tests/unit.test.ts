@@ -192,7 +192,8 @@ test("config resolve precedence: flag > env > context", () => {
   }
   const ctxWins = resolve({ ...cfg }, {});
   assert.equal(ctxWins.spaceId, "spc_ctx");
-  assert.equal(ctxWins.baseUrl, "https://ctx.test");
+  // A bare origin in a context gets /api/v1, as in the SDK.
+  assert.equal(ctxWins.baseUrl, "https://ctx.test/api/v1");
 });
 
 test("resolve falls back to the default base URL", () => {

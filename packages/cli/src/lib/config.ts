@@ -8,6 +8,7 @@ import { chmodSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSy
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
+import { normalizeBaseUrl } from "./base-url.js";
 import {
   KeychainUnavailableError,
   KEYCHAIN_SERVICE,
@@ -227,7 +228,7 @@ export function resolve(cfg: Config, flags: GlobalFlags): Resolved {
   return {
     apiKey,
     spaceId,
-    baseUrl: baseUrlRaw || DEFAULT_BASE_URL,
+    baseUrl: baseUrlRaw ? normalizeBaseUrl(baseUrlRaw) : DEFAULT_BASE_URL,
     apiKeySource,
     apiKeyStorage: apiKeySource === "context" && ctx ? storageOf(ctx) : "",
     spaceIdSource,
