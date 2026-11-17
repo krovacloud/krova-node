@@ -9,6 +9,8 @@ All notable changes to `@krovacloud/sdk` are documented here. This project adher
 
 ### Added
 
+- `@krovacloud/sdk/ssh`, a Node-only entry for running commands and moving files on a Cube over its own SSH with a private key you supply: `connectCube(krova, spaceId, cubeId, { privateKey, passphrase?, readyTimeoutMs?, hostKeys? })` returns a shell with `run()`, `files.write/read/upload/download` and `close()`. The host key is checked against the keys from `cubes.ssh()` and a mismatch throws `HostKeyMismatchError`; there is no way to skip the check. Also exports `shellQuote`, `RunTimeoutError` and `SshError`. Adds the `ssh2` dependency; the main entry does not load it.
+
 - Backups and sharing them between spaces: `backups.list()`, `backups.get()` and `backups.share()` (with an optional `idempotencyKey`), and a new `backupShares` group with `list()`, `accept()`, `decline()` and `cancel()`. New exported types `Backup`, `BackupShare`, `BackupShareList` and `AcceptedBackupShare`. These endpoints read the Backups permissions (`backup.view`, `backup.manage`), not the Cube ones. The OpenAPI snapshot is refreshed from the live API and the types regenerated.
 
 - `proxyProtocol` (`"v1"`, `"v2"` or `null`) on `domains.create()` and

@@ -1,0 +1,77 @@
+{
+  "name": "@krovacloud/ai-sdk",
+  "version": "0.1.0",
+  "description": "Vercel AI SDK tools that let an agent run commands and read and write files in a Krova Cube over SSH.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Krova Inc.",
+  "homepage": "https://krova.cloud/developers",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/krovacloud/krova-node.git",
+    "directory": "packages/ai-sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/krovacloud/krova-node/issues"
+  },
+  "keywords": [
+    "krova",
+    "krova-cloud",
+    "ai",
+    "ai-sdk",
+    "vercel-ai-sdk",
+    "agent",
+    "sandbox",
+    "tools"
+  ],
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts",
+    "lint": "biome check .",
+    "prepublishOnly": "pnpm typecheck && pnpm build && pnpm test"
+  },
+  "dependencies": {
+    "@krovacloud/sdk": "workspace:*"
+  },
+  "peerDependencies": {
+    "ai": "^7.0.166",
+    "zod": "^3.25.76 || ^4.1.8"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.6",
+    "@types/node": "^26.6.6",
+    "ai": "7.0.166",
+    "tsdown": "0.23.7",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "zod": "4.6.7"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
