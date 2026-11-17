@@ -2,6 +2,13 @@ import { Command } from "commander";
 
 import { mappingConnectTarget, printJSON, printTable } from "../lib/output.js";
 import { resolveCube } from "../lib/resolve.js";
+import {
+  confirm,
+  isOpenWhitelist,
+  printAborted,
+  publicExposureWarning,
+  shouldConfirm,
+} from "../lib/safety.js";
 import { getRuntime, makeClient, resolveSpace } from "../lib/runtime.js";
 
 /** `krova tcp` — manage a Cube's TCP port mappings. */
@@ -59,6 +66,7 @@ export function tcpCommand(): Command {
       },
       [] as string[],
     )
+    .option("-y, --yes", "skip the confirmation prompt when the port would be open to the whole internet")
     .option("--no-udp", "don't forward UDP on this port (UDP is forwarded by default alongside TCP)")
     .description("expose a Cube TCP port on the host, optionally IP-restricted")
     .action(async (cubeRef: string, opts, c: Command) => {
@@ -71,6 +79,16 @@ export function tcpCommand(): Command {
         throw new Error(`--port must be a valid port (got "${opts.port}").`);
       }
       const whitelist = opts.whitelist as string[];
+      // A port with no whitelist (or 0.0.0.0/0, ::/0) is open to everyone. Warn on
+      // stderr every time; only a person at a terminal is asked to confirm, so a
+      // script keeps working unchanged.
+      if (isOpenWhitelist(whitelist)) {
+        process.stderr.write(`${publicExposureWarning(cubeRef, cubePort)}\n`);
+        if (shouldConfirm(opts)) {
+          const ok = await confirm("Open this port to the whole internet? [y/N] ");
+          if (!ok) return printAborted(rt.json);
+        }
+      }
       // ⛔ `whitelistedIps` — NOT `whitelistIps`. The published spec named the
       // field `whitelistIps` while the server has always read
       // `whitelistedIps`, so every `--whitelist` mapping this CLI created was

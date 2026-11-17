@@ -126,6 +126,26 @@ export type SetTerminationProtectionInput = {
 };
 
 /**
+ * The dimensions to change in a Cube resize, in the units `POST /cubes` takes:
+ * `vcpu` and `diskGb` are integers, `ramGb` may be fractional (`0.5`). Send only
+ * what changes; omitted dimensions keep their current value. Disk can only grow.
+ */
+export type ResizeCubeInput = NonNullable<
+  paths["/spaces/{spaceId}/cubes/{cubeId}/resize"]["post"]["requestBody"]
+>["content"]["application/json"]["resources"];
+
+/**
+ * The 200 response of `POST /spaces/{spaceId}/cubes/{cubeId}/resize`.
+ *
+ * `state` is always `"queued"`: the Cube keeps its size until the worker
+ * applies the change, so read the {@link Cube} again to see the new one.
+ * `isLive` means no restart is needed; `requiresRestart` is its inverse, and the
+ * worker power-cycles the Cube.
+ */
+export type ResizeCubeResult =
+  paths["/spaces/{spaceId}/cubes/{cubeId}/resize"]["post"]["responses"][200]["content"]["application/json"];
+
+/**
  * A webhook endpoint subscribed to Space events.
  *
  * ⛔ Runtime discrepancy: the bundled OpenAPI spec does not declare
@@ -401,7 +421,7 @@ export class KrovaClient {
      * The Krova Cloud API exposes no general Cube-mutation endpoint; the only
      * mutable Cube field over the API is this port, via
      * `PUT /spaces/{spaceId}/cubes/{cubeId}/ssh-port`. This helper maps to that
-     * endpoint. (Compute resize / rename are not part of the public API.)
+     * endpoint. (Rename and resize have their own helpers: `cubes.rename` and `cubes.resize`.)
      */
     update: async (
       spaceId: string,
@@ -433,11 +453,6 @@ export class KrovaClient {
       cubeId: string,
       enabled: boolean,
     ): Promise<Cube> => {
-      // The bundled OpenAPI spec does not declare a PATCH on this path; the
-      // PATCH endpoint lands when the v1 control-plane PR ships. Until then
-      // this is the typed escape hatch (`client.raw`) used everywhere else in
-      // the SDK for spec-evolving surfaces — the runtime contract is asserted
-      // by the integration suite.
       const { data, error, response } = await this.raw.PATCH("/spaces/{spaceId}/cubes/{cubeId}", {
         params: { path: { spaceId, cubeId } },
         body: { terminationProtection: enabled } as SetTerminationProtectionInput,
@@ -450,6 +465,89 @@ export class KrovaClient {
         });
       }
       return cube;
+    },
+
+    /**
+     * Set a Cube's idle auto-stop timeout. Returns the updated {@link Cube}.
+     *
+     * `PATCH /spaces/{spaceId}/cubes/{cubeId}` with `{ idleTimeoutMinutes }`: an
+     * integer from 10 to 10080 (7 days), or `null` to turn it off. Krova powers
+     * the Cube off after that many minutes without activity. Needs the
+     * `cube.manage` permission. Passing the current value is a no-op. A server
+     * without the idle-timeout feature answers `400`.
+     */
+    setIdleTimeout: async (
+      spaceId: string,
+      cubeId: string,
+      minutes: number | null,
+    ): Promise<Cube> => {
+      const { data, error, response } = await this.raw.PATCH("/spaces/{spaceId}/cubes/{cubeId}", {
+        params: { path: { spaceId, cubeId } },
+        body: { idleTimeoutMinutes: minutes },
+      });
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      const cube = (data as { cube?: Cube } | undefined)?.cube;
+      if (!cube) {
+        throw krovaErrorFrom(response, { error: "Set idle-timeout response had no `cube`." });
+      }
+      return cube;
+    },
+
+    /**
+     * Rename a Cube. Returns the updated {@link Cube}.
+     *
+     * `PATCH /spaces/{spaceId}/cubes/{cubeId}` with `{ name }`. The name is
+     * trimmed and must be 1 to 64 printable characters; it does not have to be
+     * unique in the Space. Renaming to the current name is a no-op. Needs the
+     * `cube.manage` permission. The hostname inside a running Cube changes on
+     * its next cold restart.
+     */
+    rename: async (spaceId: string, cubeId: string, name: string): Promise<Cube> => {
+      const { data, error, response } = await this.raw.PATCH("/spaces/{spaceId}/cubes/{cubeId}", {
+        params: { path: { spaceId, cubeId } },
+        body: { name },
+      });
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      const cube = (data as { cube?: Cube } | undefined)?.cube;
+      if (!cube) throw krovaErrorFrom(response, { error: "Rename Cube response had no `cube`." });
+      return cube;
+    },
+
+    /**
+     * Resize a Cube's vCPU, RAM and/or disk (asynchronous: the resize is
+     * enqueued). Send only the dimensions to change.
+     *
+     * Resolves to a {@link ResizeCubeResult} that says whether the change is
+     * applied live (`isLive`) or power-cycles the Cube (`requiresRestart`), and
+     * echoes the `previous` and `requested` sizes. The Cube keeps its current
+     * size until the worker applies the change. Disk can only grow. Throws a
+     * {@link KrovaError} with status `400` for a value out of range, above the
+     * plan limit, a disk shrink, no change, a Cube that is not `running` or
+     * `stopped`, or a host without room, and `409` while a resize is already
+     * queued or a transfer is in flight. Needs the `cube.manage` permission.
+     *
+     * @param opts Optional `idempotencyKey` (max 255 chars, scoped per space).
+     */
+    resize: async (
+      spaceId: string,
+      cubeId: string,
+      resources: ResizeCubeInput,
+      opts?: { idempotencyKey?: string },
+    ): Promise<ResizeCubeResult> => {
+      const { data, error, response } = await this.raw.POST(
+        "/spaces/{spaceId}/cubes/{cubeId}/resize",
+        {
+          params: {
+            path: { spaceId, cubeId },
+            ...(opts?.idempotencyKey ? { header: { "Idempotency-Key": opts.idempotencyKey } } : {}),
+          },
+          body: { resources },
+        },
+      );
+      if (error !== undefined || !response.ok) throw krovaErrorFrom(response, error);
+      if (data === undefined)
+        throw krovaErrorFrom(response, { error: "Resize Cube response was empty." });
+      return data;
     },
 
     /**

@@ -1,8 +1,8 @@
 import { Command } from "commander";
 
-import { load, maskKey, remove, save } from "../lib/config.js";
+import { contextKey, displayKey, load, removeContext, renameContext, save, storageOf } from "../lib/config.js";
 import { printJSON, printTable } from "../lib/output.js";
-import { getRuntime } from "../lib/runtime.js";
+import { parseOutputFormat } from "../lib/output-format.js";
 
 export function contextCommand(): Command {
   const ctx = new Command("context")
@@ -13,15 +13,20 @@ export function contextCommand(): Command {
     .command("list")
     .aliases(["ls"])
     .description("list all contexts")
-    .action((_opts, cmd: Command) => {
-      const { json } = getRuntime(cmd);
+    .option("--show-secrets", "print full API keys instead of masked ones (JSON output only; the table has no key column)")
+    .action((opts, cmd: Command) => {
+      // Not getRuntime: it resolves the active context, which would read its key from the keychain.
+      const g = cmd.optsWithGlobals() as Record<string, unknown>;
+      const json = Boolean(g.json) || parseOutputFormat(g.output) === "json";
       const cfg = load();
       if (json) {
         return printJSON({
           currentContext: cfg.currentContext ?? "",
           contexts: (cfg.contexts ?? []).map((c) => ({
             name: c.name,
-            apiKey: maskKey(c.apiKey ?? ""),
+            // A keychain key is only read (and the keychain only prompted) when the caller asks to see it.
+            apiKey: opts.showSecrets || storageOf(c) === "file" ? displayKey(contextKey(c), Boolean(opts.showSecrets)) : "****",
+            keyStorage: storageOf(c),
             spaceId: c.spaceId ?? "",
             spaceName: c.spaceName ?? "",
             baseUrl: c.baseUrl ?? "",
@@ -71,14 +76,8 @@ export function contextCommand(): Command {
     .action((oldName: string, newName: string) => {
       const cfg = load();
       if (!newName.trim()) throw new Error("new name must not be empty");
-      const c = (cfg.contexts ?? []).find((x) => x.name === oldName);
-      if (!c) throw new Error(`no context named "${oldName}"`);
-      if ((cfg.contexts ?? []).some((x) => x.name === newName)) {
-        throw new Error(`a context named "${newName}" already exists`);
-      }
-      c.name = newName;
-      if (cfg.currentContext === oldName) cfg.currentContext = newName;
-      save(cfg);
+      // Moves the keychain item too, so the key follows the context name.
+      renameContext(cfg, oldName, newName); // also saves the config, then deletes the old item
       process.stdout.write(`Renamed ${oldName} → ${newName}\n`);
     });
 
@@ -89,8 +88,8 @@ export function contextCommand(): Command {
     .description("delete a context")
     .action((name: string) => {
       const cfg = load();
-      if (!remove(cfg, name)) throw new Error(`no context named "${name}"`);
-      save(cfg);
+      // Saves the config first, then deletes the keychain item.
+      if (!removeContext(cfg, name)) throw new Error(`no context named "${name}"`);
       process.stdout.write(`Deleted context ${name}\n`);
     });
 

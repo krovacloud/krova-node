@@ -10,6 +10,7 @@ import {
   upsert,
 } from "./config.js";
 import { makeClient, rawRequest } from "./client.js";
+import { parseOutputFormat } from "./output-format.js";
 
 /** Parse a Go-style duration ("30s", "500ms", "2m", "1h") to ms. Non-positive
  *  or unparseable floors to 30s (matches the Go requestTimeout behavior). */
@@ -42,6 +43,14 @@ export interface Runtime {
   timeoutMs: number;
 }
 
+/** What the last `getRuntime` call resolved; the top-level error handler reads it
+ *  to name the base URL in a connection hint and to stay quiet in JSON mode. */
+let active: { baseUrl: string; json: boolean } | undefined;
+
+export function activeRuntime(): { baseUrl: string; json: boolean } | undefined {
+  return active;
+}
+
 export function getRuntime(cmd: Command): Runtime {
   const opts = cmd.optsWithGlobals() as Record<string, unknown>;
   const flags: GlobalFlags = {
@@ -52,11 +61,14 @@ export function getRuntime(cmd: Command): Runtime {
   };
   const cfg = load();
   const res = resolve(cfg, flags);
+  // `-o json` is `--json`; either one selects JSON. An invalid -o throws here.
+  const json = Boolean(opts.json) || parseOutputFormat(opts.output) === "json";
+  active = { baseUrl: res.baseUrl, json };
   return {
     flags,
     cfg,
     res,
-    json: Boolean(opts.json),
+    json,
     timeoutMs: parseDuration(opts.timeout as string | undefined),
   };
 }
@@ -65,6 +77,12 @@ export interface SpaceInfo {
   id: string;
   name?: string;
   slug?: string;
+  /**
+   * The key this request authenticated with: `expiresAt` is an ISO date-time,
+   * or `null` for a key that never expires. `null` for an OAuth token, and
+   * absent when the server is too old to send it, so treat absent as unknown.
+   */
+  apiKey?: { name: string; expiresAt: string | null } | null;
 }
 
 /**
