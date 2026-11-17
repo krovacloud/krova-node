@@ -88,9 +88,10 @@ function dbClientCommand(spec: DbClientSpec): Command {
     .option("--port <cubePort>", `port inside the Cube (default ${spec.defaultPort})`)
     .option("-i, --identity <file>", "SSH identity (private key) file, passed to ssh -i");
   if (spec.userDefault) {
-    c.option("--user <user>", `database user (default ${spec.userDefault})`, spec.userDefault);
+    // Commander appends `(default: "<value>")` itself when a default is passed.
+    c.option("--user <user>", "database user", spec.userDefault);
   }
-  if (spec.command === "psql") c.option("--db <name>", "database name (default postgres)", "postgres");
+  if (spec.command === "psql") c.option("--db <name>", "database name", "postgres");
   if (spec.command === "mysql") c.option("--db <name>", "database to use");
   return c.action(async (cubeRef: string, opts, cmd: Command) => {
     // Check everything that needs no network first, so a typo or a missing

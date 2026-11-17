@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import type { AddressInfo } from "node:net";
+import { createConnection, createServer as createNetServer, type AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
@@ -172,6 +172,16 @@ test("findOnPath finds an executable file and nothing else", () => {
 
 // ── End to end: the built CLI, a mock API and fake ssh, scp and clients ─────
 
+function freePort(): Promise<number> {
+  return new Promise((resolve) => {
+    const s = createNetServer();
+    s.listen(0, "127.0.0.1", () => {
+      const { port } = s.address() as AddressInfo;
+      s.close(() => resolve(port));
+    });
+  });
+}
+
 type Handler = (req: IncomingMessage, res: ServerResponse) => void;
 let server: Server;
 let baseUrl: string;
@@ -213,11 +223,14 @@ if (name === "ssh" || name === "scp") {
     setInterval(() => {}, 1 << 30);
   } else if (i >= 0 && process.env.FAKE_SSH_EXIT === undefined) {
     const [host, port] = argv[i + 1].split(":");
-    net.createServer((s) => {
-      s.end();
-      // A port squatter: ssh could not bind, so it exits after the first probe.
-      if (process.env.FAKE_SSH_SQUAT) setTimeout(() => process.exit(255), 50);
-    }).listen(Number(port), host);
+    // A real ssh binds the local port only after it has connected and authenticated.
+    setTimeout(() => {
+      net.createServer((s) => {
+        s.end();
+        // A port squatter: ssh could not bind, so it exits after the first probe.
+        if (process.env.FAKE_SSH_SQUAT) setTimeout(() => process.exit(255), 50);
+      }).listen(Number(port), host);
+    }, Number(process.env.FAKE_SSH_LISTEN_DELAY_MS || 0));
     process.on("SIGTERM", () => { log({ bin: name, event: "SIGTERM" }); process.exit(0); });
     setInterval(() => {}, 1 << 30);
   } else {
@@ -303,7 +316,8 @@ test("e2e `krova tunnel`: loopback bind, strict host keys, ssh's exit code, stde
   resetLog();
   const r = await runCli(["tunnel", "db", "9000:5432", "-i", "/k/id"], { FAKE_SSH_EXIT: "7" });
   assert.equal(r.code, 7, r.stderr);
-  assert.match(r.stderr, /Forwarding localhost:9000 -> db:5432\. Press Ctrl\+C to stop\./);
+  // ssh died before the port was listening, so nothing claims a forward.
+  assert.doesNotMatch(r.stderr, /Forwarding/);
   assert.equal(r.stdout, "");
   assert.deepEqual(readLog(), [
     {
@@ -329,6 +343,60 @@ test("e2e `krova tunnel`: loopback bind, strict host keys, ssh's exit code, stde
   ]);
   assert.match(readFileSync(knownHostsFile(), "utf8"), /^\[cube\.example\.test\]:2222 ssh-ed25519 /m);
   if (process.platform !== "win32") assert.equal(statSync(knownHostsFile()).mode & 0o777, 0o600);
+});
+
+/** Start a tunnel command whose fake ssh binds its port only after a delay, and
+ *  connect to the local port the moment the CLI announces it. */
+async function announcedPortAccepts(args: string[], announce: "stderr" | "stdout", port: number) {
+  const child = spawn(process.execPath, cliArgs(args), {
+    env: cliEnv({ FAKE_SSH_LISTEN_DELAY_MS: "800" }),
+  });
+  const started = Date.now();
+  let output = "";
+  let stderr = "";
+  child.stderr.on("data", (d) => (stderr += d));
+  const announcedAt = await new Promise<number>((resolve, reject) => {
+    const re = announce === "stderr" ? /Forwarding localhost:/ : /localhost:\d+/;
+    child.stdout.on("data", (d) => {
+      output += d;
+      if (announce === "stdout" && re.test(output)) resolve(Date.now());
+    });
+    child.stderr.on("data", () => {
+      if (announce === "stderr" && re.test(stderr)) resolve(Date.now());
+    });
+    child.once("close", () => reject(new Error(`exited before announcing: ${stderr}`)));
+  });
+  const accepted = await new Promise<boolean>((resolve) => {
+    const sock = createConnection({ host: "127.0.0.1", port });
+    sock.once("connect", () => {
+      sock.destroy();
+      resolve(true);
+    });
+    sock.once("error", () => resolve(false));
+  });
+  const code = await new Promise<number | null>((resolve) => {
+    child.once("close", resolve);
+    child.kill("SIGINT");
+  });
+  return { accepted, waitedMs: announcedAt - started, code, stderr };
+}
+
+test("e2e `krova tunnel` says Forwarding only once the local port is listening", { timeout: 30_000 }, async () => {
+  resetLog();
+  const port = await freePort();
+  const r = await announcedPortAccepts(["tunnel", "db", `${port}:5432`], "stderr", port);
+  assert.ok(r.waitedMs >= 700, `announced after ${r.waitedMs}ms, before ssh bound the port`);
+  assert.equal(r.accepted, true, "the port accepts connections when the line appears");
+  assert.equal(r.code, 0, r.stderr);
+});
+
+test("e2e `krova connect` prints the endpoint only once the local port is listening", { timeout: 30_000 }, async () => {
+  resetLog();
+  const port = await freePort();
+  const r = await announcedPortAccepts(["connect", "db", "--port", "5432", "--local-port", String(port)], "stdout", port);
+  assert.ok(r.waitedMs >= 700, `announced after ${r.waitedMs}ms, before ssh bound the port`);
+  assert.equal(r.accepted, true, "the port accepts connections when the endpoint is printed");
+  assert.equal(r.code, 0, r.stderr);
 });
 
 test("e2e `krova tunnel` defaults the local port to the cube port and rejects a bad spec", async () => {

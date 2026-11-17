@@ -1,5 +1,6 @@
 import { KrovaClient } from "@krovacloud/sdk";
 
+import { normalizeBaseUrl } from "./base-url.js";
 import type { Resolved } from "./config.js";
 
 /** Build the SDK client, or throw the same message the Go CLI used. */
@@ -28,7 +29,7 @@ export async function rawRequest<T>(opts: {
     const headers: Record<string, string> = { Accept: "application/json" };
     if (opts.apiKey) headers["X-API-KEY"] = opts.apiKey;
     if (opts.body !== undefined) headers["Content-Type"] = "application/json";
-    const res = await fetch(`${opts.baseUrl.replace(/\/+$/, "")}${opts.path}`, {
+    const res = await fetch(`${normalizeBaseUrl(opts.baseUrl)}${opts.path}`, {
       method: opts.method,
       headers,
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,

@@ -58,7 +58,21 @@ All notable changes to `@krovacloud/cli` are documented here.
 
 - `krova whoami`, `krova auth status` and `krova context list --json` show where the key lives (`apiKeyStorage` / `keyStorage`: `keychain` or `file`), and `krova auth logout`, `krova context delete` and `krova context rename` delete or move the keychain item with the context, and only after the config file is saved. `krova context list` no longer reads the keychain unless you pass `--show-secrets`. The config file is now written atomically. Context names cannot start with `-`.
 
+- `krova cubes create --wait` blocks until the Cube is running, and `--wait-timeout <seconds>` (default 300) sets how long. On a terminal it shows a progress line; with `--json` it prints the final Cube. It exits 1 with a clear message if the Cube lands in `error` or the time runs out.
+
+- `krova cubes wait <cube> [--state running] [--timeout <seconds>]`: wait for a Cube to reach a state (any of `pending`, `booting`, `running`, `stopped`, `stopping`, `resizing`, `error`, `deleted`). It prints `Cube <id> is running` (`--json` prints the Cube) and exits 1 on a timeout (default 300 seconds) or when the Cube enters `error` or `deleted`.
+
 ### Fixed
+
+- `krova auth login --context <name>` and `krova login --context <name>` save the context under the name you give. They used to save it as `default`.
+
+- `--base-url` and `KROVA_BASE_URL` take a bare origin such as `https://krova.cloud` for every request the CLI makes, including the login and key checks, the same way the SDK does: a bare origin gets `/api/v1`, trailing slashes are dropped, and any other path is kept.
+
+- `krova psql --help`, `redis` and `mysql` show each default once.
+
+- `krova cubes list | head -1` and other pipes that close early end quietly with status 0, as standard tools do, instead of printing an `EPIPE` stack trace. Other write errors are still reported.
+
+- `krova tunnel` prints `Forwarding ...` only once the local port is listening, so a tunnel that fails to start no longer claims to be forwarding.
 
 - `krova login` on Windows no longer passes the verification URL through `cmd.exe`: it opens the browser with `rundll32` and no shell. A URL containing `& | ^ < > "` (or `%` on Windows) is not opened; the CLI prints it so you can open it yourself. The URL it opens is now the normalized form of the one the server sent.
 

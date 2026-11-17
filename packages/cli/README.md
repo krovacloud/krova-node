@@ -59,6 +59,7 @@ krova cubes create \
   --name web --image ubuntu-24.04 \
   --vcpu 1 --ram 1 --disk 10 \
   --ssh-key "$(cat ~/.ssh/id_ed25519.pub)"
+krova cubes wait <cube>              # block until the Cube is running (--state, --timeout <seconds>)
 krova cubes power-off <cube>
 krova cubes wake <cube>
 krova cubes restart <cube>   # cold restart — the only way to pick up a new kernel
@@ -76,6 +77,13 @@ In a terminal, `krova cubes delete` and `krova snapshots rm` ask `[y/N]` before 
 `--idle-timeout <minutes>` (on `krova cubes create` and `krova cubes update`) powers a Cube off after that many minutes without activity, so a forgotten Cube stops costing money. It takes a whole number from 10 to 10080 (7 days), or `off`; anything else fails before a request is sent. `krova cubes get` shows `Idle timeout` (`off`, or `N min`) and `Last active`, and `--json` includes `idleTimeoutMinutes` and `lastActiveAt`. This needs a server with the idle-timeout feature: on an older server `krova cubes update` fails with the server's message, and `krova cubes create` warns on stderr that the flag was probably ignored. `krova cubes get` shows `-` for both fields there.
 
 `<cube>` is a Cube **name or ID** — a unique name resolves automatically.
+
+Add `--wait` to `krova cubes create` to block until the Cube is running, with `--wait-timeout <seconds>` (default 300). `krova cubes wait <cube> [--state running] [--timeout <seconds>]` does the same for a Cube that already exists, and works for any state (`stopped`, for example). On a terminal you get a progress line; with `--json` you get the final Cube. A timeout, or a Cube that lands in `error` or `deleted`, exits 1 with a one-line message, so it drops into scripts and CI:
+
+```sh
+krova cubes create --name web --image ubuntu-24.04 --ssh-key "$(cat ~/.ssh/id_ed25519.pub)" --wait
+krova cubes wait web --state stopped --timeout 120
+```
 
 In a terminal, `krova cubes create` asks for whatever you leave out. Run it with no flags to pick the name, image, region, size and SSH key from lists:
 

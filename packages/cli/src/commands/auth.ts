@@ -72,7 +72,9 @@ export function authCommand(): Command {
         apiKey: key.trim(),
         baseUrl: rt.res.baseUrl,
         spaceId: opts.space as string | undefined,
-        ctxName: opts.context as string | undefined,
+        // Not opts.context: the root's own --context takes the flag first, so the
+        // local option never receives it. The merged flags always carry it.
+        ctxName: rt.flags.context,
         timeoutMs: rt.timeoutMs,
       });
       process.stdout.write(`${loginMessage(ctxName, stored)}\n`);
