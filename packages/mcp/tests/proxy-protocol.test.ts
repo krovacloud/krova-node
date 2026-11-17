@@ -35,7 +35,7 @@ class MockApi {
   async start(): Promise<void> {
     await new Promise<void>((resolve) => this.server.listen(0, "127.0.0.1", resolve));
     const { port } = this.server.address() as AddressInfo;
-    this.baseUrl = `http://127.0.0.1:${port}`;
+    this.baseUrl = `http://127.0.0.1:${port}/api/v1`;
   }
 
   async stop(): Promise<void> {
@@ -57,7 +57,7 @@ class MockApi {
       const raw = Buffer.concat(chunks).toString("utf8");
       const captured: CapturedRequest = {
         method: req.method ?? "",
-        url: req.url ?? "",
+        url: (req.url ?? "").replace(/^\/api\/v1/, ""),
         body: raw ? JSON.parse(raw) : undefined,
       };
       this.requests.push(captured);
