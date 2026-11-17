@@ -1,3 +1,21 @@
+/**
+ * Stop quietly when the reader of stdout goes away (`krova cubes list | head -1`),
+ * the way standard Unix tools do: an EPIPE ends the process with status 0 and no
+ * stack trace. Every other write error is still reported, as `Error: ...` with
+ * status 1; only the one expected case is silent.
+ */
+export function exitQuietlyOnBrokenPipe(
+  stream: NodeJS.EventEmitter = process.stdout,
+  exit: (code: number) => void = (code) => process.exit(code),
+  warn: (text: string) => void = (text) => void process.stderr.write(text)
+): void {
+  stream.on("error", (err: NodeJS.ErrnoException) => {
+    if (err?.code === "EPIPE") return exit(0);
+    warn(`Error: ${err instanceof Error ? err.message : String(err)}\n`);
+    exit(1);
+  });
+}
+
 export function printJSON(value: unknown): void {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
 }

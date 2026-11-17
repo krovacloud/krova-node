@@ -21,7 +21,10 @@ import { whoamiCommand } from "./commands/whoami.js";
 import { DEFAULT_BASE_URL, ENV, load, resolve } from "./lib/config.js";
 import { errorHint } from "./lib/hints.js";
 import { parseOutputFormat } from "./lib/output-format.js";
+import { exitQuietlyOnBrokenPipe } from "./lib/output.js";
 import { activeRuntime } from "./lib/runtime.js";
+
+exitQuietlyOnBrokenPipe();
 
 const program = new Command();
 program

@@ -14,6 +14,12 @@ import {
 const PRIVATE_NOTE =
   "The port is reachable only from this machine, over your SSH key. Prefer it to a public `krova tcp add` mapping for databases.";
 
+function announceForwarding(localPort: number, cubeRef: string, cubePort: number): void {
+  process.stderr.write(
+    `Forwarding localhost:${localPort} -> ${cubeRef}:${cubePort}. Press Ctrl+C to stop.\n`
+  );
+}
+
 export function tunnelCommand(): Command {
   return new Command("tunnel")
     .argument("<cube>", "cube name or ID")
@@ -31,10 +37,12 @@ export function tunnelCommand(): Command {
         localPort,
         cubePort,
       });
-      process.stderr.write(
-        `Forwarding localhost:${localPort} -> ${cubeRef}:${cubePort}. Press Ctrl+C to stop.\n`
-      );
-      process.exitCode = await holdTunnel(args);
+      // Say "Forwarding" only once the local port is listening, so the line is
+      // never printed for a tunnel that failed to come up.
+      process.exitCode = await holdTunnel(args, {
+        readyPort: localPort,
+        onReady: () => announceForwarding(localPort, cubeRef, cubePort),
+      });
     });
 }
 
@@ -69,9 +77,7 @@ export function connectCommand(): Command {
           } else {
             process.stdout.write(`localhost:${localPort}\n`);
           }
-          process.stderr.write(
-            `Forwarding localhost:${localPort} -> ${cubeRef}:${cubePort}. Press Ctrl+C to stop.\n`
-          );
+          announceForwarding(localPort, cubeRef, cubePort);
         },
       });
     });

@@ -19,6 +19,14 @@ import { resolveCube } from "../lib/resolve.js";
 import { confirm, printAborted, shouldConfirm } from "../lib/safety.js";
 import { getRuntime, makeClient, resolveSpace } from "../lib/runtime.js";
 import { withSpinner } from "../lib/spinner.js";
+import {
+  DEFAULT_WAIT_TIMEOUT_S,
+  optionFromCli,
+  parseWaitSeconds,
+  parseWaitState,
+  startWaitProgress,
+  waitForCubeState,
+} from "../lib/wait.js";
 
 function listCmd(): Command {
   return new Command("list")
@@ -48,6 +56,49 @@ function listCmd(): Command {
           c.terminationProtection ? "✓" : "",
         ])
       );
+    });
+}
+
+/** Block until a Cube reaches `target`, with a progress line on a terminal. */
+async function waitForCube(
+  rt: ReturnType<typeof getRuntime>,
+  client: ReturnType<typeof makeClient>,
+  space: string,
+  id: string,
+  cubeRef: string,
+  target: string,
+  timeoutS: number
+) {
+  const progress = startWaitProgress(cubeRef, target, rt.json);
+  try {
+    return await waitForCubeState({
+      cubeRef,
+      target,
+      timeoutS,
+      get: () => client.cubes.get(space, id),
+      onPoll: progress.update,
+    });
+  } finally {
+    progress.stop();
+  }
+}
+
+function waitCmd(): Command {
+  return new Command("wait")
+    .argument("<cube>", "cube name or ID")
+    .description("wait until a Cube reaches a state (running by default); exits 1 on a timeout or an error state")
+    .option("--state <state>", "state to wait for: pending, booting, running, stopped, stopping, resizing, error or deleted (default running)")
+    .option("--timeout <seconds>", `give up after this many seconds (default ${DEFAULT_WAIT_TIMEOUT_S})`)
+    .action(async (cubeRef: string, opts, cmd: Command) => {
+      const target = parseWaitState(opts.state as string | undefined);
+      const timeoutS = parseWaitSeconds(optionFromCli(cmd, "timeout"), "--timeout");
+      const rt = getRuntime(cmd);
+      const client = makeClient(rt.res);
+      const space = await resolveSpace(rt);
+      const id = await resolveCube(client, space, cubeRef);
+      const cube = await waitForCube(rt, client, space, id, cubeRef, target, timeoutS);
+      if (rt.json) return printJSON(cube);
+      process.stdout.write(`Cube ${cube.id} is ${cube.state}\n`);
     });
 }
 
@@ -170,9 +221,12 @@ export function createCmd(deps: CreateDeps = defaultCreateDeps): Command {
       false
     )
     .option("--idle-timeout <minutes>", IDLE_TIMEOUT_HELP)
+    .option("--wait", "wait until the Cube is running before returning")
+    .option("--wait-timeout <seconds>", `with --wait, give up after this many seconds (default ${DEFAULT_WAIT_TIMEOUT_S})`)
     .option("-y, --yes", "skip the confirmation after the prompts")
     .action(async (opts, cmd: Command) => {
       // Checked first so a bad value fails before any prompt or request.
+      const waitTimeoutS = parseWaitSeconds(opts.waitTimeout as string | undefined, "--wait-timeout");
       const idleTimeoutMinutes =
         opts.idleTimeout === undefined ? undefined : parseIdleTimeout(opts.idleTimeout);
       // --name, --image and --ssh-key were requiredOption; without a terminal
@@ -265,8 +319,15 @@ export function createCmd(deps: CreateDeps = defaultCreateDeps): Command {
         // An older server ignores the field it does not know and still answers 201.
         process.stderr.write(IDLE_UNSUPPORTED_WARNING);
       }
-      if (rt.json) return printJSON(cube);
-      out(`Created cube ${cube.id} (${cube.state})\n`);
+      if (!opts.wait) {
+        if (rt.json) return printJSON(cube);
+        out(`Created cube ${cube.id} (${cube.state})\n`);
+        return;
+      }
+      if (!rt.json) out(`Created cube ${cube.id} (${cube.state})\n`);
+      const ready = await waitForCube(rt, client, space, cube.id, cube.id, "running", waitTimeoutS);
+      if (rt.json) return printJSON(ready);
+      out(`Cube ${ready.id} is running\n`);
     });
 }
 
@@ -582,6 +643,7 @@ export function cubesCommand(): Command {
   const cubes = new Command("cubes").description("manage Cubes (Firecracker microVMs)");
   cubes.addCommand(listCmd());
   cubes.addCommand(getCmd());
+  cubes.addCommand(waitCmd());
   cubes.addCommand(createCmd());
   cubes.addCommand(
     actionCmd("power-off", "Powering off", (c, s, id) => c.powerOff(s, id)),
