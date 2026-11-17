@@ -9,12 +9,19 @@
 //      version at publish time, using the just-bumped versions),
 //   4. create a `<name>@<version>` git tag + a GitHub release.
 //
+// Before any of that, every publishable package's package.json is set to the
+// higher of its committed version and its npm latest. git keeps the committed
+// version from the last hand edit (the bumps below are never committed), so
+// without this a dependent published while its dependency is unchanged would
+// pin `workspace:*` to that stale committed version.
+//
 // "Changed" = the package directory has commits since its highest release tag
 // (or it has never been released). No changesets, no manual version edits.
 
 import { execSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { cmpSemver, nextVersion, pinsFor, planBaselines } from "./release-lib.mjs";
 
 const DRY = process.argv.includes("--dry-run");
 
@@ -53,16 +60,6 @@ const visit = (p) => {
 pkgs.forEach(visit);
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-const cmpSemver = (a, b) => {
-  const A = a.split(".").map(Number);
-  const B = b.split(".").map(Number);
-  for (let i = 0; i < 3; i++) {
-    const d = (A[i] || 0) - (B[i] || 0);
-    if (d) return d;
-  }
-  return 0;
-};
-
 const highestTag = (name) => {
   const tags = out(`git tag --list "${name}@*"`)
     .split("\n")
@@ -126,15 +123,39 @@ const changedSince = (dir, name, tagVersion) => {
   return true;
 };
 
+// A 404 means the package was never published ("0.0.0"). Any other failure
+// (network, registry outage) throws: guessing "0.0.0" would pin dependents to a
+// stale committed version, which is the bug this script exists to prevent.
 const npmLatest = (name) => {
   try {
-    return (
-      out(`pnpm view ${name} version`, { stdio: ["ignore", "pipe", "ignore"] }) || "0.0.0"
-    );
-  } catch {
-    return "0.0.0";
+    return out(`pnpm view ${name} version`) || "0.0.0";
+  } catch (e) {
+    if (/\b404\b|E404/.test(`${e.stderr ?? ""}${e.stdout ?? ""}`)) return "0.0.0";
+    throw new Error(`could not read the npm latest of ${name}: ${e.stderr || e.message}`);
   }
 };
+
+// ── baseline versions ────────────────────────────────────────────────────────
+// Set every publishable package to max(committed, npm latest) in this checkout
+// so a `workspace:*` dependency that is not released this run still resolves to
+// its real latest version. `versions` tracks what each package will be at when a
+// dependent publishes; the loop below updates it for packages it releases.
+const latestCache = new Map();
+const latestOf = (name) => {
+  if (!latestCache.has(name)) latestCache.set(name, npmLatest(name));
+  return latestCache.get(name);
+};
+const versions = new Map();
+for (const b of planBaselines(pkgs, latestOf)) {
+  versions.set(b.name, b.version);
+  if (!b.rewrite) continue;
+  console.log(`~ ${b.name}: committed ${b.committed} is behind npm ${b.latest}, using ${b.version}`);
+  const pjPath = join(b.dir, "package.json");
+  const pj = JSON.parse(readFileSync(pjPath, "utf8"));
+  pj.version = b.version;
+  if (!DRY) writeFileSync(pjPath, `${JSON.stringify(pj, null, 2)}\n`);
+  pkgs.find((p) => p.name === b.name).json.version = b.version;
+}
 
 // ── release loop ─────────────────────────────────────────────────────────────
 let released = 0;
@@ -147,17 +168,14 @@ for (const p of ordered) {
     continue;
   }
 
-  const latest = npmLatest(name);
-  let next;
-  if (cmpSemver(json.version, latest) > 0) {
-    next = json.version; // explicit manual bump wins
-  } else {
-    const parts = latest.split(".").map(Number);
-    parts[2] = (parts[2] || 0) + 1;
-    next = parts.join(".");
-  }
+  const latest = latestOf(name);
+  const next = nextVersion(json.version, latest); // an explicit higher manual bump wins
 
   console.log(`▸ ${name}: ${latest} → ${next} (releasing)`);
+  for (const { dep, version } of pinsFor(internalDeps(p), versions)) {
+    console.log(`    pins ${dep}@${version}`);
+  }
+  versions.set(name, next);
   // write the version so workspace:* dependents resolve to it at publish time
   const pjPath = join(dir, "package.json");
   const pj = JSON.parse(readFileSync(pjPath, "utf8"));
