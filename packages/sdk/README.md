@@ -384,6 +384,36 @@ try {
 
 Mutating `POST` / `DELETE` endpoints are rate-limited (10 requests / 60s per client IP). The client automatically retries `429` and `503` up to `maxRetries` times, honoring the `Retry-After` header.
 
+## Run commands and move files
+
+Krova has no exec or files API. Commands and files go over the Cube's own SSH, with a private key you supply, through the Node-only `@krovacloud/sdk/ssh` entry. The main entry never loads it, so browser and edge code is unaffected.
+
+```ts
+import { KrovaClient } from "@krovacloud/sdk";
+import { connectCube } from "@krovacloud/sdk/ssh";
+
+const krova = new KrovaClient({ apiKey: process.env.KROVA_API_KEY! });
+const shell = await connectCube(krova, spaceId, cubeId, {
+  privateKey: process.env.CUBE_SSH_KEY!, // the private half of a key on the Cube
+});
+
+try {
+  const { stdout, stderr, exitCode } = await shell.run(["ls", "-la"], { cwd: "/srv" });
+  await shell.files.write("/srv/hello.txt", "hello");
+  const bytes = await shell.files.read("/srv/hello.txt");
+  await shell.files.upload("./build.tar.gz", "/srv/build.tar.gz");
+  await shell.files.download("/var/log/app.log", "./app.log");
+} finally {
+  await shell.close();
+}
+```
+
+- `run(command, { cwd?, env?, timeoutMs?, stdin? })` returns `{ stdout, stderr, exitCode, signal? }`. A string runs as written in the Cube's shell. A string array has each argument quoted for you (`shellQuote` is exported), as are `cwd` and the `env` values. A timeout closes the channel and rejects with `RunTimeoutError`.
+- The connection is verified against the Cube's host keys from `krova.cubes.ssh()`. A key that does not match, or a Cube with no keys captured yet, throws `HostKeyMismatchError`. If you keep your own pinned keys, pass them as `hostKeys`. There is no option to skip the check.
+- Your key is used for the connection and never logged or stored by the SDK. An encrypted key takes `passphrase`.
+- `ssh2` has an optional native addon (`cpu-features`) with an install script. The SDK works without it, so pnpm users can leave that script disabled.
+- File paths are literal: `~` and `$VAR` are not expanded. `files.read` and `files.write` hold the whole file in memory; use `upload` and `download` for large files.
+
 ## Configuration
 
 Point the client at a different base URL (self-hosted gateway, staging, a proxy):
