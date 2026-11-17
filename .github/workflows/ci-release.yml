@@ -60,6 +60,9 @@ jobs:
       # could ship a package that does not compile.
       - run: pnpm -r typecheck
       - run: pnpm -r test
+      # The release script's version logic (scripts/release-lib.mjs) is not in a
+      # workspace package, so `pnpm -r test` does not reach it.
+      - run: node --test scripts/*.test.mjs
       # The SDK's types are generated from `packages/sdk/openapi.json`, a
       # SNAPSHOT of the spec krova-cloud serves. Nothing pushes that spec here,
       # so it only moves when a human copies it, and for a long stretch nobody
