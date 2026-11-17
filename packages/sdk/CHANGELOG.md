@@ -9,6 +9,8 @@ All notable changes to `@krovacloud/sdk` are documented here. This project adher
 
 ### Added
 
+- `baseUrl` on `new KrovaClient()` is optional and now falls back to the `KROVA_BASE_URL` environment variable (where `process.env` exists; browsers and edge runtimes just use the default), then to `https://krova.cloud/api/v1`. An empty or whitespace value counts as unset, trailing slashes are removed, and a bare origin such as `https://krova.cloud` gets `/api/v1` appended; any other path is kept as given. `client.baseUrl` shows the resolved value.
+
 - `cubes.setIdleTimeout(spaceId, cubeId, minutes | null)`, `idleTimeoutMinutes?: number | null` on the `cubes.create()` body, and `idleTimeoutMinutes` and `lastActiveAt` on `Cube`: Krova powers a Cube off after that many minutes without activity (10 to 10080, or `null` for off). These need a server with the idle-timeout feature, which krova-cloud has not deployed yet: `setIdleTimeout` gets a `400` from an older server, `create` is silently ignored there, and both `Cube` fields are absent. The OpenAPI snapshot and generated types include them, and `packages/sdk/openapi-pending.json` lists them so the drift check stays green until the deploy.
 
 - `cubes.rename(spaceId, cubeId, name)` and `cubes.resize(spaceId, cubeId, { vcpu?, ramGb?, diskGb? }, opts?)`, with the exported types `ResizeCubeInput` and `ResizeCubeResult`. `resize` resolves to `{ success, state: "queued", jobId, isLive, requiresRestart, previous, requested }`; the Cube keeps its size until the worker applies the change. `getSpace()` now returns `apiKey: { name, expiresAt } | null` (`expiresAt` is `null` for a key that never expires; `apiKey` is `null` for an OAuth token and absent on an older server). The OpenAPI snapshot and generated types include these API changes, which krova-cloud has not deployed yet: until it does, `packages/sdk/openapi-pending.json` lists them so the drift check stays green.
@@ -24,6 +26,8 @@ All notable changes to `@krovacloud/sdk` are documented here. This project adher
   naming them. Types regenerated from the API's spec.
 
 ### Changed
+
+- `Cube.idleTimeoutMinutes` and `Cube.lastActiveAt` are now always present (`number | null` and `string | null`), because krova-cloud has deployed the idle-timeout feature. The OpenAPI snapshot and generated types match the live API again.
 
 - The README no longer says HTTPS to the Cube is verified before it applies: the
   API now applies it as saved.

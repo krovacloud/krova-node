@@ -181,6 +181,40 @@ export type WebhookWithSecret = Webhook & { secret: string };
 /** Default API base URL — the single `servers[0].url` from the OpenAPI spec. */
 export const DEFAULT_BASE_URL = "https://krova.cloud/api/v1";
 
+/** Path appended to a bare origin such as `https://krova.cloud`. */
+const API_PATH = "/api/v1";
+
+/** `KROVA_BASE_URL` when this runtime has `process.env`; never throws (browsers, edge runtimes, Deno without env access). */
+function readEnvBaseUrl(): string | undefined {
+  try {
+    if (typeof process !== "undefined" && process.env) return process.env.KROVA_BASE_URL;
+  } catch {
+    // Reading the env can throw where access is denied (for example Deno without --allow-env).
+  }
+  return undefined;
+}
+
+/**
+ * Work out the API base URL. Order: the `baseUrl` option, then the
+ * `KROVA_BASE_URL` environment variable (where `process.env` exists), then
+ * {@link DEFAULT_BASE_URL}. An empty or whitespace-only value counts as unset.
+ * Trailing slashes are removed. A bare origin (`https://krova.cloud`) gets
+ * `/api/v1` appended; any other path is kept as given.
+ */
+function resolveBaseUrl(explicit?: string): string {
+  const raw = [explicit, readEnvBaseUrl()].find((v) => typeof v === "string" && v.trim() !== "");
+  if (raw === undefined) return DEFAULT_BASE_URL;
+  const trimmed = raw.trim().replace(/\/+$/, "");
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return trimmed;
+  }
+  if (url.pathname === "/" && !url.search && !url.hash) return `${trimmed}${API_PATH}`;
+  return trimmed;
+}
+
 /**
  * How the API key is presented to the server.
  *
@@ -197,7 +231,11 @@ export interface KrovaClientOptions {
    * and inherit the permissions of the membership that created them.
    */
   apiKey: string;
-  /** Override the API base URL. Defaults to {@link DEFAULT_BASE_URL}. */
+  /**
+   * Override the API base URL. Optional. When omitted, the `KROVA_BASE_URL`
+   * environment variable is used if set, else {@link DEFAULT_BASE_URL}. Accepts a
+   * full API URL (`https://krova.cloud/api/v1`) or a bare origin (`/api/v1` is added).
+   */
   baseUrl?: string;
   /**
    * Auth header scheme. Defaults to `"x-api-key"` (the spec's scheme).
@@ -326,7 +364,7 @@ export class KrovaClient {
     if (!options?.apiKey) {
       throw new Error("KrovaClient: `apiKey` is required.");
     }
-    this.baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
+    this.baseUrl = resolveBaseUrl(options.baseUrl);
     const doFetch = options.fetch ?? globalThis.fetch;
     const maxRetries = options.maxRetries ?? 2;
 

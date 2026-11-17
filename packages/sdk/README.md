@@ -91,7 +91,7 @@ Every public export, with its real signature and a short example.
 ```ts
 new KrovaClient({
   apiKey: string,               // required — your "kro_..." token
-  baseUrl?: string,             // default: "https://krova.cloud/api/v1"
+  baseUrl?: string,             // optional; default: $KROVA_BASE_URL, else "https://krova.cloud/api/v1"
   authScheme?: "x-api-key" | "bearer", // default: "x-api-key"
   maxRetries?: number,          // default: 2 — retries 429/503 (honors Retry-After); 0 disables
   fetch?: typeof fetch,         // optional fetch override (proxy, tests)
@@ -415,6 +415,8 @@ try {
 - File paths are literal: `~` and `$VAR` are not expanded. `files.read` and `files.write` hold the whole file in memory; use `upload` and `download` for large files.
 
 ## Configuration
+
+`baseUrl` is optional. Without it the client uses the `KROVA_BASE_URL` environment variable when set, then `https://krova.cloud/api/v1`. An empty value counts as unset, trailing slashes are removed, and a bare origin such as `https://krova.cloud` gets `/api/v1` added.
 
 Point the client at a different base URL (self-hosted gateway, staging, a proxy):
 
