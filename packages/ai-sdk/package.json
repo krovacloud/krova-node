@@ -63,9 +63,9 @@
     "zod": "^3.25.76 || ^4.1.8"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.6",
+    "@biomejs/biome": "2.6.8",
     "@types/node": "^26.6.6",
-    "ai": "7.0.166",
+    "ai": "7.0.177",
     "tsdown": "0.23.7",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
